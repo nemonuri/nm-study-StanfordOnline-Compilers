@@ -1,0 +1,18 @@
+# 01-01: Introduction
+
+## 컴파일러와 인터프리터 {#compiler-and-interpreter}
+
+1. 인터프리터 {#interpreter}
+
+![interpreter](image/interpreter.drawio.svg)
+
+- 인터프리터는 프로그램과 데이터를 입력받아, 결과를 출력한다.
+- 프로그램은 인터프리터와 항상 함께 실행된다. (online)
+
+2. 컴파일러 {#compiler}
+
+![compiler](image/compiler.drawio.svg)
+
+- 컴파일러는 일단 프로그램만 입력받아, 실행 가능한(executable) 파일을 생성한다.
+  - executable 역시 프로그램이다.
+- executable은 컴파일러와 별도로 실행된다. (offline)
