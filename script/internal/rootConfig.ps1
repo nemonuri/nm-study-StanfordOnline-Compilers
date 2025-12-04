@@ -1,8 +1,32 @@
 
+. $PSScriptRoot/common.ps1
+. $PSScriptRoot/meta.ps1
+
+enum RootConfigErrorCode : int {
+    None = 0
+    FileNotExist = 1
+    InvalidJson = 2
+}
+
 class RootConfig {
     [string]$fstarExe = ""
     [string]$z3Exe = ""
     [string[]]$fstarLibs = @()
+
+    static [psobject] Current() {
+        $meta = Get-Meta
+        $path = Join-Path (Get-Root) $meta.RootConfig
+
+        if (-not (Test-Path $path -PathType Leaf)) {
+            return [RootConfigErrorCode]::FileNotExist
+        }
+
+        if (-not (Test-Json -Path $path)) {
+            return [RootConfigErrorCode]::InvalidJson
+        }
+
+        return [RootConfig](Get-Content $Path | ConvertFrom-Json | ConvertTo-TypedObject 'RootConfig')
+    }
 }
 
 class RootConfigState {
@@ -11,17 +35,31 @@ class RootConfigState {
     [bool] $hasFStarExe = $false
     [bool] $hasZ3Exe = $false
     [bool] $hasFStarLibs = $false
-}
 
-function New-DesiredRootConfigState {
-    [OutputType([RootConfigState])] param ()
+    static [RootConfigState] Desired() {
+        return [RootConfigState]@{
+            _exist = $true
+            isValidJson = $true
+            hasFStarExe = $true
+            hasZ3Exe = $true
+            hasFStarLibs = $true
+        }
+    }
 
-    [RootConfigState]@{
-        _exist = $true
-        isValidJson = $true
-        hasFStarExe = $true
-        hasZ3Exe = $true
-        hasFStarLibs = $true
+    static [RootConfigState] Current() {
+        $rc = [RootConfig]::Current()
+
+        $r = [RootConfigState]::new()
+        if ($rc -eq [RootConfigErrorCode]::FileNotExist) { return $r }
+        $r._exist = $true
+
+        if ($rc -eq [RootConfigErrorCode]::InvalidJson) { return $r }
+        $r.isValidJson = $true
+
+        $r.hasFStarExe = ($null -ne $rc.fstarExe)
+        $r.hasZ3Exe = ($null -ne $rc.z3Exe)
+        $r.hasFStarLibs = ($null -ne $rc.fstarLibs)
+        return $r
     }
 }
 
@@ -33,72 +71,26 @@ function New-RootConfigComment {
     }
 }
 
-function ConvertTo-RootConfigState {
-    [OutputType([RootConfigState])]
-    param (
-        [string] $Path
-    )
-
-    [RootConfigState]$rcs = [RootConfigState]::new()
-
-    [bool]$exist = (Test-Path $Path -PathType Leaf)
-    if (-not $exist) {
-        return $rcs
-    }
-    $rcs._exist = $exist
-
-    [bool]$isValidJson = (Test-Json -Path $Path)
-    if (-not $isValidJson) {
-        return $rcs
-    }
-    $rcs.isValidJson = $isValidJson
-
-    # Convert json string file to RootConfig object
-    $rc = (Get-Content $Path | ConvertFrom-Json)
-
-    [bool]$hasFStarExe = ($null -ne $rc.fstarExe)
-    if (-not $hasFStarExe) { return $rcs }
-    $rcs.hasFStarExe = $hasFStarExe
-
-    [bool]$hasZ3Exe = ($null -ne $rc.z3Exe)
-    if ($hasZ3Exe) { 
-        $rcs.hasZ3Exe = $hasZ3Exe
-    }
-    
-    [bool]$hasFStarLibs = ($null -ne $rc.fstarLibs)
-    if ($hasFStarLibs) { 
-        $rcs.hasFStarLibs = $hasFStarLibs
-    }
-
-    return $rcs
-}
-
-class RootConfigWithComment : RootConfig {
-    [psobject]$_comment = $null
-}
-
 function Set-DesiredRootConfigState {
-    [OutputType([RootConfigState])]
-    param (
-        [string] $Path
-    )
+    $meta = Get-Meta
+    $path = Join-Path (Get-Root) $meta.RootConfig
     
-    [RootConfigState]$des = (New-DesiredRootConfigState)
-    [RootConfigState]$cur = (ConvertTo-RootConfigState $Path)
+    $des = [RootConfigState]::Desired()
+    $cur = [RootConfigState]::Current()
 
     if (($des._exist -ne $cur._exist) -or ($des.isValidJson -ne $cur.isValidJson)) {
         if ($des._exist -eq $false) { throw "Not supported." }
         if ($des.isValidJson -eq $false) { throw "Not supported." }
 
-        $newRc = [RootConfigWithComment]::new()
+        $newRc = [RootConfig]::new() | ConvertTo-HashTable
         $newRc._comment = (New-RootConfigComment)
-        ConvertTo-Json $newRc | Out-File $Path
+        ConvertTo-Json $newRc | Out-File $path
 
         $cur._exist = $true
         $cur.isValidJson = $true
     }
 
-    $rc = Get-Content $Path | ConvertFrom-Json -AsHashtable
+    $rc = Get-Content $path | ConvertFrom-Json -AsHashtable
 
     if ($des.hasFStarExe -ne $cur.hasFStarExe) {
         if ($des.hasFStarExe -eq $false) { throw "Not supported." }
@@ -118,7 +110,7 @@ function Set-DesiredRootConfigState {
         $cur.hasFStarLibs = $true
     }
 
-    $rc | ConvertTo-Json | Out-File $Path
+    $rc | ConvertTo-Json | Out-File $path
 
     return $cur
 }

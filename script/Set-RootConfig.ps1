@@ -22,18 +22,18 @@ function Out-Result([psobject] $InputObject) {
 
 $meta = Get-Meta
 
-$rootPath = Join-Path $PSScriptRoot ".." -Resolve
+#$rootPath = Join-Path $PSScriptRoot ".." -Resolve
 
-$rootConfigPath = Join-Path $rootPath $meta.RootConfig
+#$rootConfigPath = Join-Path $rootPath $meta.RootConfig
 
 #--- test and set root config file ---
 Write-HostWithTime "Test $($meta.RootConfig)"
-$testOutput = Invoke-DscTest (New-DesiredRootConfigState) (ConvertTo-RootConfigState $rootConfigPath)
+$testOutput = Invoke-DscTest ([RootConfigState]::Desired()) ([RootConfigState]::Current())
 Out-Result $testOutput
 
 if (($Mode -eq 'Set') -and (-not $testOutput.inDesiredState)) {
     Write-HostWithTime "Set $($meta.RootConfig)"
-    $setOutput = New-DscSetOutput (New-DesiredRootConfigState) (Set-DesiredRootConfigState $rootConfigPath)
+    $setOutput = New-DscSetOutput ([RootConfigState]::Desired()) (Set-DesiredRootConfigState)
     Out-Result $setOutput 
 }
 #---|

@@ -1,5 +1,5 @@
 
-. $PSScriptRoot/metaConfig.ps1
+. $PSScriptRoot/meta.ps1
 . $PSScriptRoot/rootConfig.ps1
 . $PSScriptRoot/dsc.ps1
 . $PSScriptRoot/fstConfig.ps1
@@ -23,8 +23,4 @@ function Format-Exe {
 
 function Write-HostWithTime([string] $Text) {
     Write-Host "[$(Get-Date -Format 'yyyy-MM-ddTHH:mm:ssz')] $Text"
-}
-
-function Get-Meta {
-    Import-PowerShellDataFile "$PSScriptRoot/data/meta.psd1"
 }

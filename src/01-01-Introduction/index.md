@@ -1,15 +1,15 @@
 # 01-01: Introduction
 
-## 컴파일러와 인터프리터 {#compiler-and-interpreter}
+## 컴파일러와 인터프리터 <span id="compiler-and-interpreter"></span>
 
-1. 인터프리터 {#interpreter}
+1. 인터프리터 <span id="interpreter"></span>
 
 ![interpreter](image/interpreter.drawio.svg)
 
 - 인터프리터는 프로그램과 데이터를 입력받아, 결과를 출력한다.
 - 프로그램은 인터프리터와 항상 함께 실행된다. (online)
 
-2. 컴파일러 {#compiler}
+2. 컴파일러 <span id="compiler"></span>
 
 ![compiler](image/compiler.drawio.svg)
 
