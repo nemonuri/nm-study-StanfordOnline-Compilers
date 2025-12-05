@@ -2,7 +2,7 @@
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Off
 
-. $PSScriptRoot/internal/all.ps1
+. $PSScriptRoot/internal/All.ps1
 
 # meta-config
 $meta = Get-Meta

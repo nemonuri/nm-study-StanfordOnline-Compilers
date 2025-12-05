@@ -1,12 +1,7 @@
+using module './ErrorCode.psm1'
 
-. $PSScriptRoot/common.ps1
-. $PSScriptRoot/meta.ps1
-
-enum RootConfigErrorCode : int {
-    None = 0
-    FileNotExist = 1
-    InvalidJson = 2
-}
+. $PSScriptRoot/Common.ps1
+. $PSScriptRoot/Meta.ps1
 
 class RootConfig {
     [string]$fstarExe = ""
@@ -18,16 +13,17 @@ class RootConfig {
         $path = Join-Path (Get-Root) $meta.RootConfig
 
         if (-not (Test-Path $path -PathType Leaf)) {
-            return [RootConfigErrorCode]::FileNotExist
+            return [ErrorCode]::FileNotExist
         }
 
         if (-not (Test-Json -Path $path)) {
-            return [RootConfigErrorCode]::InvalidJson
+            return [ErrorCode]::InvalidJson
         }
 
-        return [RootConfig](Get-Content $Path | ConvertFrom-Json | ConvertTo-TypedObject 'RootConfig')
+        return [RootConfig](Get-Content $path | ConvertFrom-Json | ConvertTo-TypedObject 'RootConfig')
     }
 }
+function Get-CurrentRootConfig { [RootConfig]::Current() }
 
 class RootConfigState {
     [bool] $_exist = $false
@@ -47,13 +43,13 @@ class RootConfigState {
     }
 
     static [RootConfigState] Current() {
-        $rc = [RootConfig]::Current()
+        $rc = Get-CurrentRootConfig
 
         $r = [RootConfigState]::new()
-        if ($rc -eq [RootConfigErrorCode]::FileNotExist) { return $r }
+        if ($rc -eq [ErrorCode]::FileNotExist) { return $r }
         $r._exist = $true
 
-        if ($rc -eq [RootConfigErrorCode]::InvalidJson) { return $r }
+        if ($rc -eq [ErrorCode]::InvalidJson) { return $r }
         $r.isValidJson = $true
 
         $r.hasFStarExe = ($null -ne $rc.fstarExe)
@@ -62,6 +58,8 @@ class RootConfigState {
         return $r
     }
 }
+function Get-DesiredRootConfigState { [RootConfigState]::Desired() }
+function Get-CurrentRootConfigState { [RootConfigState]::Current() }
 
 function New-RootConfigComment {
     @{
@@ -75,8 +73,8 @@ function Set-DesiredRootConfigState {
     $meta = Get-Meta
     $path = Join-Path (Get-Root) $meta.RootConfig
     
-    $des = [RootConfigState]::Desired()
-    $cur = [RootConfigState]::Current()
+    $des = Get-DesiredRootConfigState
+    $cur = Get-CurrentRootConfigState
 
     if (($des._exist -ne $cur._exist) -or ($des.isValidJson -ne $cur.isValidJson)) {
         if ($des._exist -eq $false) { throw "Not supported." }

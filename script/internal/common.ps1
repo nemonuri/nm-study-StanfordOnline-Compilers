@@ -32,3 +32,17 @@ function ConvertTo-HashTable {
     }   
     return $r
 }
+
+function Get-FullPath ([string]$Path, [string]$BasePath) {
+    if ([System.IO.Path]::IsPathFullyQualified($Path)) { 
+        return [System.IO.Path]::GetFullPath($Path)
+    } else {
+        return [System.IO.Path]::GetFullPath($Path, $BasePath)
+    }
+}
+
+function Compare-Path ([string]$BasePath, [string] $Path1, [string] $Path2) {
+    $fullPath1 = Get-FullPath $Path1 $BasePath
+    $fullPath2 = Get-FullPath $Path2 $BasePath
+    return ($fullPath1 -eq $fullPath2)
+}

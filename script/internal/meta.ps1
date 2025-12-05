@@ -1,6 +1,6 @@
 
 function Get-Meta {
-    Import-PowerShellDataFile "$PSScriptRoot/data/meta.psd1"
+    Import-PowerShellDataFile "$PSScriptRoot/data/Meta.psd1"
 }
 
 function Get-Root {

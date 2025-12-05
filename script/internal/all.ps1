@@ -1,7 +1,7 @@
 
-. $PSScriptRoot/meta.ps1
-. $PSScriptRoot/rootConfig.ps1
-. $PSScriptRoot/dsc.ps1
+. $PSScriptRoot/Meta.ps1
+. $PSScriptRoot/RootConfig.ps1
+. $PSScriptRoot/Dsc.ps1
 . $PSScriptRoot/fstConfig.ps1
 
 function Test-Windows {

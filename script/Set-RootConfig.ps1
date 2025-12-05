@@ -8,7 +8,7 @@ param (
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Off
 
-. $PSScriptRoot/internal/all.ps1
+. $PSScriptRoot/internal/All.ps1
 
 #--- functions ---
 function Out-Result([psobject] $InputObject) {
@@ -28,12 +28,12 @@ $meta = Get-Meta
 
 #--- test and set root config file ---
 Write-HostWithTime "Test $($meta.RootConfig)"
-$testOutput = Invoke-DscTest ([RootConfigState]::Desired()) ([RootConfigState]::Current())
+$testOutput = Invoke-DscTest (Get-DesiredRootConfigState) (Get-CurrentRootConfigState)
 Out-Result $testOutput
 
 if (($Mode -eq 'Set') -and (-not $testOutput.inDesiredState)) {
     Write-HostWithTime "Set $($meta.RootConfig)"
-    $setOutput = New-DscSetOutput ([RootConfigState]::Desired()) (Set-DesiredRootConfigState)
+    $setOutput = New-DscSetOutput (Get-DesiredRootConfigState) (Set-DesiredRootConfigState)
     Out-Result $setOutput 
 }
 #---|

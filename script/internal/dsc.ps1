@@ -1,3 +1,5 @@
+using namespace System
+using namespace System.Collections.Generic
 
 # https://raw.githubusercontent.com/PowerShell/DSC/main/schemas/v3.1.0/outputs/resource/test.simple.json
 class TestSimpleOutput {
@@ -9,13 +11,24 @@ class TestSimpleOutput {
 
 function Invoke-DscTest {
     [OutputType([TestSimpleOutput])]
-    param ([psobject] $Desired, [psobject] $Actual)
+    param ([psobject] $Desired, [psobject] $Actual, [Dictionary[string,Func[psobject,psobject,bool]]] $Testers = $null)
 
     $names = $Desired | Get-Member -MemberType Property | ForEach-Object { $_.Name }
 
+    function Get-Tester { [OutputType([Func[psobject,psobject,bool]])] param([string] $MemberName)
+        if ($null -eq $Testers) { return $null }
+        if (-not $Testers.ContainsKey($MemberName)) {return $null}
+        return $Testers[$MemberName]
+    }
+
     [string[]]$diffs = @()
     foreach ($name in $names) {
-        if ($Desired.$name -ne $Actual.$name) {
+        [bool]$passed = $false
+        [Func[psobject,psobject,bool]]$tester = Get-Tester $name
+        if ($null -eq $tester) { $passed = ($Desired.$name -eq $Actual.$name) }
+        else { $passed = $tester.Invoke($Desired.$name, $Actual.$name) }
+
+        if (-not $passed) {
             $diffs += $name
         }
     }
