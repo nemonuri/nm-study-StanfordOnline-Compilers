@@ -35,14 +35,29 @@ function Get-FStarProjectFiles { [OutputType([IEnumerable[IO.FileInfo]])] param 
     return [System.IO.Directory]::EnumerateFiles($src, $meta.FStarProject, 'AllDirectories')
 }
 
-function Get-FullPathSet { [OutputType([HashSet[string]])] param ([string[]]$Paths, [string]$BasePath)
-    $v = [Enumerable]::Select[string,string]($Paths, [Func[string,string]]{param($p); return Get-FullPath $p $BasePath })
-    return [Enumerable]::ToHashSet[string]($v)
+function Compare-SetEqual { param ([string[]] $l, [string[]] $r)
+    if (($null -eq $l) -or ($null -eq $r)) {return $false}
+    $lset = [Enumerable]::ToHashSet[string]($l)
+    return $lset.SetEquals($r)
 }
 
-function Compare-SetEqual { param ([HashSet[string]] $l, [HashSet[string]] $r)
-    if (($null -eq $l) -or ($null -eq $r)) {return $false}
-    return $l.SetEquals($r)
+function Get-RootFullPath { param ([string] $Path)
+    return Get-FullPath $Path (Get-Root)
+}
+
+function Get-RootFullPathes { param ([string[]] $Pathes)
+    return $Pathes | ForEach-Object {Get-RootFullPath $_}
+}
+
+function Remove-EqualAsRootFullPath {
+    param ([string[]] $SourcePathes, [string[]] $ComparandPathes, [switch] $Not)
+    
+    $pathes = Get-RootFullPathes $ComparandPathes
+    if ($Not) {
+        return $SourcePathes | Where-Object { $pathes -contains (Get-RootFullPath $_) }
+    } else {
+        return $SourcePathes | Where-Object { $pathes -notcontains (Get-RootFullPath $_) }
+    }
 }
 
 class FstConfigState {
@@ -104,9 +119,10 @@ class FstConfigState {
             return ""
         }
         $r.z3ExePath = (Get-Z3Path)
-        $r.includeDirsForRootConfig = [Enumerable]::Intersect($c.include_dirs, $desired.includeDirsForRootConfig)
-        $r.includeDirsForFStarProject = [Enumerable]::Intersect($c.include_dirs, $desired.includeDirsForFStarProject)
-        $r.includeDirsUnspecified = [Enumerable]::Except($c.include_dirs, $r.includeDirsForRootConfig + $r.includeDirsForFStarProject)
+
+        $r.includeDirsForRootConfig = Remove-EqualAsRootFullPath $c.include_dirs $desired.includeDirsForRootConfig -Not
+        $r.includeDirsForFStarProject = Remove-EqualAsRootFullPath $c.include_dirs $desired.includeDirsForFStarProject -Not
+        $r.includeDirsUnspecified = Remove-EqualAsRootFullPath $c.include_dirs ($r.includeDirsForRootConfig + $r.includeDirsForFStarProject)
 
         <#
         $r.isIncludeDirsRootConfigDesired = [Enumerable]::All[string]($RootConfig.fstarLibs,
@@ -129,9 +145,9 @@ class FstConfigState {
             return Compare-Path (Get-Root) $d $a
         })
 
-        $r.Add('includeDirsForRootConfig', { param($d, $a); return Compare-SetEqual (Get-FullPathSet $d (Get-Root)) ((Get-FullPathSet $a (Get-Root))) })
-        $r.Add('includeDirsForFStarProject', { param($d, $a); return Compare-SetEqual (Get-FullPathSet $d (Get-Root)) ((Get-FullPathSet $a (Get-Root))) })
-        $r.Add('includeDirsUnspecified', { param($d, $a); return Compare-SetEqual (Get-FullPathSet $d (Get-Root)) ((Get-FullPathSet $a (Get-Root))) })
+        $r.Add('includeDirsForRootConfig', { param($d, $a); return Compare-SetEqual (Get-RootFullPathes $d) ((Get-RootFullPathes $a)) })
+        $r.Add('includeDirsForFStarProject', { param($d, $a); return Compare-SetEqual (Get-RootFullPathes $d) ((Get-RootFullPathes $a)) })
+        $r.Add('includeDirsUnspecified', { param($d, $a); return Compare-SetEqual (Get-RootFullPathes $d) ((Get-RootFullPathes $a)) })
 
         return $r
     }

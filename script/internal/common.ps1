@@ -11,9 +11,11 @@ function ConvertTo-TypedObject {
 
     $r = New-Object -TypeName $TypeName
     $findingMemberNames = Get-Member -InputObject $r -MemberType 'Property' | ForEach-Object {$_.Name}
-    $foundMemberNames = Get-Member -InputObject $InputObject -MemberType 'Property' -Name $findingMemberNames | ForEach-Object {$_.Name}
-    foreach ($memberName in $foundMemberNames) {
-        $r.$memberName = $InputObject.$memberName
+    #$foundMemberNames = Get-Member -InputObject $InputObject -MemberType 'Property' -Name $findingMemberNames | ForEach-Object {$_.Name}
+    foreach ($memberName in $findingMemberNames) {
+        if ($null -ne $InputObject.$memberName) {
+            $r.$memberName = $InputObject.$memberName
+        }
     }   
     return $r
 }
