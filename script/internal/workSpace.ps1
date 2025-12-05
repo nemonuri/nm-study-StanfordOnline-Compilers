@@ -122,7 +122,11 @@ class FstConfigState {
         $r.z3ExePath = (Get-Z3Path)
 
         $r.includeDirsForRootConfig = Remove-EqualAsRootFullPath $c.include_dirs $desired.includeDirsForRootConfig -Not
+        if ($null -eq $r.includeDirsForRootConfig) {$r.includeDirsForRootConfig = @()}
+
         $r.includeDirsForFStarProject = Remove-EqualAsRootFullPath $c.include_dirs $desired.includeDirsForFStarProject -Not
+        if ($null -eq $r.includeDirsForFStarProject) {$r.includeDirsForFStarProject = @()}
+        
         $r.includeDirsUnspecified = Remove-EqualAsRootFullPath $c.include_dirs ($r.includeDirsForRootConfig + $r.includeDirsForFStarProject)
         if ($null -eq $r.includeDirsUnspecified) {$r.includeDirsUnspecified = @()}
 
