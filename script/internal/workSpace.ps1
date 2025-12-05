@@ -14,7 +14,7 @@ class FstConfig {
 
     static [psobject] Current() {
         $meta = Get-Meta
-        $path = Join-Path (Get-Root) $meta.RootConfig
+        $path = Join-Path (Get-Root) $meta.FstConfig
 
         if (-not (Test-Path $path -PathType Leaf)) {
             return [ErrorCode]::FileNotExist
@@ -28,7 +28,7 @@ class FstConfig {
     }
 }
 
-function Get-FStarProjectFiles { [OutputType([IEnumerable[IO.FileInfo]])] param ()
+function Get-FStarProjectFiles { [OutputType([string[]])] param ()
     $meta = Get-Meta
     $root = Get-Root
     $src = Join-Path $root $meta.Src -Resolve
@@ -36,7 +36,8 @@ function Get-FStarProjectFiles { [OutputType([IEnumerable[IO.FileInfo]])] param 
 }
 
 function Compare-SetEqual { param ([string[]] $l, [string[]] $r)
-    if (($null -eq $l) -or ($null -eq $r)) {return $false}
+    if (($null -eq $l)) { $l = @() }
+    if (($null -eq $r)) { $r = @() }
     $lset = [Enumerable]::ToHashSet[string]($l)
     return $lset.SetEquals($r)
 }
@@ -81,7 +82,7 @@ class FstConfigState {
         $r.fstarExePath = $RootConfig.fstarExe
         $r.z3ExePath = $RootConfig.z3Exe
         $r.includeDirsForRootConfig = $RootConfig.fstarLibs
-        $r.includeDirsForFStarProject = Get-FStarProjectFiles
+        $r.includeDirsForFStarProject = Get-FStarProjectFiles | ForEach-Object {Join-Path $_ ".." -Resolve}
         $r.includeDirsUnspecified = @()
         return $r
     }
@@ -109,7 +110,7 @@ class FstConfigState {
             for ($i = 0; $i -lt $c.options.Count; $i++) {
                 $curOption = $c.options[$i]
                 if ($smtPosition -eq -1) {
-                    if ($curOption -eq '-smt') {
+                    if ($curOption -eq '--smt') {
                         $smtPosition = $i
                     }
                 } elseif ($smtPosition -eq ($i-1)) {
@@ -123,6 +124,7 @@ class FstConfigState {
         $r.includeDirsForRootConfig = Remove-EqualAsRootFullPath $c.include_dirs $desired.includeDirsForRootConfig -Not
         $r.includeDirsForFStarProject = Remove-EqualAsRootFullPath $c.include_dirs $desired.includeDirsForFStarProject -Not
         $r.includeDirsUnspecified = Remove-EqualAsRootFullPath $c.include_dirs ($r.includeDirsForRootConfig + $r.includeDirsForFStarProject)
+        if ($null -eq $r.includeDirsUnspecified) {$r.includeDirsUnspecified = @()}
 
         <#
         $r.isIncludeDirsRootConfigDesired = [Enumerable]::All[string]($RootConfig.fstarLibs,
