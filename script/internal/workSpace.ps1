@@ -24,7 +24,7 @@ class FstConfig {
             return [ErrorCode]::InvalidJson
         }
 
-        return [FstConfig](Get-Content $path | ConvertFrom-Json | ConvertTo-TypedObject 'FstConfig')
+        return <#[FstConfig]#>(Get-Content $path | ConvertFrom-Json | ConvertTo-TypedObject 'FstConfig')
     }
 }
 

@@ -20,7 +20,7 @@ class RootConfig {
             return [ErrorCode]::InvalidJson
         }
 
-        return [RootConfig](Get-Content $path | ConvertFrom-Json | ConvertTo-TypedObject 'RootConfig')
+        return <#[RootConfig]#>(Get-Content $path | ConvertFrom-Json | ConvertTo-TypedObject 'RootConfig')
     }
 }
 function Get-CurrentRootConfig { [RootConfig]::Current() }
