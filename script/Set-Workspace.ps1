@@ -8,16 +8,18 @@ Set-StrictMode -Off
 $meta = Get-Meta
 
 #--- Test root config ---
+<#
 [TestSimpleOutput]$testOutput = & Set-RootConfig -TestOnly -PassThru
 if ($testOutput.inDesiredState -ne $true) {
-    Write-Error "Test $($meta.RootConfig) failed. Run Set-RootConfig.ps1 first."
+    Write-Warning "Test $($meta.RootConfig) failed. Run Set-RootConfig.ps1 first."
     exit 1
 } else {
     Write-HostWithTime "Test $($meta.RootConfig) passed."
 }
+#>
 #---|
 
-Set-FStarConfig
+Set-WorkSpace
 exit 0
 
 
@@ -63,7 +65,7 @@ function Confirm-RootConfig {
 } 
 
 if (-not (Confirm-RootConfig).inDesiredState) {
-    Write-Error "Confirm $($meta.RootConfig) failed."
+    Write-Warning "Confirm $($meta.RootConfig) failed."
     exit 1
 } else {
     Write-HostWithTime "Confirm $($meta.RootConfig) passed."

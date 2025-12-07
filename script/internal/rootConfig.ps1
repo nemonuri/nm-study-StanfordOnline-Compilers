@@ -9,7 +9,7 @@ class RootConfig {
     [string]$z3Exe = ""
     [string[]]$fstarLibs = @()
 
-    static [psobject] Current() {
+    static [psobject] Current([switch]$AsHashTable) {
         $meta = Get-Meta
         $path = Join-Path (Get-Root) $meta.RootConfig
 
@@ -21,10 +21,18 @@ class RootConfig {
             return [ErrorCode]::InvalidJson
         }
 
-        return <#[RootConfig]#>(Get-Content $path | ConvertFrom-Json | ConvertTo-TypedObject 'RootConfig')
+        $v = (Get-Content $path | ConvertFrom-Json @PSBoundParameters)
+
+        if ($AsHashTable) {
+            $v = ConvertTo-HashTable $v
+        } else {
+            $v = ConvertTo-TypedObject 'RootConfig' $v
+        }
+
+        return $v
     }
 }
-function Get-CurrentRootConfig { [RootConfig]::Current() }
+function Get-CurrentRootConfig([switch]$AsHashTable) { [RootConfig]::Current($AsHashTable) }
 
 class RootConfigState {
     [bool] $_exist = $false
@@ -44,7 +52,7 @@ class RootConfigState {
     }
 
     static [RootConfigState] Current() {
-        $rc = Get-CurrentRootConfig
+        $rc = Get-CurrentRootConfig -AsHashTable
 
         $r = [RootConfigState]::new()
         if ($rc -eq [ErrorCode]::FileNotExist) { return $r }
@@ -127,10 +135,12 @@ function Test-DesiredRootConfigStateValidity {
     if ($des.hasZ3Exe -eq $false) { $Diagnostics += Format-Message('hasZ3Exe') }
     if ($des.hasFStarLibs -eq $false) { $Diagnostics += Format-Message('hasFStarLibs') }
 
-    return $Diagnostics.Count -eq 0
+    return $Diagnostics.Value.Count -eq 0
 }
 
-function Set-RootConfig { param ([switch]$TestOnly, [switch]$PassThru, [switch]$Silent)
+function Set-RootConfig { 
+    param ([switch]$TestOnly, [switch]$PassThru, [switch]$Silent)
+
     $meta = Get-Meta
     $path = Join-Path (Get-Root) $meta.RootConfig
     $des = Get-DesiredRootConfigState
@@ -149,8 +159,8 @@ function Set-RootConfig { param ([switch]$TestOnly, [switch]$PassThru, [switch]$
     if ($testOut.inDesiredState) { return }
 
     #--- Validate desired state ---
-    if (-not (Test-DesiredRootConfigStateValidity($des, $dg))) {
-        $dg | Write-Error
+    if (-not (Test-DesiredRootConfigStateValidity $des $dg)) {
+        if ($null -ne $dg) { $dg | Write-Warning }
         exit 1
     }
     #---|
@@ -159,8 +169,8 @@ function Set-RootConfig { param ([switch]$TestOnly, [switch]$PassThru, [switch]$
     #--- Set ---
     if (-not $Silent) { Write-HostWithTime "Set $($meta.RootConfig)" }
     if (($des._exist -ne $cur._exist) -or ($des.isValidJson -ne $cur.isValidJson)) {
-        if ($des._exist -eq $false) { throw "Not supported." }
-        if ($des.isValidJson -eq $false) { throw "Not supported." }
+        #if ($des._exist -eq $false) { throw "Not supported." }
+        #if ($des.isValidJson -eq $false) { throw "Not supported." }
 
         $newRc = [RootConfig]::new() | ConvertTo-HashTable
         $newRc._comment = (New-RootConfigComment)
@@ -173,19 +183,19 @@ function Set-RootConfig { param ([switch]$TestOnly, [switch]$PassThru, [switch]$
     $rc = Get-Content $path | ConvertFrom-Json -AsHashtable
 
     if ($des.hasFStarExe -ne $cur.hasFStarExe) {
-        if ($des.hasFStarExe -eq $false) { throw "Not supported." }
+        #if ($des.hasFStarExe -eq $false) { throw "Not supported." }
         $rc.fstarExe = ""
         $cur.hasFStarExe = $true
     }
 
     if ($des.hasZ3Exe -ne $cur.hasZ3Exe) {
-        if ($des.hasZ3Exe -eq $false) { throw "Not supported." }
+        #if ($des.hasZ3Exe -eq $false) { throw "Not supported." }
         $rc.z3Exe = ""
         $cur.hasZ3Exe = $true
     }
 
     if ($des.hasFStarLibs -ne $cur.hasFStarLibs) {
-        if ($des.hasFStarLibs -eq $false) { throw "Not supported." }
+        #if ($des.hasFStarLibs -eq $false) { throw "Not supported." }
         $rc.fstarLibs = @()
         $cur.hasFStarLibs = $true
     }

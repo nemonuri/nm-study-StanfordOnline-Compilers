@@ -67,3 +67,16 @@ function New-DscSetOutput {
         changedProperties = $changes
     }
 }
+
+function Test-TestSimpleOutput {
+    [OutputType([bool])] param ([psobject]$InputObject)
+
+    if ($null -eq $InputObject) { return $false }
+    if ($InputObject -is [TestSimpleOutput]) { return $InputObject.inDesiredState }
+    if ($InputObject -is [array]) {
+        foreach ($item in $InputObject) {
+            if ($InputObject -is [TestSimpleOutput]) { return $InputObject.inDesiredState }
+        }
+    }
+    return $false
+}
