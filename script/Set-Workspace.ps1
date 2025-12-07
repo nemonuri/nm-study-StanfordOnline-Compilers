@@ -8,7 +8,7 @@ Set-StrictMode -Off
 $meta = Get-Meta
 
 #--- Test root config ---
-[TestSimpleOutput]$testOutput = & $PSScriptRoot/Set-RootConfig.ps1 -Mode 'Test' -PassThru
+[TestSimpleOutput]$testOutput = & Set-RootConfig -TestOnly -PassThru
 if ($testOutput.inDesiredState -ne $true) {
     Write-Error "Test $($meta.RootConfig) failed. Run Set-RootConfig.ps1 first."
     exit 1

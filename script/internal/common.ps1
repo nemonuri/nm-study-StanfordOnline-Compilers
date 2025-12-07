@@ -48,3 +48,7 @@ function Compare-Path ([string]$BasePath, [string] $Path1, [string] $Path2) {
     $fullPath2 = Get-FullPath $Path2 $BasePath
     return ($fullPath1 -eq $fullPath2)
 }
+
+function Write-HostWithTime([string] $Text) {
+    Write-Host "[$(Get-Date -Format 'yyyy-MM-ddTHH:mm:ssz')] $Text"
+}
