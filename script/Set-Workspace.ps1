@@ -17,6 +17,12 @@ if ($testOutput.inDesiredState -ne $true) {
 }
 #---|
 
+Set-FStarConfig
+exit 0
+
+
+
+
 $rc = Get-Content -Path (Join-Path $PSScriptRoot '..' $meta.RootConfig) | ConvertFrom-Json
 
 #--- Validate root config ---

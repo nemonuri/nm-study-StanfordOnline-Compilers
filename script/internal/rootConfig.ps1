@@ -114,6 +114,22 @@ function Set-DesiredRootConfigState {
     return $cur
 }
 
+function Test-DesiredRootConfigStateValidity {
+    param ([RootConfigState]$InputObject, [ref]$Diagnostics)
+    function Format-Message ([string]$Msg) { "Not supproted: $Msg = false" }
+
+    $des = $InputObject
+    $Diagnostics = @()
+
+    if ($des._exist -eq $false) { $Diagnostics += Format-Message('_exist') }
+    if ($des.isValidJson -eq $false) { $Diagnostics += Format-Message('isValidJson') }
+    if ($des.hasFStarExe -eq $false) { $Diagnostics += Format-Message('hasFStarExe') }
+    if ($des.hasZ3Exe -eq $false) { $Diagnostics += Format-Message('hasZ3Exe') }
+    if ($des.hasFStarLibs -eq $false) { $Diagnostics += Format-Message('hasFStarLibs') }
+
+    return $Diagnostics.Count -eq 0
+}
+
 function Set-RootConfig { param ([switch]$TestOnly, [switch]$PassThru, [switch]$Silent)
     $meta = Get-Meta
     $path = Join-Path (Get-Root) $meta.RootConfig
@@ -131,6 +147,13 @@ function Set-RootConfig { param ([switch]$TestOnly, [switch]$PassThru, [switch]$
 
     if ($TestOnly) { return }
     if ($testOut.inDesiredState) { return }
+
+    #--- Validate desired state ---
+    if (-not (Test-DesiredRootConfigStateValidity($des, $dg))) {
+        $dg | Write-Error
+        exit 1
+    }
+    #---|
 
     $cur = $prev | ConvertTo-Json | ConvertFrom-Json
     #--- Set ---

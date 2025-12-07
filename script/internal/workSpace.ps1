@@ -4,7 +4,6 @@ using namespace System.Collections.Generic
 using namespace System.Linq
 
 . $PSScriptRoot/Common.ps1
-. $PSScriptRoot/Meta.ps1
 . $PSScriptRoot/RootConfig.ps1
 
 class FstConfig {
@@ -33,32 +32,6 @@ function Get-FStarProjectFiles { [OutputType([string[]])] param ()
     $root = Get-Root
     $src = Join-Path $root $meta.Src -Resolve
     return [System.IO.Directory]::EnumerateFiles($src, $meta.FStarProject, 'AllDirectories')
-}
-
-function Compare-SetEqual { param ([string[]] $l, [string[]] $r)
-    if (($null -eq $l)) { $l = @() }
-    if (($null -eq $r)) { $r = @() }
-    $lset = [Enumerable]::ToHashSet[string]($l)
-    return $lset.SetEquals($r)
-}
-
-function Get-RootFullPath { param ([string] $Path)
-    return Get-FullPath $Path (Get-Root)
-}
-
-function Get-RootFullPathes { param ([string[]] $Pathes)
-    return $Pathes | ForEach-Object {Get-RootFullPath $_}
-}
-
-function Remove-EqualAsRootFullPath {
-    param ([string[]] $SourcePathes, [string[]] $ComparandPathes, [switch] $Not)
-    
-    $pathes = Get-RootFullPathes $ComparandPathes
-    if ($Not) {
-        return $SourcePathes | Where-Object { $pathes -contains (Get-RootFullPath $_) }
-    } else {
-        return $SourcePathes | Where-Object { $pathes -notcontains (Get-RootFullPath $_) }
-    }
 }
 
 class FstConfigState {
@@ -129,15 +102,6 @@ class FstConfigState {
         
         $r.includeDirsUnspecified = Remove-EqualAsRootFullPath $c.include_dirs ($r.includeDirsForRootConfig + $r.includeDirsForFStarProject)
         if ($null -eq $r.includeDirsUnspecified) {$r.includeDirsUnspecified = @()}
-
-        <#
-        $r.isIncludeDirsRootConfigDesired = [Enumerable]::All[string]($RootConfig.fstarLibs,
-            [Func[string,bool]] { param($sr); return [Enumerable]::Any[string]($c.include_dirs, 
-                [Func[string,bool]] { param($sf); return Compare-Path $root $sr $sf } )
-            } ) # ∀sr∈'$RootConfig.fstarLibs'.∃sf∈'$c.include_dirs'.'Compare-Path $root'(sr, sf)
-        
-        $r.isIncludeDirsFStarConfigDesired
-        #>
         
         return $r
     }
@@ -162,6 +126,78 @@ function Get-DesiredFstConfigState { [FstConfigState]::Desired((Get-CurrentRootC
 function Get-CurrentFstConfigState { [FstConfigState]::Current((Get-CurrentRootConfig)) }
 function Get-FstConfigStateTester { [FstConfigState]::Tester() }
 
+function Test-DesiredFStarConfigStateValidity {
+    param ([FstConfigState]$InputObject, [ref]$Diagnostics)
+    function Format-Message ([string]$Msg) { "Not supproted: $Msg = false" }
+
+    $des = $InputObject
+    $Diagnostics = @()
+    
+    if ($des._exist -eq $false) { $Diagnostics += Format-Message('_exist') }
+    if ($des.isValidJson -eq $false) { $Diagnostics += Format-Message('isValidJson') }
+    if ($des.hasFStarExe -eq $false) { $Diagnostics += Format-Message('hasFStarExe') }
+    if ($des.hasOptions -eq $false) { $Diagnostics += Format-Message('hasOptions') }
+    if ($des.hasIncludeDirs -eq $false) { $Diagnostics += Format-Message('hasIncludeDirs') }
+
+    #--- fstarExePath ---
+    if (-not (Test-Version (Get-RootFullPath $des.fstarExePath))) {  
+        $Diagnostics += "Fstar exe path is invalid: fstarExePath = $($des.fstarExePath)"
+    }
+    #---|
+
+    #--- z3ExePath ---
+    if (-not (Test-Version (Get-RootFullPath $des.z3ExePath))) {  
+        $Diagnostics += "Z3 exe path is invalid: z3ExePath = $($des.fstarExePath)"
+    }
+    #---|
+
+    #--- dirs ---
+    function Test-Dirs { param ([string]$MemberName)
+        $des.$MemberName 
+            | Where-Object {Test-RootFullPath $_ -PathType 'Container'}
+            | ForEach-Object {$Diagnostics += "Directory is not exist in ${MemberName}: Item = $_"}
+    }
+
+    Test-Dirs 'includeDirsForRootConfig'
+    Test-Dirs 'includeDirsForFStarProject'
+    Test-Dirs 'includeDirsUnspecified'
+    #---|
+
+    return $Diagnostics.Count -eq 0
+}
+
+
+function Set-FStarConfig { param ([switch]$TestOnly, [switch]$PassThru, [switch]$Silent)
+    $meta = Get-Meta
+    $path = Join-Path (Get-Root) $meta.FstConfig
+    $des = Get-DesiredFstConfigState
+    $prev = Get-CurrentFstConfigState
+    $tester = Get-FstConfigStateTester
+
+    #--- Test ---
+    if (-not $Silent) { Write-HostWithTime "Test $($meta.FstConfig)" }
+
+    $testOut = Invoke-DscTest $des $prev $tester
+
+    if (-not $Silent) { ConvertTo-Json $testOut | Write-Host }
+    if ($PassThru) { $testOut }
+    #---|
+
+    if ($TestOnly) { return }
+    if ($testOut.inDesiredState) { return }
+
+    #--- Validate desired state ---
+    if (-not (Test-DesiredFStarConfigStateValidity $des $dg)) {
+        $dg | Write-Error
+        exit 1
+    }
+    #---|
+
+    #--- Set ---
+    if (-not $Silent) { Write-HostWithTime "Set $($meta.FstConfig)" }
+    #TODO
+    #---|
+}
 
 class WorkSpace {
     [string]$rootConfig = ""
