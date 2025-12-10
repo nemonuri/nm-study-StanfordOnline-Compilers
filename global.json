@@ -1,0 +1,8 @@
+{
+  "sdk": {
+    "version": "10.0.0",
+    "rollForward": "latestMinor",
+    "paths": ["$host$"],
+    "errorMessage": "The .NET SDK is not installed or is not configured correctly. https://dotnet.microsoft.com/download"
+  }
+}

@@ -83,7 +83,7 @@ function Set-WorkSpace { param ([switch]$TestOnly, [switch]$PassThru, [switch]$S
     if (-not $Silent) { Write-HostWithTime "Set $str0" }
 
     if ($des.isRootConfigDesired -ne $cur.isRootConfigDesired) {
-        if (-not (Test-TestSimpleOutput (Set-RootConfig -PassThru))) {
+        if (-not (Test-TestSimpleOutput (Set-RootConfig -TestOnly -PassThru))) {
             Write-Warning "$($meta.RootConfig) is not in desired state. Run Set-RootConfig.ps1 first."
             exit 1
         } else {

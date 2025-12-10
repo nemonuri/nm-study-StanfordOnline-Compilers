@@ -1,0 +1,8 @@
+<Project>
+  <PropertyGroup>
+    <WorkspaceRootPath>$([MSBuild]::GetDirectoryNameOfFileAbove('$(MSBuildThisFileDirectory)', 'global.json'))/</WorkspaceRootPath>
+    <UseArtifactsOutput>true</UseArtifactsOutput>
+    <ArtifactsPath>$(WorkspaceRootPath)artifact/</ArtifactsPath>
+    <ResPath>$(WorkspaceRootPath)res/</ResPath>
+  </PropertyGroup>
+</Project>
