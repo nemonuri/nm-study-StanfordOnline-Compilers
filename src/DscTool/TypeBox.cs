@@ -30,8 +30,20 @@ public static class TypeBox
     }
 
     public static ref readonly ReadOnlyTypeBox<TDomTo, TSource> ReadOnlyRebox<TDomFrom, TDomTo, TSource>
-        (ref readonly ReadOnlyTypeBox<TDomFrom, TSource> boxedSource)
+        (this ref readonly ReadOnlyTypeBox<TDomFrom, TSource> boxedSource)
     {
         return ref Unsafe.As<ReadOnlyTypeBox<TDomFrom, TSource>, ReadOnlyTypeBox<TDomTo, TSource>>(ref Unsafe.AsRef(in boxedSource));
+    }
+
+    public static ref readonly ReadOnlyTypeBox<(TDom, TPush), TSource> Push<TDom, TSource, TPush>
+        (this ref readonly ReadOnlyTypeBox<TDom, TSource> boxedSource, TypeHint<TPush> push = default)
+    {
+        return ref ReadOnlyRebox<TDom, (TDom, TPush), TSource>(in boxedSource);
+    }
+
+    public static ref readonly ReadOnlyTypeBox<TDom, TSource> Pop<TDom, TSource, TPop>
+        (this ref readonly ReadOnlyTypeBox<(TDom, TPop), TSource> boxedSource)
+    {
+        return ref ReadOnlyRebox<(TDom, TPop), TDom, TSource>(in boxedSource);
     }
 }

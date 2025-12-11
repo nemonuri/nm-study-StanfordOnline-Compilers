@@ -3,10 +3,11 @@ namespace DscTool;
 public interface IDesiredResourceStatePremise
     <TResource, TResourcePremise, TState, TStatePremise, TDiagnostic, TStateReport, TStateReportPremise, TTestReport> :
     IDiagnosticCondition<TDiagnostic>
+    where TResource : ILiftable<TResource, TResource>, ISubUnionPremise<TResource, TResourcePremise>
     where TResourcePremise : IUnionPremise<TResource>, ITreePremise<TResource>
-    where TState : IState<TResource>
+    where TState : IState<TResource>, ILiftable<TState, TState>, ISubUnionPremise<TState, TStatePremise>
     where TStatePremise : IUnionPremise<TState>, ITreePremise<TState>
-    where TStateReport : IReport<TState, TDiagnostic>
+    where TStateReport : IReport<TState, TDiagnostic>, ILiftable<TStateReport, TStateReport>, ISubUnionPremise<TStateReport, TStateReportPremise>
     where TStateReportPremise : IUnionPremise<TStateReport>
     where TTestReport : IReport<bool, TDiagnostic>
 {
@@ -16,27 +17,35 @@ public interface IDesiredResourceStatePremise
 
     ref readonly TStateReportPremise StateReportPremise {get;}
 
-    ref readonly TSubStateReport RequestDesiredState<
-        [Liftable(nameof(StatePremise), nameof(TState))] TSubState, 
-        [Liftable(nameof(StateReportPremise), nameof(TStateReport))] TSubStateReport
-        >(scoped ref readonly TResource resource)
+    bool IsHandleable(scoped ref readonly TStateReport report);
+
+    ref readonly TSubStateReport RequestDesiredState
+        <TSubState, TSubStateReport, TSubResource>
+        (scoped ref readonly TSubResource resource)
+        where TSubState : ILiftable<TState, TSubState>, ISubUnionPremise<TState, TStatePremise>
+        where TSubStateReport : ILiftable<TStateReport, TSubStateReport>, ISubUnionPremise<TStateReport, TStateReportPremise>
+        where TSubResource : ILiftable<TResource, TSubResource>, ISubUnionPremise<TResource, TResourcePremise>
         ;
 
-    TSubStateReport RequestStateSnapshot<
-        [Liftable(nameof(StatePremise), nameof(TState))] TSubState, 
-        [Liftable(nameof(StateReportPremise), nameof(TStateReport))] TSubStateReport
-        >(scoped ref readonly TResource resource)
+    ref readonly TSubStateReport RequestStateSnapshot
+        <TSubState, TSubStateReport, TSubResource>
+        (scoped ref readonly TSubResource resource)
+        where TSubState : ILiftable<TState, TSubState>, ISubUnionPremise<TState, TStatePremise>
+        where TSubStateReport : ILiftable<TStateReport, TSubStateReport>, ISubUnionPremise<TStateReport, TStateReportPremise>
+        where TSubResource : ILiftable<TResource, TSubResource>, ISubUnionPremise<TResource, TResourcePremise>
         ;
 
-    TTestReport TestState<
-        [Liftable(nameof(StatePremise), nameof(TState))] TSubState, 
-        [Liftable(nameof(StateReportPremise), nameof(TStateReport))] TSubStateReport
-        >(TSubState desiredState, TSubState stateSnapshot)
+    ref readonly TTestReport TestState
+        <TSubState>
+        (scoped ref readonly TSubState desiredState, scoped ref readonly TSubState stateSnapshot)
+        where TSubState : ILiftable<TState, TSubState>, ISubUnionPremise<TState, TStatePremise>
         ;
 
-    TSubStateReport EditResource<
-        [Liftable(nameof(StatePremise), nameof(TState))] TSubState, 
-        [Liftable(nameof(StateReportPremise), nameof(TStateReport))] TSubStateReport
-        >(TResource resource, TSubState desiredState, TSubState maybeCurrentStateSnapshot)
+    ref readonly TSubStateReport EditResource
+        <TSubState, TSubStateReport, TSubResource>
+        (scoped ref readonly TSubResource resource, scoped ref readonly TSubState desiredState, scoped ref readonly TSubState maybeCurrentStateSnapshot)
+        where TSubState : ILiftable<TState, TSubState>, ISubUnionPremise<TState, TStatePremise>
+        where TSubStateReport : ILiftable<TStateReport, TSubStateReport>, ISubUnionPremise<TStateReport, TStateReportPremise>
+        where TSubResource : ILiftable<TResource, TSubResource>, ISubUnionPremise<TResource, TResourcePremise>
         ;
 }
