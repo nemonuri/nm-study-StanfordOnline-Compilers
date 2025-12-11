@@ -489,3 +489,4 @@ $RECYCLE.BIN/
 .root-config
 .fst.config.json
 artifact
+!.vscode/*.code-snippets

@@ -2,14 +2,18 @@
   <PropertyGroup>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
     <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
+    <IsNetStandard2_0 Condition="'$(TargetFramework)' == 'netstandard2.0'">true</IsNetStandard2_0>
+    <IsNetStandard2_0 Condition="'$(TargetFramework)' != 'netstandard2.0'">false</IsNetStandard2_0>
   </PropertyGroup>
   <ItemGroup>
     <PackageVersion Include="CommunityToolkit.Diagnostics" Version="8.4.0" />
+    <PackageVersion Include="JsonSchema.Net" Version="7.3.4" />
   </ItemGroup>
-  
-  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
-    <PackageVersion Include="Microsoft.CodeAnalysis.Contracts" Version="5.0.0-1.25277.114" />
+
+  <ItemGroup Condition="$(IsNetStandard2_0)">
+    <PackageVersion Include="Microsoft.CodeAnalysis.Contracts" Version="5.0.0-1.25277.114" Condition="false" />
     <PackageVersion Include="System.Text.Json" Version="10.0.0" />
     <PackageVersion Include="System.Memory" Version="4.6.3" />
+    <PackageVersion Include="PolySharp" Version="1.15.0" />
   </ItemGroup>
 </Project>

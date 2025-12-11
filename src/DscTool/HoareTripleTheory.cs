@@ -14,9 +14,9 @@ public static class HoareTripleTheory
             ref TypeBox.ReadOnlyBox<(T, TPredicate), TCommand>(in source);
         
         public bool CheckInvokePreCondition<TPredicatePremise>(scoped ref readonly TPredicatePremise predicatePremise, scoped ref readonly T value)
-            where TPredicatePremise : IPredicatePremise<T, TPredicate>
+            where TPredicatePremise : IPredicateChecker<T, TPredicate>
         {
-            return predicatePremise.Satisfies(in value, in commandTheory.Self.PreCondition);
+            return predicatePremise.IsWitness(in value, in commandTheory.Self.PreCondition);
         }
 
         public Result<T, HoareTripleErrorKind> InvokeAndBrief<TPredicatePremise>
@@ -26,7 +26,7 @@ public static class HoareTripleTheory
             out TPredicate? postCondition,
             bool skipPreConditionCheck = false
         )
-            where TPredicatePremise : IPredicatePremise<T, TPredicate>
+            where TPredicatePremise : IPredicateChecker<T, TPredicate>
         {
             if (!skipPreConditionCheck && !commandTheory.CheckInvokePreCondition(in prePostConditionChecker, in source)) 
             {
@@ -34,7 +34,7 @@ public static class HoareTripleTheory
                 return ResultTagger.Error(HoareTripleErrorKind.PreCondition);
             }
             T invokeResult = commandTheory.Self.Invoke(in source, out postCondition);
-            if (!prePostConditionChecker.Satisfies(in invokeResult, in postCondition))
+            if (!prePostConditionChecker.IsWitness(in invokeResult, in postCondition))
             {
                 return ResultTagger.Error(HoareTripleErrorKind.PostCondition);
             }
@@ -74,8 +74,8 @@ public static class HoareTripleTheory
             scoped ref readonly TPostConditionSemiGroup postConditionSemiGroup
         )
             where TPredicateLifter : IHoareTripleMorphism<TSourcePredicate, TTargetPredicate, TTargetPredicate, TTargetPredicate>
-            where TPredicateSetChecker : IPredicatePremise<TSourcePredicate, TTargetPredicate>
-            where TPredicateSubsetChecker : IPredicatePremise<TTargetPredicate, TTargetPredicate>
+            where TPredicateSetChecker : IPredicateChecker<TSourcePredicate, TTargetPredicate>
+            where TPredicateSubsetChecker : IPredicateChecker<TTargetPredicate, TTargetPredicate>
             where TValueLifter : IHoareTripleMorphism<TSource, TSourcePredicate, TTarget, TTargetPredicate>
             where TValueEmbeder : IHoareTripleMorphism<TTarget, TTargetPredicate, TSource, TSourcePredicate>
             where TPostConditionSemiGroup : ISemiGroup<TTargetPredicate>
@@ -136,9 +136,9 @@ public static class HoareTripleTheory
         (in source);
 
         public bool CheckMorphPreCondition<TSourcePredicatePremise>(scoped ref readonly TSourcePredicatePremise sourcePredicatePremise, scoped ref readonly TSource source)
-            where TSourcePredicatePremise : IPredicatePremise<TSource, TSourcePredicate>
+            where TSourcePredicatePremise : IPredicateChecker<TSource, TSourcePredicate>
         {
-            return sourcePredicatePremise.Satisfies(in source, in morphisemTheory.Self.PreCondition);
+            return sourcePredicatePremise.IsWitness(in source, in morphisemTheory.Self.PreCondition);
         }
 
         public Result<TTarget, HoareTripleErrorKind> MorphAndBrief<TSourcePredicatePremise, TTargetPredicatePremise>
@@ -149,8 +149,8 @@ public static class HoareTripleTheory
             out TTargetPredicate? postCondition,
             bool skipPreConditionCheck = false
         )
-            where TSourcePredicatePremise : IPredicatePremise<TSource, TSourcePredicate>
-            where TTargetPredicatePremise : IPredicatePremise<TTarget, TTargetPredicate>
+            where TSourcePredicatePremise : IPredicateChecker<TSource, TSourcePredicate>
+            where TTargetPredicatePremise : IPredicateChecker<TTarget, TTargetPredicate>
         {
             if (!skipPreConditionCheck && !morphisemTheory.CheckMorphPreCondition(in sourcePredicatePremise, in source)) 
             {
@@ -158,7 +158,7 @@ public static class HoareTripleTheory
                 return ResultTagger.Error(HoareTripleErrorKind.PreCondition);
             }
             TTarget morphed = morphisemTheory.Self.Morph(in source, out postCondition);
-            if (!targetPredicatePremise.Satisfies(in morphed, in postCondition))
+            if (!targetPredicatePremise.IsWitness(in morphed, in postCondition))
             {
                 return ResultTagger.Error(HoareTripleErrorKind.PostCondition);
             }
@@ -183,9 +183,9 @@ public static class HoareTripleTheory
         (in source);
 
         public bool CheckLiftPreCondition<TLiftPremise>(scoped ref readonly TLiftPremise liftPremise, scoped ref readonly TSourcePredicate source)
-            where TLiftPremise : IPredicatePremise<TSourcePredicate, TTargetPredicate>
+            where TLiftPremise : IPredicateChecker<TSourcePredicate, TTargetPredicate>
         {
-            return liftPremise.Satisfies(in source, in liftTheory.Self.PreCondition);
+            return liftPremise.IsWitness(in source, in liftTheory.Self.PreCondition);
         }
 
         public Result<TTargetPredicate, HoareTripleErrorKind> LiftAndBrief<TLiftPremise, TTargetSubsetPremise>
@@ -196,8 +196,8 @@ public static class HoareTripleTheory
             out TTargetPredicate? postCondition,
             bool skipPreConditionCheck = false
         )
-            where TLiftPremise : IPredicatePremise<TSourcePredicate, TTargetPredicate>
-            where TTargetSubsetPremise : IPredicatePremise<TTargetPredicate, TTargetPredicate>
+            where TLiftPremise : IPredicateChecker<TSourcePredicate, TTargetPredicate>
+            where TTargetSubsetPremise : IPredicateChecker<TTargetPredicate, TTargetPredicate>
         {
             if (!skipPreConditionCheck && !liftTheory.CheckLiftPreCondition(in liftPremise, in source)) 
             {
@@ -205,7 +205,7 @@ public static class HoareTripleTheory
                 return ResultTagger.Error(HoareTripleErrorKind.PreCondition);
             }
             TTargetPredicate morphed = liftTheory.Self.Morph(in source, out postCondition);
-            if (!targetSubsetPremise.Satisfies(in morphed, in postCondition))
+            if (!targetSubsetPremise.IsWitness(in morphed, in postCondition))
             {
                 return ResultTagger.Error(HoareTripleErrorKind.PostCondition);
             }
@@ -230,7 +230,7 @@ public static class HoareTripleTheory
         (in source);
 
         public bool CheckEmbedPreCondition<TSourceSubsetPremise>(scoped ref readonly TSourceSubsetPremise sourceSubsetPremise, scoped ref readonly TSourcePredicate source)
-            where TSourceSubsetPremise : ISubsetPremise<TSourcePredicate>
+            where TSourceSubsetPremise : ISubsetChecker<TSourcePredicate>
         {
             return sourceSubsetPremise.IsSubset(in source, in embedTheory.Self.PreCondition);
         }
@@ -243,8 +243,8 @@ public static class HoareTripleTheory
             out TSourcePredicate? postCondition,
             bool skipPreConditionCheck = false
         )
-            where TSourceSubsetPremise : ISubsetPremise<TSourcePredicate>
-            where TEmbedPremise : IPredicatePremise<TTargetPredicate, TSourcePredicate>
+            where TSourceSubsetPremise : ISubsetChecker<TSourcePredicate>
+            where TEmbedPremise : IPredicateChecker<TTargetPredicate, TSourcePredicate>
         {
             if (!skipPreConditionCheck && !embedTheory.CheckEmbedPreCondition(in sourceSubsetPremise, in source)) 
             {
@@ -252,7 +252,7 @@ public static class HoareTripleTheory
                 return ResultTagger.Error(HoareTripleErrorKind.PreCondition);
             }
             TTargetPredicate morphed = embedTheory.Self.Morph(in source, out postCondition);
-            if (!embedPremise.Satisfies(in morphed, in postCondition))
+            if (!embedPremise.IsWitness(in morphed, in postCondition))
             {
                 return ResultTagger.Error(HoareTripleErrorKind.PostCondition);
             }

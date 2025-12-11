@@ -44,16 +44,18 @@ public class HoareTripleLiftedCommand<
         out TPredicate postCondition5
     )
     {
-        TSource embedded = _valueEmbeder.Morph(in value, out TSourcePredicate sourcePostCondition1);
+        // Assert: PreCondition 이 originalCommand 의 precondition 을 만족하지 않는 embedded 를 모두 걸러내야 한다!
+        // TODO: 위 표명을 디버그 또는 테스트로 (즉, 경험적으로) 확인할 방법?
+        TSource embedded = _valueEmbeder.Morph(in value, out _ /*TSourcePredicate sourcePostCondition1*/); 
         TSource result = _originalCommand.Invoke(in embedded, out TSourcePredicate sourcePostCondition2);
         T liftedResult = _valueLifter.Morph(in result, out TPredicate postCondition3);
-        TPredicate postCondition1 = _predicateLifter.Morph(in sourcePostCondition1, out TPredicate postCondition4);
+        //TPredicate postCondition1 = _predicateLifter.Morph(in sourcePostCondition1, out TPredicate postCondition4);
         TPredicate postCondition2 = _predicateLifter.Morph(in sourcePostCondition2, out postCondition5);
         
-        _postConditionSemiGroup.Compose(in postCondition5, in postCondition4, ref postCondition5);
+        //_postConditionSemiGroup.Compose(in postCondition5, in postCondition4, ref postCondition5);
         _postConditionSemiGroup.Compose(in postCondition5, in postCondition3, ref postCondition5);
         _postConditionSemiGroup.Compose(in postCondition5, in postCondition2, ref postCondition5);
-        _postConditionSemiGroup.Compose(in postCondition5, in postCondition1, ref postCondition5);
+        //_postConditionSemiGroup.Compose(in postCondition5, in postCondition1, ref postCondition5);
         return liftedResult;
     }
 }

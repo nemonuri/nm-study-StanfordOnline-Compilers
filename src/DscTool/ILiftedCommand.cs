@@ -1,11 +1,11 @@
 ﻿namespace DscTool;
 
-public interface IPredicatePremise<T, TPredicate>
+public interface IPredicateChecker<T, TPredicate>
 {
-    bool Satisfies(scoped ref readonly T value, scoped ref readonly TPredicate predicate);
+    bool IsWitness(scoped ref readonly T witness, scoped ref readonly TPredicate predicate);
 }
 
-public interface ISubsetPremise<TPredicate>
+public interface ISubsetChecker<TPredicate>
 {
     bool IsSubset(scoped ref readonly TPredicate subset, scoped ref readonly TPredicate superset);
 }
@@ -21,8 +21,8 @@ public interface IFunctorPremise<
 TSource, TSourcePredicate, TSourceSetPremise,
 TTarget, TTargetPredicate, TTargetSetPremise, TTargetSubsetPremise,
 TMorphismPremise, TPredicateMorphismPremise>
-    where TSourceSetPremise : IPredicatePremise<TSource, TSourcePredicate>
-    where TTargetSetPremise : IPredicatePremise<TTarget, TTargetPredicate>
+    where TSourceSetPremise : IPredicateChecker<TSource, TSourcePredicate>
+    where TTargetSetPremise : IPredicateChecker<TTarget, TTargetPredicate>
     where TMorphismPremise : IMorphismPremise<TSource, TTarget, TTargetPredicate>
     where TPredicateMorphismPremise : IMorphismPremise<TSourcePredicate, TTargetPredicate, TTargetPredicate>
 {

@@ -15,3 +15,17 @@ public enum HoareTripleLiftCommandErrorKind
     PreConditionLiftPostCondition = 2,
     PredicateLiftPostConditionIsNull = 3
 }
+
+public enum DscStateKind
+{
+    Unknown = 0,
+    Desired = 1,
+    Current = 2
+}
+
+public enum DscResponseKind
+{
+    Unknown = 0,
+    Test = 1,
+    Edit = 2
+}

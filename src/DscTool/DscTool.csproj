@@ -1,17 +1,31 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
+  
+  <PropertyGroup Label="Config">
+    <_IsNetStandard2_0Only>true</_IsNetStandard2_0Only>
+  </PropertyGroup>
 
   <PropertyGroup>
-    <TargetFramework>netstandard2.0</TargetFramework>
+    <TargetFrameworks>netstandard2.0</TargetFrameworks>
+    <TargetFrameworks Condition="!$(_IsNetStandard2_0Only)">$(TargetFrameworks);net8.0;net10.0</TargetFrameworks>
     <LangVersion>14</LangVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <DefineConstants>$(DefineConstants);MICROSOFT_CODEANALYSIS_CONTRACTS_NO_CONTRACT;MICROSOFT_CODEANALYSIS_CONTRACTS_NO_ERROR_REPORTING</DefineConstants>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <EmitCompilerGeneratedFiles>enable</EmitCompilerGeneratedFiles>
+    <IsAotCompatible Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net7.0'))">true</IsAotCompatible>	 
   </PropertyGroup>
   
   <ItemGroup>
-    <PackageReference Include="Microsoft.CodeAnalysis.Contracts" />
     <PackageReference Include="CommunityToolkit.Diagnostics" />
+    <PackageReference Include="JsonSchema.Net" />
+  </ItemGroup>
+
+  <ItemGroup Condition="$(IsNetStandard2_0)">
+    <PackageReference Include="Microsoft.CodeAnalysis.Contracts" Condition="false"/>
+    <PackageReference Include="PolySharp">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+    </PackageReference>
     <PackageReference Include="System.Text.Json" />
     <PackageReference Include="System.Memory" />
   </ItemGroup>
