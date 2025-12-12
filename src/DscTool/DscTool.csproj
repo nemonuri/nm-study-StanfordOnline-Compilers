@@ -21,13 +21,13 @@
   </ItemGroup>
 
   <ItemGroup Condition="$(IsNetStandard2_0)">
-    <PackageReference Include="Microsoft.CodeAnalysis.Contracts" Condition="false"/>
     <PackageReference Include="PolySharp">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
     </PackageReference>
     <PackageReference Include="System.Text.Json" />
     <PackageReference Include="System.Memory" />
+    <PackageReference Include="System.Collections.Immutable" />
   </ItemGroup>
 
 </Project>

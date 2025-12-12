@@ -11,9 +11,9 @@
   </ItemGroup>
 
   <ItemGroup Condition="$(IsNetStandard2_0)">
-    <PackageVersion Include="Microsoft.CodeAnalysis.Contracts" Version="5.0.0-1.25277.114" Condition="false" />
     <PackageVersion Include="System.Text.Json" Version="10.0.0" />
     <PackageVersion Include="System.Memory" Version="4.6.3" />
     <PackageVersion Include="PolySharp" Version="1.15.0" />
+    <PackageVersion Include="System.Collections.Immutable" Version="10.0.0" />
   </ItemGroup>
 </Project>

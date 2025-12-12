@@ -1,3 +1,5 @@
+using System.Runtime.CompilerServices;
+
 namespace DscTool;
 
 public static class DscComponentTheory
@@ -5,11 +7,13 @@ public static class DscComponentTheory
     extension<
         TResource, TResourceVerificationCondition, 
         TState, TStateVerificationCondition,
+        TStateSchema, TStateSchemaVerificationCondition,
         TResponse, TResponseVerificationCondition,
         TDscComponent>
     (ReadOnlyTypeBox<(
         TResource, TResourceVerificationCondition, 
         TState, TStateVerificationCondition,
+        TStateSchema, TStateSchemaVerificationCondition,
         TResponse, TResponseVerificationCondition
         ), TDscComponent> theory)
         where TResource : IReadOnlySpanNode<TResource>
@@ -17,52 +21,73 @@ public static class DscComponentTheory
         where TResponse : IReadOnlySpanNode<TResponse>
         where TDscComponent : 
             IHoareTripleMorphism<
-                DscCommandKindPair<TResource>, 
-                DscCommandKindMap<TResourceVerificationCondition>, 
+                TagStateSchema<TResource>, 
+                TResourceVerificationCondition, 
+                TStateSchema, 
+                TStateSchemaVerificationCondition>,
+            IHoareTripleMorphism<
+                TagState<TResource>, 
+                TResourceVerificationCondition, 
                 TState, 
                 TStateVerificationCondition>,
             IHoareTripleMorphism<
-                DesiredSnapshotPair<TState>,
-                TStateVerificationCondition,
-                DscCommandKindPair<TResponse>,
-                DscCommandKindMap<TResponseVerificationCondition>>
+                TagTest<StateSchemaPair<TState, TStateSchema>>,
+                StateSchemaPair<TStateVerificationCondition, TStateSchemaVerificationCondition>,
+                TResponse,
+                TResponseVerificationCondition>,
+            IHoareTripleMorphism<
+                TagEdit<StateSchemaPair<TState, TStateSchema>>,
+                StateSchemaPair<TStateVerificationCondition, TStateSchemaVerificationCondition>,
+                TResponse,
+                TResponseVerificationCondition>
     {
         public static ref readonly ReadOnlyTypeBox<(
         TResource, TResourceVerificationCondition, 
         TState, TStateVerificationCondition,
+        TStateSchema, TStateSchemaVerificationCondition,
         TResponse, TResponseVerificationCondition
         ), TDscComponent>
         Theorize(ref readonly TDscComponent source) =>
             ref TypeBox.ReadOnlyBox<(
             TResource, TResourceVerificationCondition, 
             TState, TStateVerificationCondition,
+            TStateSchema, TStateSchemaVerificationCondition,
             TResponse, TResponseVerificationCondition
             ), TDscComponent>(in source);
         
-        public TState GetDesiredState(scoped ref readonly TResource resource, [NotNullWhen(true)] out TStateVerificationCondition postCondition)
+        public TStateSchema GetDesiredStateSchema(scoped ref readonly TResource resource, [NotNullWhen(true)] out TStateSchemaVerificationCondition postCondition)
         {
-            DscCommandKindPair<TResource> v = new (DscStateKind.Desired, resource);
+            ref readonly var v = ref Unsafe.ReadOnlyAs<TResource, TagStateSchema<TResource>>(in resource);
             return theory.Self.Morph(in v, out postCondition);
         }
 
         public TState GetCurrentState(scoped ref readonly TResource resource, [NotNullWhen(true)] out TStateVerificationCondition postCondition)
         {
-            DscCommandKindPair<TResource> v = new (DscStateKind.Current, resource);
+            ref readonly var v = ref Unsafe.ReadOnlyAs<TResource, TagState<TResource>>(in resource);
             return theory.Self.Morph(in v, out postCondition);
         }
 
-        public bool TestState(scoped ref readonly TState snapShot, scoped ref readonly TState desired)
+        public TResponse TestState
+        (
+            scoped ref readonly TState state,
+            scoped ref readonly TStateSchema stateSchema, 
+            [NotNullWhen(true)] out TResponseVerificationCondition postCondition
+        )
         {
-            return theory.Self.IsSubset(in snapShot, in desired);
-        }
-
-        public TState EditResource(scoped ref readonly TResource resource, [NotNullWhen(true)] out TStatePredicate postCondition)
-        {
-            DscCommandKindPair<TResource> v = new (DscStateKind.EditResource, resource);
+            TagTest<StateSchemaPair<TState, TStateSchema>> v = new(new(state, stateSchema));
             return theory.Self.Morph(in v, out postCondition);
         }
 
-
+        public TResponse EditResource
+        (
+            scoped ref readonly TState state,
+            scoped ref readonly TStateSchema stateSchema, 
+            [NotNullWhen(true)] out TResponseVerificationCondition postCondition
+        )
+        {
+            TagEdit<StateSchemaPair<TState, TStateSchema>> v = new(new(state, stateSchema));
+            return theory.Self.Morph(in v, out postCondition);
+        }
     }
 }
 
