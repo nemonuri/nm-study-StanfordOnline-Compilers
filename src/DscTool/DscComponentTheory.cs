@@ -57,13 +57,13 @@ public static class DscComponentTheory
         
         public TStateSchema GetDesiredStateSchema(scoped ref readonly TResource resource, [NotNullWhen(true)] out TStateSchemaVerificationCondition postCondition)
         {
-            ref readonly var v = ref Unsafe.ReadOnlyAs<TResource, TagStateSchema<TResource>>(in resource);
+            ref readonly var v = ref UnsafeReadOnly.As<TResource, TagStateSchema<TResource>>(in resource);
             return theory.Self.Morph(in v, out postCondition);
         }
 
         public TState GetCurrentState(scoped ref readonly TResource resource, [NotNullWhen(true)] out TStateVerificationCondition postCondition)
         {
-            ref readonly var v = ref Unsafe.ReadOnlyAs<TResource, TagState<TResource>>(in resource);
+            ref readonly var v = ref UnsafeReadOnly.As<TResource, TagState<TResource>>(in resource);
             return theory.Self.Morph(in v, out postCondition);
         }
 

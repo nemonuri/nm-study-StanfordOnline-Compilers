@@ -29,3 +29,36 @@ noeq type offline_runner_t = {
 }
 
 // </snippet:compiler>
+
+// <snippet:history-of-compiler>
+
+type manufacture_t =
+| Hardware
+| Sortware
+
+type time_t =
+| Present
+| Future
+
+type cost_t =
+| Cost: (time: time_t) -> (manufacture: manufacture_t) -> cost_t
+
+let is_expensive (cost: cost_t) : option bool =
+  let Cost t m = cost in
+  match t, m with
+  | Present, Hardware -> Some true
+  | Present, Sortware -> Some true
+  | Future, Hardware -> None
+  | Future, Sortware -> Some false
+
+
+
+//let is_current_state (manufacture: manufacture_t) (cost: cost_t) : bool =
+
+
+
+
+
+
+
+// </snippet:history-of-compiler>

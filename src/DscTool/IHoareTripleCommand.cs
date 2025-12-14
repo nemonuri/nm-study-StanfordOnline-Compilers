@@ -1,10 +1,10 @@
 namespace DscTool;
 
-public interface IHoareTripleCommand<T, TPredicate>
+public interface IHoareTripleCommand<T, TCondition>
 {
-    [UnscopedRef] ref readonly TPredicate PreCondition {get;}
+    [UnscopedRef] ref readonly TCondition PreCondition {get;}
 
-    T Invoke(scoped ref readonly T value, out TPredicate postCondition);
+    T Invoke(scoped ref readonly T value, out TCondition postCondition);
 }
 
 public interface IHoareTripleMorphism<TSource, TSourcePredicate, TTarget, TTargetPredicate>
@@ -13,3 +13,4 @@ public interface IHoareTripleMorphism<TSource, TSourcePredicate, TTarget, TTarge
 
     TTarget Morph(scoped ref readonly TSource source, out TTargetPredicate postCondition);
 }
+

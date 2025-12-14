@@ -7,7 +7,8 @@ public enum HoareTripleErrorKind
 {
     Unknown = 0,
     PreCondition = 1,
-    PostCondition = 2
+    PostCondition = 2,
+    Invoke = 3
 }
 
 public enum HoareTripleLiftCommandErrorKind

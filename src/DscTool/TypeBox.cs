@@ -25,11 +25,11 @@ public static class TypeBox
     }
 
     public static ref readonly ReadOnlyTypeBox<TDom, TSource> ReadOnlyBox<TDom, TSource>(ref readonly TSource source) =>
-        ref Unsafe.ReadOnlyAs<TSource, ReadOnlyTypeBox<TDom, TSource>>(in source);
+        ref UnsafeReadOnly.As<TSource, ReadOnlyTypeBox<TDom, TSource>>(in source);
 
     public static ref readonly ReadOnlyTypeBox<TDomTo, TSource> ReadOnlyRebox<TDomFrom, TDomTo, TSource>
         (this ref readonly ReadOnlyTypeBox<TDomFrom, TSource> boxedSource) =>
-        ref Unsafe.ReadOnlyAs<ReadOnlyTypeBox<TDomFrom, TSource>, ReadOnlyTypeBox<TDomTo, TSource>>(in boxedSource);
+        ref UnsafeReadOnly.As<ReadOnlyTypeBox<TDomFrom, TSource>, ReadOnlyTypeBox<TDomTo, TSource>>(in boxedSource);
     
     public static ref readonly ReadOnlyTypeBox<(TDom, TPush), TSource> Push<TDom, TSource, TPush>
         (this ref readonly ReadOnlyTypeBox<TDom, TSource> boxedSource, TypeHint<TPush> push = default)

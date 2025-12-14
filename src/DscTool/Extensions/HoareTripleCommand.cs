@@ -11,7 +11,7 @@ public static class HoareTripleCommand
             [NotNullWhen(true)] out T? result,
             out TPredicate? postCondition
         )
-            where TChecker : IPredicateChecker<T, TPredicate>
+            where TChecker : IConditionChecker<T, TPredicate>
         {
             ref readonly var commandTheory = 
                 ref HoareTripleTheory.TheorizeCommand<T, TPredicate, IHoareTripleCommand<T, TPredicate>>(in command);

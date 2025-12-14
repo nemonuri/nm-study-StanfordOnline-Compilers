@@ -1,15 +1,5 @@
 ﻿namespace DscTool;
 
-public interface IPredicateChecker<T, TPredicate>
-{
-    bool IsWitness(scoped ref readonly T witness, scoped ref readonly TPredicate predicate);
-}
-
-public interface ISubsetChecker<TPredicate>
-{
-    bool IsSubset(scoped ref readonly TPredicate subset, scoped ref readonly TPredicate superset);
-}
-
 public interface IMorphismPremise<TSoucre, TTarget, TTargetPredicate>
 {
     bool CanMorph(scoped ref readonly TSoucre soucre, [NotNullWhen(true)] out TTargetPredicate expectedResult);
@@ -21,8 +11,8 @@ public interface IFunctorPremise<
 TSource, TSourcePredicate, TSourceSetPremise,
 TTarget, TTargetPredicate, TTargetSetPremise, TTargetSubsetPremise,
 TMorphismPremise, TPredicateMorphismPremise>
-    where TSourceSetPremise : IPredicateChecker<TSource, TSourcePredicate>
-    where TTargetSetPremise : IPredicateChecker<TTarget, TTargetPredicate>
+    where TSourceSetPremise : IConditionChecker<TSource, TSourcePredicate>
+    where TTargetSetPremise : IConditionChecker<TTarget, TTargetPredicate>
     where TMorphismPremise : IMorphismPremise<TSource, TTarget, TTargetPredicate>
     where TPredicateMorphismPremise : IMorphismPremise<TSourcePredicate, TTargetPredicate, TTargetPredicate>
 {

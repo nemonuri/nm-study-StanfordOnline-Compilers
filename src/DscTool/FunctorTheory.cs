@@ -12,8 +12,8 @@ public static class FunctorTheory
         TTarget, TTargetPredicate, TTargetSetPremise, TTargetSubsetPremise,
         TMorphismPremise, TPredicateMorphismPremise
         ), TFunctorPremise> box)
-        where TSourceSetPremise : IPredicateChecker<TSource, TSourcePredicate>
-        where TTargetSetPremise : IPredicateChecker<TTarget, TTargetPredicate>
+        where TSourceSetPremise : IConditionChecker<TSource, TSourcePredicate>
+        where TTargetSetPremise : IConditionChecker<TTarget, TTargetPredicate>
         where TMorphismPremise : IMorphismPremise<TSource, TTarget, TTargetPredicate>
         where TPredicateMorphismPremise : IMorphismPremise<TSourcePredicate, TTargetPredicate, TTargetPredicate>
         where TFunctorPremise : IFunctorPremise<
