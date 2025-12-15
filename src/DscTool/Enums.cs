@@ -3,7 +3,8 @@ using System.Runtime.InteropServices;
 
 namespace DscTool;
 
-public enum HoareTripleErrorKind
+[Flags]
+public enum HoareTripleErrorKind : byte
 {
     Unknown = 0,
     PreCondition = 1,

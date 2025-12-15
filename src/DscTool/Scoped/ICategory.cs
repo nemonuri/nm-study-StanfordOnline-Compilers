@@ -1,7 +1,7 @@
 namespace DscTool.Scoped;
 
 public interface IScopedCategory<T, TCondition> :
-    IScopedEqualityChecker<T>,
+    IEqualityComparer<T>,
     IScopedConditionChecker<T, TCondition>,
     IScopedSufficientChecker<TCondition>
 {

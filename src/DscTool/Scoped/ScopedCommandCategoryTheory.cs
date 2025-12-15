@@ -187,7 +187,7 @@ public static class ScopedCommandCategoryTheory
             scoped ref readonly TEmbedder embedder,
             scoped ref readonly TSourceCategoriedCommand sourceCommand,
             [NotNullWhen(true)] out IScopedCategoriedCommand<TTarget, TTargetCondition, TTargetCategory>? result,
-            out HoareTripleErrorKind errorKind
+            out LiftErrorInfo error
         )
             where TConditionLifter : IScopedHoareTripleMorphism<TSourceCondition, TTargetCondition, TTargetCondition, TTargetCondition>
             where TLifter : IScopedHoareTripleMorphism<TSource, TSourceCondition, TTarget, TTargetCondition>
@@ -200,22 +200,22 @@ public static class ScopedCommandCategoryTheory
                 if 
                 (
                     !TryMorph<TSourceCondition, TTargetCondition, TConditionCategory, TTargetCondition, TTargetCondition, TConditionLifter>
-                        (in conditionLifter, in theory.Self, in sourceCommand.PreCondition, ref liftedPrecondition, ref postConditionOfLiftedPrecondition, out var errorKind1)
+                        (in conditionLifter, in theory.Self, in sourceCommand.PreCondition, ref liftedPrecondition, ref postConditionOfLiftedPrecondition, out HoareTripleErrorKind innerErrorKind)
                 )
                 {
-                    (result, errorKind) = (default, errorKind1);
+                    (result, error) = (default, new(LiftErrorKind.ConditionLifterInnerError, innerErrorKind));
                     return false;
                 }
                 if (!theory.Self.IsSufficient(in liftedPrecondition, in postConditionOfLiftedPrecondition))
                 {
-                    (result, errorKind) = (default, errorKind1);
+                    (result, error) = (default, new(LiftErrorKind.LiftedPreconditionIsNotSufficient, default));
                     return false;
                 }
             }
             
             if (!theory.Self.IsSufficient(in embedder.PreCondition, in liftedPrecondition))
             {
-                (result, errorKind) = (default, HoareTripleErrorKind.Unknown);
+                (result, error) = (default, new(LiftErrorKind.EmbedderPreconditionIsNotSufficient, default));
                 return false;
             }
 
@@ -224,9 +224,8 @@ public static class ScopedCommandCategoryTheory
                 TTarget, TTargetCondition, TTargetCategory,
                 TConditionCategory, TLifter, TEmbedder>
                 (in liftedPrecondition, in sourceCommand, in theory.Self, in lifter, in embedder);
-            errorKind = HoareTripleErrorKind.Unknown;
+            error = default;
             return true;
         }
     }
 }
-

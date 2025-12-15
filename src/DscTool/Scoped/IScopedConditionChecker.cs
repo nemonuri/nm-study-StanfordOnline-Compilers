@@ -16,4 +16,3 @@ public interface IScopedEqualityChecker<T>
 
     int GetHashCode(scoped ref readonly T obj);
 }
-
