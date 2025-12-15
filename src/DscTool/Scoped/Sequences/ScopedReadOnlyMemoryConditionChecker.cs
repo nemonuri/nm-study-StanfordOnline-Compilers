@@ -5,24 +5,26 @@ public readonly struct ScopedReadOnlyMemoryConditionChecker<T, TCondition, TChec
     IScopedConditionChecker<ReadOnlyMemory<T>, ReadOnlyMemory<TCondition>>
     where TChecker : IScopedConditionChecker<T, TCondition>
 {
-    private readonly TChecker _checker;
+    private readonly ReadOnlyMemory<TChecker> _checker;
 
-    public ScopedReadOnlyMemoryConditionChecker(TChecker checker)
+    public ScopedReadOnlyMemoryConditionChecker(ReadOnlyMemory<TChecker> checkers)
     {
-        _checker = checker;
+        _checker = checkers;
     }
 
     public bool Satisfies(scoped ref readonly ReadOnlyMemory<T> value, scoped ref readonly ReadOnlyMemory<TCondition> condition)
     {
         scoped var valueSpan = value.Span;
         scoped var conditionSpan = condition.Span;
+        scoped var checkers = _checker.Span;
 
         int length = valueSpan.Length;
+        if (length != condition.Length) { return false; }
         if (length != condition.Length) { return false; }
 
         for (int i = 0; i < length; i++)
         {
-            if (!_checker.Satisfies(in valueSpan[i], in conditionSpan[i])) {return false;}
+            if (!checkers[i].Satisfies(in valueSpan[i], in conditionSpan[i])) {return false;}
         }
         return true;
     }

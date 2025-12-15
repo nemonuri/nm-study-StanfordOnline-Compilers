@@ -12,7 +12,12 @@ public readonly struct ScopedReadOnlyMemoryCategory
     private readonly ScopedReadOnlyMemoryConditionChecker<T, TCondition, TChecker> _checker;
     private readonly ScopedReadOnlyMemorySufficientChecker<TCondition, TSufficientChecker> _sufficientChecker;
 
-    public ScopedReadOnlyMemoryCategory(TEqualityComparer equalityComparer, TChecker checker, TSufficientChecker sufficientChecker)
+    public ScopedReadOnlyMemoryCategory
+    (
+        ReadOnlyMemory<TEqualityComparer> equalityComparer, 
+        ReadOnlyMemory<TChecker> checker, 
+        ReadOnlyMemory<TSufficientChecker> sufficientChecker
+    )
     {
         _equalityComparer = new(equalityComparer);
         _checker = new(checker);
@@ -36,9 +41,9 @@ public readonly struct ScopedReadOnlyMemoryCategory<T, TCondition, TCategory> :
 {
     private readonly ScopedReadOnlyMemoryCategory<T, TCondition, TCategory, TCategory, TCategory> _category;
 
-    public ScopedReadOnlyMemoryCategory(TCategory category)
+    public ScopedReadOnlyMemoryCategory(ReadOnlyMemory<TCategory> categories)
     {
-        _category = new(category, category, category);
+        _category = new(categories, categories, categories);
     }
 
     public bool Equals(ReadOnlyMemory<T> x, ReadOnlyMemory<T> y) => _category.Equals(x, y);
@@ -50,4 +55,34 @@ public readonly struct ScopedReadOnlyMemoryCategory<T, TCondition, TCategory> :
 
     public bool IsSufficient(scoped ref readonly ReadOnlyMemory<TCondition> sufficient, scoped ref readonly ReadOnlyMemory<TCondition> necessary) =>
         _category.IsSufficient(in sufficient, in necessary);
+}
+
+public readonly struct ScopedMemoryCategory<T, TCondition, TCategory> :
+    IScopedCategory<Memory<T>, Memory<TCondition>>
+    where TCategory : IScopedCategory<T, TCondition>
+{
+    private readonly ScopedReadOnlyMemoryCategory<T, TCondition, TCategory> _category;
+
+    public ScopedMemoryCategory(ReadOnlyMemory<TCategory> categories)
+    {
+        _category = new(categories);
+    }
+
+    public bool Equals(Memory<T> x, Memory<T> y) => _category.Equals(x, y);
+
+    public int GetHashCode(Memory<T> obj) => _category.GetHashCode(obj);
+
+    public bool Satisfies(scoped ref readonly Memory<T> value, scoped ref readonly Memory<TCondition> condition)
+    {
+        ReadOnlyMemory<T> roValue = value;
+        ReadOnlyMemory<TCondition> roCondition = condition;
+        return _category.Satisfies(in roValue, in roCondition);
+    }
+
+    public bool IsSufficient(scoped ref readonly Memory<TCondition> sufficient, scoped ref readonly Memory<TCondition> necessary)
+    {
+        ReadOnlyMemory<TCondition> roSufficient = sufficient;
+        ReadOnlyMemory<TCondition> roNecessary = necessary;
+        return _category.IsSufficient(in roSufficient, in roNecessary);
+    }
 }

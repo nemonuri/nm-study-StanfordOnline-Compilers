@@ -5,11 +5,11 @@ public readonly struct ScopedReadOnlyMemorySufficientChecker<TCondition, TSuffic
     IScopedSufficientChecker<ReadOnlyMemory<TCondition>>
     where TSufficientChecker : IScopedSufficientChecker<TCondition>
 {
-    private readonly TSufficientChecker _sufficientChecker;
+    private readonly ReadOnlyMemory<TSufficientChecker> _sufficientChecker;
 
-    public ScopedReadOnlyMemorySufficientChecker(TSufficientChecker sufficientChecker)
+    public ScopedReadOnlyMemorySufficientChecker(ReadOnlyMemory<TSufficientChecker> sufficientCheckers)
     {
-        _sufficientChecker = sufficientChecker;
+        _sufficientChecker = sufficientCheckers;
     }
 
     public bool IsSufficient
@@ -20,13 +20,15 @@ public readonly struct ScopedReadOnlyMemorySufficientChecker<TCondition, TSuffic
     {
         scoped var sufficients = sufficient.Span;
         scoped var necessaries = necessary.Span;
+        scoped var sufficientCheckers = _sufficientChecker.Span;
 
         int length = sufficients.Length;
         if (length != necessaries.Length) {return false;}
+        if (length != sufficientCheckers.Length) {return false;}
 
         for (int i = 0; i < length; i++)
         {
-            if (!_sufficientChecker.IsSufficient(in sufficients[i], in necessaries[i])) {return false;}
+            if (!sufficientCheckers[i].IsSufficient(in sufficients[i], in necessaries[i])) {return false;}
         }
         return true;
     }
