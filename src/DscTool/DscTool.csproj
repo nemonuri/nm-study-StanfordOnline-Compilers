@@ -28,6 +28,7 @@
     <PackageReference Include="System.Text.Json" />
     <PackageReference Include="System.Memory" />
     <PackageReference Include="System.Collections.Immutable" />
+    <PackageReference Include="Microsoft.Bcl.HashCode" />
   </ItemGroup>
 
 </Project>

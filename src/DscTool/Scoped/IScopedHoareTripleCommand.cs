@@ -2,7 +2,7 @@ namespace DscTool.Scoped;
 
 public interface ISupportGetPreCondition<TCondition>
 {
-    ref readonly TCondition PreCondition {get;}
+    [UnscopedRef] ref readonly TCondition PreCondition {get;}
 }
 
 public interface IScopedHoareTripleCommand<T, TCondition> : ISupportGetPreCondition<TCondition>
