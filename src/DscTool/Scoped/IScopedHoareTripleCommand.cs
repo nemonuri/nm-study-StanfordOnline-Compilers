@@ -24,4 +24,3 @@ public interface IScopedHoareTripleMorphism<TSource, TSourceCondition, TTarget, 
         [NotNullWhen(true)] scoped ref TTargetCondition? postCondition
     );
 }
-

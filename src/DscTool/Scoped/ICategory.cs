@@ -33,8 +33,15 @@ public interface IScopedConditionCategory<TSourceCondition, TTarget, TTargetCond
     [UnscopedRef] ref readonly TTargetCategory TargetCategory {get;}
 }
 
-public interface ISupportScopedConditionCategory<TSourceCondition, TTargetCondition, TConditionCategory>
-    where TConditionCategory : IScopedConditionChecker<TSourceCondition, TTargetCondition>
+public interface IScopedFaithfulFunctor
+<TSource, TSourceCondition, TTarget, TTargetCondition, TTargetCategory, TConditionLifter, TLifter, TEmbedder> :
+    IScopedConditionCategory<TSourceCondition, TTarget, TTargetCondition, TTargetCategory>
+    where TTargetCategory : IScopedCategory<TTarget, TTargetCondition>
+    where TConditionLifter : IScopedHoareTripleMorphism<TSourceCondition, TTargetCondition, TTargetCondition, TTargetCondition>
+    where TLifter : IScopedHoareTripleMorphism<TSource, TSourceCondition, TTarget, TTargetCondition>
+    where TEmbedder : IScopedHoareTripleMorphism<TTarget, TTargetCondition, TSource, TSourceCondition>
 {
-    [UnscopedRef] ref readonly TConditionCategory ConditionCategory {get;}
+    [UnscopedRef] ref readonly TConditionLifter ConditionLifter {get;}
+    [UnscopedRef] ref readonly TLifter Lifter {get;}
+    [UnscopedRef] ref readonly TEmbedder Embedder {get;}
 }

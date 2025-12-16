@@ -228,4 +228,59 @@ public static class ScopedCommandCategoryTheory
             return true;
         }
     }
+
+    extension<
+        TSource, TSourceCondition, TSourceCategory,
+        TTarget, TTargetCondition, TTargetCategory, 
+        TConditionLifter, TLifter, TEmbedder,
+        TFaithfulFunctor>
+    (scoped ref readonly ReadOnlyTypeBox<(
+        TSource, TSourceCondition, TSourceCategory,
+        TTarget, TTargetCondition, TTargetCategory, 
+        TConditionLifter, TLifter, TEmbedder
+        ), TFaithfulFunctor> theory)
+        where TSourceCategory : IScopedCategory<TSource, TSourceCondition>
+        where TTargetCategory : IScopedCategory<TTarget, TTargetCondition>
+        where TConditionLifter : IScopedHoareTripleMorphism<TSourceCondition, TTargetCondition, TTargetCondition, TTargetCondition>
+        where TLifter : IScopedHoareTripleMorphism<TSource, TSourceCondition, TTarget, TTargetCondition>
+        where TEmbedder : IScopedHoareTripleMorphism<TTarget, TTargetCondition, TSource, TSourceCondition>
+        where TFaithfulFunctor : IScopedFaithfulFunctor<
+            TSource, TSourceCondition, TTarget, TTargetCondition, TTargetCategory, TConditionLifter, TLifter, TEmbedder>
+    {
+        public static ref readonly ReadOnlyTypeBox<(
+        TSource, TSourceCondition, TSourceCategory,
+        TTarget, TTargetCondition, TTargetCategory, 
+        TConditionLifter, TLifter, TEmbedder
+        ), TFaithfulFunctor>
+        TheorizeFunctor(ref readonly TFaithfulFunctor source) =>
+            ref TypeBox.ReadOnlyBox<(
+        TSource, TSourceCondition, TSourceCategory,
+        TTarget, TTargetCondition, TTargetCategory,
+        TConditionLifter, TLifter, TEmbedder
+        ), TFaithfulFunctor>
+        (in source);
+
+        public bool TryLift<TSourceCategoriedCommand>
+        (
+            scoped ref readonly TSourceCategoriedCommand sourceCommand,
+            [NotNullWhen(true)] out IScopedCategoriedCommand<TTarget, TTargetCondition, TTargetCategory>? result,
+            out LiftErrorInfo error
+        )
+            where TSourceCategoriedCommand : IScopedCategoriedCommand<TSource, TSourceCondition, TSourceCategory>
+        {
+            ref readonly var self = ref theory.Self;
+            var tc = TheorizeCondition<
+                TSource, TSourceCondition, TSourceCategory, 
+                TTarget, TTargetCondition, TTargetCategory,
+                TFaithfulFunctor>(in self);
+            return tc.TryLift
+            (
+                in self.ConditionLifter, 
+                in self.Lifter, 
+                in self.Embedder, 
+                in sourceCommand, 
+                out result, out error
+            );
+        }
+    }
 }
