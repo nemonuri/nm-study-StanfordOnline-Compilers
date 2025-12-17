@@ -6,20 +6,6 @@ using Json.Schema;
 
 namespace DscTool.Json;
 
-public readonly record struct JsonNodeAndPathSegmentPair(JsonNode? JsonNode, string PathSegment)
-{
-    public JsonNode? GetMemberOrNull()
-    {
-        return JsonNode switch
-        {
-            JsonObject jo => jo[PathSegment],
-            _ => null
-        };
-    }
-};
-
-public readonly record struct ExistAndSchemaValueTypePair(bool IsExist, SchemaValueType SchemaValueType);
-
 public readonly struct JsonMemberCategory : IScopedCategory<JsonNodeAndPathSegmentPair, ExistAndSchemaValueTypePair>
 {
     public readonly static JsonMemberCategory Instance = default;
