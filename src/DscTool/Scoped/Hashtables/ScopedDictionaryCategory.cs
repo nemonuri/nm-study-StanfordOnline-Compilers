@@ -1,12 +1,13 @@
 using DscTool.Scoped.Sequences;
 using DscTool.Infrastructure;
+using St = DscTool.Scoped.Hashtables.ScopedCategoryProvidableDictionaryTheory;
 
 namespace DscTool.Scoped.Hashtables;
 
 public readonly struct ScopedDictionaryCategory<T, TCondition, TCategory, TDictionary> :
     IScopedCategory<Memory<T>, Memory<TCondition>>
     where TCategory : IScopedCategory<T, TCondition>
-    where TDictionary : IValueEntryDictionary<T, TCondition, TCategory>
+    where TDictionary : IScopedCategoryProvidableDictionary<T, TCondition, TCategory>
 {
     private readonly TDictionary _dictionary;
 
@@ -22,12 +23,14 @@ public readonly struct ScopedDictionaryCategory<T, TCondition, TCategory, TDicti
 
         int length = xs.Length;
         if (length != ys.Length) {return false;}
-
+        var theory = St.Theorize<T, TCondition, TCategory, TDictionary>(in _dictionary);
+        
+        TCategory? category = default;
         for (int i = 0; i < length; i++)
         {
             T x = xs[i];
-            if (!_dictionary.TryGetValue(x, out var ve)) {return false;}
-            if (!ve.Category.Equals(x, ys[i])) {return false;}
+            if (!theory.TryGetCategoryFromKey(in x, ref category)) {return false;}
+            if (!category.Equals(x, ys[i])) {return false;}
         }
 
         return true;
@@ -37,14 +40,16 @@ public readonly struct ScopedDictionaryCategory<T, TCondition, TCategory, TDicti
     {
         scoped var xs = xMemory.Span;
         int length = xs.Length;
+        var theory = St.Theorize<T, TCondition, TCategory, TDictionary>(in _dictionary);
 
+        TCategory? category = default;
         HashCode hc = default;
         for (int i = 0; i < length; i++)
         {
             T x = xs[i];
-            if (!_dictionary.TryGetValue(x, out var ve)) {return 0;}
+            if (!theory.TryGetCategoryFromKey(in x, ref category)) {return 0;}
 
-            hc.Add(ve.Category.GetHashCode(x));
+            hc.Add(category.GetHashCode(x));
         }
         return hc.ToHashCode();
     }
@@ -56,11 +61,13 @@ public readonly struct ScopedDictionaryCategory<T, TCondition, TCategory, TDicti
         int length = vs.Length;
         if (length != cs.Length) {return false;}
 
+        TCategory? category = default;
         for (int i = 0; i < length; i++)
         {
             T v = vs[i];
-            if (!_dictionary.TryGetValue(v, out var ve)) {return false;}
-            if (!ve.Category.Satisfies(in v, in cs[i])) {return false;}
+            TCondition c = cs[i];
+            if (!_dictionary.TryGetCategory(in c, ref category)) {return false;}
+            if (!category.Satisfies(in v, in c)) {return false;}
         }
 
         return true;
@@ -73,6 +80,7 @@ public readonly struct ScopedDictionaryCategory<T, TCondition, TCategory, TDicti
         int length = ss.Length;
         if (length != ns.Length) {return false;}
 
+        TCategory? category = default;
         for (int i = 0; i < length; i++)
         {
             TCondition s = ss[i];
