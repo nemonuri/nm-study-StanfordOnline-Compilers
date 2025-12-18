@@ -17,7 +17,7 @@ public static class ScopedCategoryProvidableDictionaryTheory
             scoped ref readonly var self = ref theory.Self;
 
             if (!self.TryGetValue(key, out var ve)) {return false;}
-            if (!self.TryGetCategory(in ve.Condition, ref category)) {return false;}
+            if (!self.TryGetCategoryFromCondition(in ve.Condition, ref category)) {return false;}
 
             return true;
         }

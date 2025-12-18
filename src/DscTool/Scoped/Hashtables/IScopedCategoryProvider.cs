@@ -3,7 +3,9 @@ namespace DscTool.Scoped.Hashtables;
 public interface IScopedCategoryProvider<T, TCondition, TCategory>
     where TCategory : IScopedCategory<T, TCondition>
 {
-    bool TryGetCategory
+
+    
+    bool TryGetCategoryFromCondition
     (
         scoped ref readonly TCondition condition,
         [NotNullWhen(true)] scoped ref TCategory? category

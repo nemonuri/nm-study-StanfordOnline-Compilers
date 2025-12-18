@@ -66,7 +66,7 @@ public readonly struct ScopedDictionaryCategory<T, TCondition, TCategory, TDicti
         {
             T v = vs[i];
             TCondition c = cs[i];
-            if (!_dictionary.TryGetCategory(in c, ref category)) {return false;}
+            if (!_dictionary.TryGetCategoryFromCondition(in c, ref category)) {return false;}
             if (!category.Satisfies(in v, in c)) {return false;}
         }
 
