@@ -17,10 +17,11 @@ public readonly partial struct ScopedDictionaryCategoriedCommand<T, TCondition, 
 
     public ScopedDictionaryCategoriedCommand
     (
-        ReadOnlyDictionaryFallbackPair<TKey, TCategoriedCommand> categoriedCommand
+        ReadOnlyDictionaryFallbackPair<TKey, TCategoriedCommand> categoriedCommand,
+        TCondition postConditionFallback
     )
     {
-        _command = new(categoriedCommand);
+        _command = new(categoriedCommand, postConditionFallback);
         _category = new(new ReadOnlyDictionaryFallbackPair<TKey, TCategory>(new CategoryTable(categoriedCommand.Dictionary), categoriedCommand.Fallback.Category));
     }
 

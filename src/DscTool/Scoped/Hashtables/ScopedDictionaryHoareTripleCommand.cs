@@ -11,11 +11,17 @@ public readonly partial struct ScopedDictionaryHoareTripleCommand<T, TCondition,
 {
     private readonly ReadOnlyDictionaryFallbackPair<TKey, TCommand> _command;
     private readonly ReadOnlyDictionaryFallbackPair<TKey, TCondition> _precondition;
+    private readonly TCondition _postConditionFallback;
 
-    public ScopedDictionaryHoareTripleCommand(ReadOnlyDictionaryFallbackPair<TKey, TCommand> command)
+    public ScopedDictionaryHoareTripleCommand
+    (
+        ReadOnlyDictionaryFallbackPair<TKey, TCommand> command,
+        TCondition postConditionFallback
+    )
     {
         _command = command;
         _precondition = new(new PreConditionTable(_command.Dictionary), _command.Fallback.PreCondition);
+        _postConditionFallback = postConditionFallback;
     }
 
     [UnscopedRef] public ref readonly ReadOnlyDictionaryFallbackPair<TKey, TCondition> PreCondition => ref _precondition;
@@ -44,7 +50,7 @@ public readonly partial struct ScopedDictionaryHoareTripleCommand<T, TCondition,
             resultSpan[i] = new(key: s.Key, value: resultValue);
             postConditionArray[i] = new(key: s.Key, value: postConditionValue);
         }
-        postCondition = new(dictionary: new PostConditionTable(postConditionArray), fallback: _precondition.Fallback);
+        postCondition = new(dictionary: new PostConditionTable(postConditionArray), fallback: _postConditionFallback);
         return true;
     }
 }
