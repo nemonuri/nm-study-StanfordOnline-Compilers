@@ -1,93 +1,95 @@
-using DscTool.Scoped.Sequences;
 using DscTool.Infrastructure;
-using St = DscTool.Scoped.Hashtables.ScopedCategoryProvidableDictionaryTheory;
 
 namespace DscTool.Scoped.Hashtables;
 
-public readonly struct ScopedDictionaryCategory<T, TCondition, TCategory, TDictionary> :
-    IScopedCategory<Memory<T>, Memory<TCondition>>
+public readonly struct ScopedDictionaryCategory<T, TCondition, TCategory, TKey> :
+    IScopedCategory<Memory<KeyValuePair<TKey, T>>, ReadOnlyDictionaryFallbackPair<TKey, TCondition>>
     where TCategory : IScopedCategory<T, TCondition>
-    where TDictionary : IScopedCategoryProvidableDictionary<T, TCondition, TCategory>
+    where TKey : IEquatable<TKey>
 {
-    private readonly TDictionary _dictionary;
+    private readonly ReadOnlyDictionaryFallbackPair<TKey, TCategory> _categoryTable;
 
-    public ScopedDictionaryCategory(TDictionary dictionary)
+    public ScopedDictionaryCategory(ReadOnlyDictionaryFallbackPair<TKey, TCategory> categoryTable)
     {
-        _dictionary = dictionary;
+        _categoryTable = categoryTable;
     }
 
-    public bool Equals(Memory<T> xMemory, Memory<T> yMemory)
+    public bool Equals(Memory<KeyValuePair<TKey, T>> xMemory, Memory<KeyValuePair<TKey, T>> yMemory)
     {
         scoped var xs = xMemory.Span;
         scoped var ys = yMemory.Span;
 
         int length = xs.Length;
         if (length != ys.Length) {return false;}
-        var theory = St.Theorize<T, TCondition, TCategory, TDictionary>(in _dictionary);
-        
-        TCategory? category = default;
+
         for (int i = 0; i < length; i++)
         {
-            T x = xs[i];
-            if (!theory.TryGetCategoryFromKey(in x, ref category)) {return false;}
-            if (!category.Equals(x, ys[i])) {return false;}
+            ref var x = ref xs[i];
+            ref var y = ref ys[i];
+            var key = x.Key;
+
+            if (!key.Equals(y.Key)) {return false;}
+            if (!_categoryTable.GetValueOrFallback(key).Equals(x.Value, y.Value)) {return false;}
         }
 
-        return true;
+        return false;
     }
 
-    public int GetHashCode(Memory<T> xMemory)
+    public int GetHashCode(Memory<KeyValuePair<TKey, T>> xMemory)
     {
         scoped var xs = xMemory.Span;
-        int length = xs.Length;
-        var theory = St.Theorize<T, TCondition, TCategory, TDictionary>(in _dictionary);
 
-        TCategory? category = default;
         HashCode hc = default;
-        for (int i = 0; i < length; i++)
+        for (int i = 0; i < xs.Length; i++)
         {
-            T x = xs[i];
-            if (!theory.TryGetCategoryFromKey(in x, ref category)) {return 0;}
+            ref var x = ref xs[i];
+            var key = x.Key;
 
-            hc.Add(category.GetHashCode(x));
+            hc.Add(key);
+            hc.Add(_categoryTable.GetValueOrFallback(key).GetHashCode(x.Value));
         }
         return hc.ToHashCode();
     }
 
-    public bool Satisfies(scoped ref readonly Memory<T> valueMemory, scoped ref readonly Memory<TCondition> conditionMemory)
+    public bool Satisfies(scoped ref readonly Memory<KeyValuePair<TKey, T>> value, scoped ref readonly ReadOnlyDictionaryFallbackPair<TKey, TCondition> condition)
     {
-        scoped var vs = valueMemory.Span;
-        scoped var cs = conditionMemory.Span;
-        int length = vs.Length;
-        if (length != cs.Length) {return false;}
+        var valueSpan = value.Span;
 
-        TCategory? category = default;
-        for (int i = 0; i < length; i++)
+        for (int i = 0; i < valueSpan.Length; i++)
         {
-            T v = vs[i];
-            TCondition c = cs[i];
-            if (!_dictionary.TryGetCategoryFromCondition(in c, ref category)) {return false;}
-            if (!category.Satisfies(in v, in c)) {return false;}
+            ref var v = ref valueSpan[i];
+            var key = v.Key;
+            var value0 = v.Value;
+            var c = condition.GetValueOrFallback(key);
+
+            if (!_categoryTable.GetValueOrFallback(key).Satisfies(in value0, in c)) {return false;};
         }
 
         return true;
     }
 
-    public bool IsSufficient(scoped ref readonly Memory<TCondition> sufficientMemory, scoped ref readonly Memory<TCondition> necessaryMemory)
+    public bool IsSufficient
+    (
+        scoped ref readonly ReadOnlyDictionaryFallbackPair<TKey, TCondition> sufficient, 
+        scoped ref readonly ReadOnlyDictionaryFallbackPair<TKey, TCondition> necessary
+    )
     {
-        scoped var ss = sufficientMemory.Span;
-        scoped var ns = necessaryMemory.Span;
-        int length = ss.Length;
-        if (length != ns.Length) {return false;}
+        ref readonly var fallbackCategory = ref _categoryTable.Fallback;
 
-        TCategory? category = default;
-        for (int i = 0; i < length; i++)
+        //--- Check fallback conditions ---
+        if (!fallbackCategory.IsSufficient(in sufficient.Fallback, in necessary.Fallback)) {return false;}
+        //---|
+
+        //--- Check dictionary members ---
+        foreach (var entry in sufficient.Dictionary)
         {
-            TCondition s = ss[i];
-            if (!_dictionary.TryGetValue(v, out var ve)) {return false;}
-            if (!ve.Category.Satisfies(in v, in cs[i])) {return false;}
+            var condl = entry.Value;
+            var condr = necessary.GetValueOrFallback(entry.Key);
+            if (!_categoryTable.Fallback.IsSufficient(in condl, in condr)) {return false;}
         }
+        //---|
 
+        return true;
     }
 }
 
