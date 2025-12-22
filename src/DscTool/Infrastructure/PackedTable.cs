@@ -7,7 +7,7 @@ namespace DscTool.Infrastructure;
 public readonly struct PackedMap<TKey, TValue> where TKey : IEquatable<TKey>
 {
     public Memory<RawKeyValuePair<TKey, TValue>> Memory {get;}
-    public TValue Fallback {get;}
+    public readonly TValue Fallback;
 
     public PackedMap(Memory<RawKeyValuePair<TKey, TValue>> memory, TValue fallback)
     {
@@ -17,7 +17,9 @@ public readonly struct PackedMap<TKey, TValue> where TKey : IEquatable<TKey>
 
     public Span<RawKeyValuePair<TKey, TValue>> AsSpan => Memory.Span;
 
-    public RawKeyValuePair<OptionalKey<TKey>, TValue> GetValueOrFallback(TKey key)
+    public int Length => Memory.Length;
+
+    public RawKeyValuePair<OptionalKey<TKey>, TValue> GetEntryOrFallback(TKey key)
     {
         Span<RawKeyValuePair<TKey, TValue>>.Enumerator e = AsSpan.GetEnumerator();
         while (e.MoveNext())
@@ -28,5 +30,29 @@ public readonly struct PackedMap<TKey, TValue> where TKey : IEquatable<TKey>
             }
         }
         return new (key: OptionalKeyTagger.None, value: Fallback);
+    }
+
+    public PackedMap<TKey, TResultValue> SelectValue<TResultValue>(Func<TValue, TResultValue> selector)
+    {
+        Guard.IsNotNull(selector);
+
+        Span<RawKeyValuePair<TKey, TValue>> sourceSpan = AsSpan;
+        int length = sourceSpan.Length;
+
+        // Make result fallback
+        TResultValue resultFallback = selector(Fallback);
+
+        // Make result memory
+        var resultMemoryArray = new RawKeyValuePair<TKey, TResultValue>[length];
+        
+        for (int i = 0; i < length; i++)
+        {
+            var ss = sourceSpan[i];
+            resultMemoryArray[i] = new(key: ss.Key, value: selector(ss.Value));
+        }
+
+        // Make result PackedMap
+        Memory<RawKeyValuePair<TKey, TResultValue>> resultMemory = new (resultMemoryArray);
+        return new (memory: resultMemory, fallback: resultFallback);
     }
 }
