@@ -14,4 +14,3 @@ public readonly record struct Graphed<TNodeKey, TEdgeKey, TValue>
     where TNodeKey : IEquatable<TNodeKey>
     where TEdgeKey : IEquatable<TEdgeKey>
     ;
-

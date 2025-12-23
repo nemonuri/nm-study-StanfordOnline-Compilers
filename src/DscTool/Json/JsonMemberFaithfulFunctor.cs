@@ -7,30 +7,11 @@ using Json.Schema;
 
 namespace DscTool.Json;
 
-public readonly record struct JsonMemberSegment(ValueChoice<string, int> ValueChoice)
-{
-    public bool IsNone => ValueChoice.IsNone;
-
-    public bool IsPropertyName => ValueChoice.IsChoice1;
-    public string GetPropertyName() => ValueChoice.GetChoice1();
-
-    public bool IsElementIndex => ValueChoice.IsChoice2;
-    public int GetElementIndex() => ValueChoice.GetChoice2();
-};
-
-public readonly record struct JsonNodeId(int Id);
-
-public readonly record struct JsonGraphed<TValue>
-(
-    Graphed<JsonNodeId, JsonMemberSegment, TValue> GraphedValue,
-    JsonNodeId RootId
-);
-
 public readonly struct JsonMemberConditionLifter : IScopedPackedMapConditionLifter<JsonGraphed<JsonAtomicSchema>, JsonMemberSegment>
 {
-    private static readonly 
+    private static readonly JsonGraphed<JsonAtomicSchema> s_maxJoin = JsonGraphed.CreateFromPureValue(JsonAtomicSchema.MaxJoin);
 
-    public ref readonly JsonGraphed<JsonAtomicSchema> PreCondition => throw new NotImplementedException();
+    public ref readonly JsonGraphed<JsonAtomicSchema> PreCondition => ref s_maxJoin;
 
     public bool TryMorph
     (
@@ -38,38 +19,40 @@ public readonly struct JsonMemberConditionLifter : IScopedPackedMapConditionLift
         [NotNullWhen(true)] scoped ref JsonGraphed<JsonAtomicSchema> result, 
         [NotNullWhen(true)] scoped ref JsonGraphed<JsonAtomicSchema> postCondition)
     {
+
+    }
+}
+
+public readonly struct JsonMemberLifter : IScopedPackedMapLifter<JsonGraphed<JsonAtomicValue>, JsonGraphed<JsonAtomicSchema>, JsonMemberSegment>
+{
+    public ref readonly PackedMap<JsonMemberSegment, JsonGraphed<JsonAtomicSchema>> PreCondition => throw new NotImplementedException();
+
+    public bool TryMorph
+    (
+        scoped ref readonly PackedMap<JsonMemberSegment, JsonGraphed<JsonAtomicValue>> source, 
+        [NotNullWhen(true)] scoped ref JsonGraphed<JsonAtomicValue> result, 
+        [NotNullWhen(true)] scoped ref JsonGraphed<JsonAtomicSchema> postCondition
+    )
+    {
         throw new NotImplementedException();
     }
 }
 
-public readonly struct JsonMemberLifter : IScopedPackedMapLifter<JsonNodeAndPathSegmentPair, JsonAtomicSchema>
+public readonly struct JsonMemberEmbedder : IScopedPackedMapEmbedder<JsonGraphed<JsonAtomicValue>, JsonGraphed<JsonAtomicSchema>, JsonMemberSegment>
 {
+    public ref readonly JsonGraphed<JsonAtomicSchema> PreCondition => throw new NotImplementedException();
+
     public bool TryMorph
     (
-        scoped ref readonly Memory<JsonNodeAndPathSegmentPair> source, 
-        [NotNullWhen(true)] scoped ref JsonNodeAndPathSegmentPair result, 
-        [NotNullWhen(true)] scoped ref JsonAtomicSchema postCondition
+        scoped ref readonly JsonGraphed<JsonAtomicValue> source, 
+        [NotNullWhen(true)] scoped ref PackedMap<JsonMemberSegment, JsonGraphed<JsonAtomicValue>> result, 
+        [NotNullWhen(true)] scoped ref PackedMap<JsonMemberSegment, JsonGraphed<JsonAtomicSchema>> postCondition
     )
     {
         throw new NotImplementedException();
     }
 
-    public ref readonly Memory<JsonAtomicSchema> PreCondition => throw new NotImplementedException();
-}
-
-public readonly struct JsonMemberEmbedder : IScopedPackedMapEmbedder<JsonNodeAndPathSegmentPair, JsonAtomicSchema>
-{
-    public bool TryMorph
-    (
-        scoped ref readonly JsonNodeAndPathSegmentPair source, 
-        [NotNullWhen(true)] scoped ref Memory<JsonNodeAndPathSegmentPair> result, 
-        [NotNullWhen(true)] scoped ref Memory<JsonAtomicSchema> postCondition
-    )
-    {
-        throw new NotImplementedException();
-    }
-
-    public ref readonly JsonAtomicSchema PreCondition => throw new NotImplementedException();
+    
 }
 
 public readonly struct JsonMemberFaithfulFunctor : 

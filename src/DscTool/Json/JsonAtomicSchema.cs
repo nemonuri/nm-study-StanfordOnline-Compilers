@@ -22,5 +22,18 @@ public readonly record struct JsonAtomicValue(JsonContainerKind JsonContainerKin
     };
 };
 
-public readonly record struct JsonAtomicSchema(bool IsExist, SchemaValueType SchemaValueType);
+public readonly record struct JsonAtomicSchema(bool IsExist, SchemaValueType SchemaValueType)
+{
+    public static readonly JsonAtomicSchema MaxJoin = new(true, SchemaValueTypeTheory.ValidateMask);
+};
 
+public static class SchemaValueTypeTheory
+{
+    public const SchemaValueType ValidateMask = SchemaValueType.Object | SchemaValueType.Array | SchemaValueType.Boolean | SchemaValueType.String |
+                                             SchemaValueType.Number | SchemaValueType.Integer | SchemaValueType.Null;
+    
+    extension(SchemaValueType)
+    {
+        public static SchemaValueType ValidateMask => SchemaValueTypeTheory.ValidateMask;
+    }
+}

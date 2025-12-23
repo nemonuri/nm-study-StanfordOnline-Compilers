@@ -74,8 +74,7 @@ public readonly struct JsonAtomicCategory() : IScopedCategory<JsonAtomicValue, J
 
     private static bool IsSchemaValueTypeSufficient(SchemaValueType sufficient, SchemaValueType necessary)
     {
-        const SchemaValueType validateMask = SchemaValueType.Object | SchemaValueType.Array | SchemaValueType.Boolean | SchemaValueType.String |
-                                             SchemaValueType.Number | SchemaValueType.Integer | SchemaValueType.Null;
+        const SchemaValueType validateMask = SchemaValueTypeTheory.ValidateMask;
         if (!((sufficient & validateMask) !=0 && (necessary & validateMask) !=0))
         {
             return false;
