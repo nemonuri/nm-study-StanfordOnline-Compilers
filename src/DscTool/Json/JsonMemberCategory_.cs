@@ -6,9 +6,9 @@ using Json.Schema;
 
 namespace DscTool.Json;
 
-public readonly struct JsonMemberCategory : IScopedCategory<JsonNodeAndPathSegmentPair, ExistAndSchemaValueTypePair>
+public readonly struct JsonMemberCategory_ : IScopedCategory<JsonNodeAndPathSegmentPair, JsonAtomicSchema>
 {
-    public readonly static JsonMemberCategory Instance = default;
+    public readonly static JsonMemberCategory_ Instance = default;
 
     public bool Equals(JsonNodeAndPathSegmentPair x, JsonNodeAndPathSegmentPair y)
     {
@@ -20,7 +20,7 @@ public readonly struct JsonMemberCategory : IScopedCategory<JsonNodeAndPathSegme
         return obj.GetHashCode();
     }
 
-    public bool Satisfies(scoped ref readonly JsonNodeAndPathSegmentPair value, scoped ref readonly ExistAndSchemaValueTypePair condition)
+    public bool Satisfies(scoped ref readonly JsonNodeAndPathSegmentPair value, scoped ref readonly JsonAtomicSchema condition)
     {
         JsonNode? foundNode = value.GetMemberOrNull();
         if (foundNode is null) 
@@ -35,7 +35,7 @@ public readonly struct JsonMemberCategory : IScopedCategory<JsonNodeAndPathSegme
         return IsSchemaValueTypeSufficient(schemaValueKind, condition.SchemaValueType);
     }
 
-    public bool IsSufficient(scoped ref readonly ExistAndSchemaValueTypePair sufficient, scoped ref readonly ExistAndSchemaValueTypePair necessary)
+    public bool IsSufficient(scoped ref readonly JsonAtomicSchema sufficient, scoped ref readonly JsonAtomicSchema necessary)
     {
         return (sufficient.IsExist == necessary.IsExist) && IsSchemaValueTypeSufficient(sufficient.SchemaValueType, necessary.SchemaValueType);
     }

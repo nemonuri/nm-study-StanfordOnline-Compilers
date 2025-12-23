@@ -5,26 +5,26 @@ using Json.Schema;
 
 namespace DscTool.Json;
 
-public class JsonMemberSimpleEditor : IScopedCategoriedCommand<JsonNodeAndPathSegmentPair, ExistAndSchemaValueTypePair, JsonMemberCategory>
+public class JsonMemberSimpleEditor : IScopedCategoriedCommand<JsonNodeAndPathSegmentPair, JsonAtomicSchema, JsonMemberCategory_>
 {
-    private readonly ExistAndSchemaValueTypePair _preCondition;
-    private readonly ExistAndSchemaValueTypePair _desiredCondition;
+    private readonly JsonAtomicSchema _preCondition;
+    private readonly JsonAtomicSchema _desiredCondition;
 
-    public JsonMemberSimpleEditor(ExistAndSchemaValueTypePair preCondition, ExistAndSchemaValueTypePair desiredCondition)
+    public JsonMemberSimpleEditor(JsonAtomicSchema preCondition, JsonAtomicSchema desiredCondition)
     {
         _preCondition = preCondition;
         _desiredCondition = desiredCondition;
     }
 
-    public ref readonly JsonMemberCategory Category => ref JsonMemberCategory.Instance;
+    public ref readonly JsonMemberCategory_ Category => ref JsonMemberCategory_.Instance;
 
-    public ref readonly ExistAndSchemaValueTypePair PreCondition => ref _preCondition;
+    public ref readonly JsonAtomicSchema PreCondition => ref _preCondition;
 
     public bool TryInvoke
     (
         scoped ref readonly JsonNodeAndPathSegmentPair source, 
         [NotNullWhen(true)] scoped ref JsonNodeAndPathSegmentPair result, 
-        [NotNullWhen(true)] scoped ref ExistAndSchemaValueTypePair postCondition
+        [NotNullWhen(true)] scoped ref JsonAtomicSchema postCondition
     )
     {
         if (Category.Satisfies(in source, in _desiredCondition))
