@@ -6,7 +6,7 @@ namespace DscTool.Infrastructure;
 [StructLayout(LayoutKind.Sequential)]
 public readonly struct PackedMap<TKey, TValue> where TKey : IEquatable<TKey>
 {
-    public Memory<RawKeyValuePair<TKey, TValue>> Memory {get;}
+    public readonly Memory<RawKeyValuePair<TKey, TValue>> Memory;
     public readonly TValue Fallback;
 
     public PackedMap(Memory<RawKeyValuePair<TKey, TValue>> memory, TValue fallback)
@@ -30,6 +30,16 @@ public readonly struct PackedMap<TKey, TValue> where TKey : IEquatable<TKey>
             }
         }
         return new (key: OptionalKeyTagger.None, value: Fallback);
+    }
+
+    public ref TValue GetValueRef(TKey key)
+    {
+        var span = AsSpan;
+        for (int i = 0; i < span.Length; i++)
+        {
+            if (span[i].Key.Equals(key)) {return ref span[i].Value;}
+        }
+        throw new ArgumentOutOfRangeException($"Cannot find key. key = {key}");
     }
 
     public PackedMap<TKey, TResultValue> SelectValue<TResultValue>(Func<TValue, TResultValue> selector)
