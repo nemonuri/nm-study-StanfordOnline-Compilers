@@ -19,17 +19,34 @@ public readonly struct PackedMap<TKey, TValue> where TKey : IEquatable<TKey>
 
     public int Length => Memory.Length;
 
+    public bool ContainsKey(TKey key)
+    {
+        foreach (ref readonly RawKeyValuePair<TKey, TValue> entry in AsSpan)
+        {
+            if (entry.Key.Equals(key))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public RawKeyValuePair<OptionalKey<TKey>, TValue> GetEntryOrFallback(TKey key)
     {
-        Span<RawKeyValuePair<TKey, TValue>>.Enumerator e = AsSpan.GetEnumerator();
-        while (e.MoveNext())
+        foreach (ref readonly RawKeyValuePair<TKey, TValue> entry in AsSpan)
         {
-            if (e.Current.Key.Equals(key))
+            if (entry.Key.Equals(key))
             {
-                return new (key: OptionalKeyTagger.Some(key), value: e.Current.Value);
+                return new (key: OptionalKeyTagger.Some(key), value: entry.Value);
             }
         }
         return new (key: OptionalKeyTagger.None, value: Fallback);
+    }
+
+    public RawKeyValuePair<OptionalKey<TKey>, TValue> GetEntryOrFallback(OptionalKey<TKey> optionalKey)
+    {
+        if (!optionalKey.IsSome) {return new (key: OptionalKeyTagger.None, value: Fallback);}
+        return GetEntryOrFallback(optionalKey.GetSome());
     }
 
     public ref TValue GetValueRef(TKey key)

@@ -65,6 +65,19 @@ public readonly struct ValueChoice<T1, T2> : IEquatable<ValueChoice<T1, T2>>
         }
         return hc.ToHashCode();
     }
+
+    public TOut Match<TOut>(Func<T1, TOut> caseOfChoice1, Func<T2, TOut> caseOfChoice2, Func<TOut>? caseOfNone = null)
+    {
+        Guard.IsNotNull(caseOfChoice1);
+        Guard.IsNotNull(caseOfChoice2);
+
+        if (IsChoice1) {return caseOfChoice1(GetChoice1());}
+        else if (IsChoice2) {return caseOfChoice2(GetChoice2());}
+        else
+        {
+            return caseOfNone is { } ensured ? ensured() : throw new ArgumentOutOfRangeException("Match Failed: ValueChoice is none.");
+        }
+    }
 }
 
 public static class ValueChoiceTagger
