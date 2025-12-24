@@ -53,18 +53,7 @@ public readonly struct ScopedPackedGraphCategory<T, TCondition, TCategory, TNode
         return hashCode;
     }
 
-    private struct DfcState
-    {
-        public bool Checked;
-        public bool CheckResult;
-
-        public DfcState()
-        {
-            Checked=false; CheckResult=false;
-        }
-    }
-
-    private struct NodeKeyState
+    internal struct NodeKeyState
     {
         public bool IsCommonKey;
         public DfcState DfcState;
@@ -108,7 +97,7 @@ public readonly struct ScopedPackedGraphCategory<T, TCondition, TCategory, TNode
         {
             ref NodeKeyState curState = ref entry.Value;
 
-            if (!curState.DfcState.Checked) {continue;}
+            if (curState.DfcState.Checked) {continue;}
 
             if (!DepthFirstCheck(in value, in condition, in _categoryGraph, in commonKeysMap, Vct.Choice2((entry.Key, (OptionalKey<TNodeKey>)Okt.None, (OptionalKey<TNodeKey>)Okt.None)))) {return false;}
         }
@@ -199,7 +188,7 @@ public readonly struct ScopedPackedGraphCategory<T, TCondition, TCategory, TNode
         {
             ref NodeKeyState curState = ref entry.Value;
 
-            if (!curState.DfcState.Checked) {continue;}
+            if (curState.DfcState.Checked) {continue;}
 
             if (!DepthFirstCheck(in sufficient, in necessary, in _categoryGraph, in commonKeysMap, Vct.Choice2((entry.Key, (OptionalKey<TNodeKey>)Okt.None, (OptionalKey<TNodeKey>)Okt.None)))) {return false;}
         }
