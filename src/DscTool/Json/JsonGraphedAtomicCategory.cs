@@ -47,9 +47,3 @@ public readonly struct JsonGraphedAtomicCategory :
         return _atomic.IsSufficient(in v1, in v2);
     }
 }
-
-public readonly struct JsonGraphedCategory :
-    IScopedCategory<PackedMap<JsonMemberSegment, JsonGraphed<JsonAtomicValue>>, PackedMap<JsonMemberSegment, JsonGraphed<JsonAtomicSchema>>>
-{
-    public readonly ScopedPackedMapCategory<JsonGraphed<JsonAtomicValue>, JsonGraphed<JsonAtomicSchema>, JsonGraphedAtomicCategory, JsonMemberSegment> _packedMapCategory;
-}

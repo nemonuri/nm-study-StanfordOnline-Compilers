@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   
   <PropertyGroup Label="Config">
-    <_IsNetStandard2_0Only>true</_IsNetStandard2_0Only>
+    <_IsNetStandard2_0Only Condition="'$(_IsNetStandard2_0Only)' == ''">true</_IsNetStandard2_0Only>
   </PropertyGroup>
 
   <PropertyGroup>
