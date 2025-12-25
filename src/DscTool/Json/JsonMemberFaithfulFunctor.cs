@@ -1,7 +1,7 @@
 using System.Text.Json.Nodes;
 using DscTool.Infrastructure;
 using DscTool.Scoped;
-using DscTool.Scoped.Hashtables;
+using DscTool.Scoped.Graphs;
 using Json.Pointer;
 using Json.Schema;
 

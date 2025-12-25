@@ -14,10 +14,11 @@ public enum JsonContainerKind
 
 public readonly record struct JsonAtomicValue(JsonContainerKind JsonContainerKind, JsonValue? JsonValue)
 {
+    public static readonly JsonAtomicValue Empty = new(JsonContainerKind.Unknown, default);
+
     public bool IsExist => JsonContainerKind switch
     {
-        JsonContainerKind.Leaf => JsonValue is not null,
-        JsonContainerKind.Object or JsonContainerKind.Array => true,
+        JsonContainerKind.Leaf or JsonContainerKind.Object or JsonContainerKind.Array => true,
         _ => false
     };
 };

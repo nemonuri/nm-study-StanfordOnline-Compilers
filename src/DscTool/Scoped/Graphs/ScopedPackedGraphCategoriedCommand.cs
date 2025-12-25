@@ -1,6 +1,4 @@
 using DscTool.Infrastructure;
-using Okt = DscTool.Infrastructure.OptionalKeyTagger;
-using Vct = DscTool.Infrastructure.ValueChoiceTagger;
 
 namespace DscTool.Scoped.Graphs;
 

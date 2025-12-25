@@ -8,6 +8,8 @@ namespace DscTool.Json;
 
 public readonly struct JsonAtomicCategory() : IScopedCategory<JsonAtomicValue, JsonAtomicSchema>
 {
+    public static readonly JsonAtomicCategory Instance = new();
+
     public bool Equals(JsonAtomicValue x, JsonAtomicValue y)
     {
         return (x.JsonContainerKind == y.JsonContainerKind) && 
