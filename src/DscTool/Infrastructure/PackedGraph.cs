@@ -15,6 +15,27 @@ public readonly struct PackedDigraph<TNodeKey, TEdgeLabel, TNodeValue>
         PackedMap = map;
     }
 
+    public PackedDigraph<TNodeKey, TEdgeLabel, TResultValue> SelectKeyValue<TResultValue>(Func<RawKeyValuePair<TNodeKey, TNodeValue>, TResultValue> selector, TResultValue fallback)
+    {
+        Guard.IsNotNull(selector);
+
+        var originalSpan = PackedMap.AsSpan;
+        int length = PackedMap.Length;
+        var memoryArray = new RawKeyValuePair<TNodeKey, NodeValueAdjacentsPair<TNodeKey, TEdgeLabel, TResultValue>>[length];
+        for (int i = 0; i < length; i++)
+        {
+            ref readonly var originalEntry = ref originalSpan[i];
+            memoryArray[i] = new
+            (
+                key: originalEntry.Key, 
+                value: new(nodeValue: selector(new (key: originalEntry.Key, value: originalEntry.Value.NodeValue)),
+                adjacents: originalEntry.Value.Adjacents)
+            );
+        }
+
+        return new(new(memory: new(memoryArray), fallback: new(nodeValue: fallback, adjacents: default)));
+    }
+
     public PackedDigraph<TNodeKey, TEdgeLabel, TResultValue> SelectKey<TResultValue>(Func<TNodeKey, TResultValue> selector, TResultValue fallback)
     {
         Guard.IsNotNull(selector);
