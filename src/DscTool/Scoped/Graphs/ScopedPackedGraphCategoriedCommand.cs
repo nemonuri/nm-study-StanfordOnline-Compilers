@@ -35,6 +35,4 @@ public readonly struct ScopedPackedGraphCategoriedCommand<T, TCondition, TCatego
     {
         return _command.TryInvoke(in source, ref result, ref postCondition);
     }
-
-    
 }

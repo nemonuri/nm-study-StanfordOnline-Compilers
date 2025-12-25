@@ -108,3 +108,24 @@ public readonly struct ScopedPackedGraphFaithfulFunctor<TAtom, T, TAtomicConditi
         return _category.IsSufficient(in sufficient, in necessary);
     }
 }
+
+public static class ASDFASDF
+{
+    public static unsafe T ASDF<T>(T tt)
+    {
+        static T ASDF0 (ref T t) => t;
+
+        delegate*<ref T, T> sdf = &ASDF0;
+        return sdf(ref tt);
+    }
+
+    public delegate T MyDelegate1<T>(ref T t);
+
+    public static T ASDF2<T>(T tt)
+    {
+        static T ASDF0 (ref T t) => t;
+
+        MyDelegate1<T> sdf = ASDF0;
+        return sdf(ref tt);
+    }
+}
