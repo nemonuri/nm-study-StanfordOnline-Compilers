@@ -53,7 +53,18 @@ public readonly struct ScopedPackedGraphCategory<T, TCondition, TCategory, TNode
         return hashCode;
     }
 
-    internal struct NodeKeyState
+    private struct DfcState
+    {
+        public bool Checked;
+        public bool CheckResult;
+
+        public DfcState()
+        {
+            Checked=false; CheckResult=false;
+        }
+    }
+
+    private struct NodeKeyState
     {
         public bool IsCommonKey;
         public DfcState DfcState;

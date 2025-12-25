@@ -38,7 +38,7 @@ public readonly struct ScopedPackedMapFaithfulFunctor<T, TCondition, TCategory, 
     )
     {
         if (!_category.IsSufficient(in value.Fallback, in condition)) {return false;}
-        foreach (var entry in value.AsSpan)
+        foreach (ref readonly var entry in value.AsSpan)
         {
             if (!_category.IsSufficient(in entry.Value, in condition)) {return false;}
         }
@@ -98,7 +98,7 @@ public readonly struct ScopedPackedMapFaithfulFunctor<TAtom, T, TAtomicCondition
     public bool Satisfies(scoped ref readonly PackedMap<TKey, TAtomicCondition> value, scoped ref readonly TCondition condition)
     {
         if (!_atomicConditionChecker.Satisfies(in value.Fallback, in condition)) {return false;}
-        foreach (var entry in value.AsSpan)
+        foreach (ref readonly var entry in value.AsSpan)
         {
             if (!_atomicConditionChecker.Satisfies(in entry.Value, in condition)) {return false;}
         }
