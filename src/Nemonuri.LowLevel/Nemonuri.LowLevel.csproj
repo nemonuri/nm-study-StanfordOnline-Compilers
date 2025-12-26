@@ -8,12 +8,10 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <EmitCompilerGeneratedFiles>enable</EmitCompilerGeneratedFiles>
-    <IsAotCompatible Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net7.0'))">true</IsAotCompatible>	 
   </PropertyGroup>
   
   <ItemGroup>
-    <PackageReference Include="CommunityToolkit.Diagnostics" />
-    <PackageReference Include="JsonSchema.Net" />
+    <PackageReference Include="CommunityToolkit.HighPerformance" />
   </ItemGroup>
 
   <ItemGroup Condition="$(IsNetStandard2_0)">
@@ -22,9 +20,7 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
     </PackageReference>
     <PackageReference Include="System.Text.Json" />
-    <PackageReference Include="System.Memory" />
     <PackageReference Include="System.Collections.Immutable" />
-    <PackageReference Include="Microsoft.Bcl.HashCode" />
   </ItemGroup>
 
 </Project>

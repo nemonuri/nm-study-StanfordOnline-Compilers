@@ -5,4 +5,7 @@
     <ArtifactsPath>$(WorkspaceRootPath)artifact/</ArtifactsPath>
     <ResPath>$(WorkspaceRootPath)res/</ResPath>
   </PropertyGroup>
+  <PropertyGroup Label="Config">
+    <_IsNetStandard2_0Only Condition="'$(_IsNetStandard2_0Only)' == ''">false</_IsNetStandard2_0Only>
+  </PropertyGroup>
 </Project>
