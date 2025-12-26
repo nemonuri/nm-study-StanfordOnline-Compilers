@@ -27,7 +27,7 @@ public static class SpanExtensions
                 }
             }
 
-            resultEntry = Unsafe.NullRef<LowLevelKeyValuePair<TKey, TValue>>();
+            resultEntry = default;
             resultIndex = -1;
             return false;
         }

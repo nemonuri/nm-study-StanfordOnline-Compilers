@@ -37,7 +37,7 @@ public readonly struct LowLevelChoice<T1> : IEquatable<LowLevelChoice<T1>>
         return true;
     }
 
-    public override bool Equals(object obj) => obj is LowLevelChoice<T1> v && Equals(v);
+    public override bool Equals(object? obj) => obj is LowLevelChoice<T1> v && Equals(v);
     
     public override int GetHashCode()
     {
@@ -97,7 +97,7 @@ public readonly struct LowLevelChoice<T1, T2> : IEquatable<LowLevelChoice<T1, T2
         return true;
     }
 
-    public override bool Equals(object obj) => obj is LowLevelChoice<T1, T2> v && Equals(v);
+    public override bool Equals(object? obj) => obj is LowLevelChoice<T1, T2> v && Equals(v);
     
     public override int GetHashCode()
     {
