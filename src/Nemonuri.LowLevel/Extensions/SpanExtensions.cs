@@ -6,7 +6,7 @@ public static class SpanExtensions
     extension<TKey, TValue>(Span<LowLevelKeyValuePair<TKey, TValue>> self)
         where TKey : IEquatable<TKey>
     {
-        public unsafe bool DangerousTryGetEntry<TContext>
+        public unsafe bool TryGetEntry<TContext>
         (
             in TContext? context, 
             delegate*<in TContext?, in TKey, bool> predicate,
@@ -32,7 +32,7 @@ public static class SpanExtensions
             return false;
         }
 
-        public unsafe bool DangerousTryGetEntry
+        public unsafe bool TryGetEntry
         (
             in TKey key,
             out LowLevelKeyValuePair<TKey, TValue> resultEntry,
@@ -48,7 +48,7 @@ public static class SpanExtensions
             }
 
 #pragma warning disable CS8622
-            return self.DangerousTryGetEntry(in key, &AreKeyEqual, out resultEntry, out resultIndex);
+            return self.TryGetEntry(in key, &AreKeyEqual, out resultEntry, out resultIndex);
 #pragma warning restore CS8622
         }
     }

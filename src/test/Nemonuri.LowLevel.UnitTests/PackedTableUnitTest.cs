@@ -12,8 +12,7 @@ public class PackedTableUnitTest
         PackedTable<string, int> table = new(new([new("", 1), new("a", 1234), new("b", 5678)]));
         
         // Act
-        var boxedTable = PackedTableTheory.Theorize<string, int, PackedTable<string, int>>(in table);
-        bool actualSuccess = boxedTable.TryGetValue(in key, out int actualValue);
+        bool actualSuccess = PackedTableTheory.Theorize<string, int, PackedTable<string, int>>(in table).TryGetValue(in key, out int actualValue);
         
         // Assert
         Assert.Equal(expectedSuccess, actualSuccess);

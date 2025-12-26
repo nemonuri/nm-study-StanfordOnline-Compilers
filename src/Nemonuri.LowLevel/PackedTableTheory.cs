@@ -6,7 +6,7 @@ namespace Nemonuri.LowLevel;
 public static class PackedTableTheory
 {
     extension<TKey, TValue, TPackedTable>
-    (scoped ref readonly 
+    (scoped in 
         TheoryBox
         <(TKey, TValue), TPackedTable> 
         theory)
@@ -29,7 +29,7 @@ public static class PackedTableTheory
 
         public bool TryGetValue(in TKey key, [NotNullWhen(true)] out TValue? resultValue)
         {
-            if (!theory.AsSpan.DangerousTryGetEntry(in key, out var resultEntry, out _)) 
+            if (!theory.AsSpan.TryGetEntry(in key, out var resultEntry, out _)) 
             {
                 resultValue = default;
                 return false;
