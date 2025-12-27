@@ -25,12 +25,12 @@ public unsafe readonly struct MemoryViewHandle<THandler, TView>
     public ref TView GetItem(ref THandler handler, int index) => ref _itemGetter(ref handler, index);
 }
 
-public struct AdHocMemoryView<THandler, TView> : IMemoryView<TView>
+public struct LowLevelAbstractMemoryView<THandler, TView> : IMemoryView<TView>
 {
     private THandler _handler;
     private readonly MemoryViewHandle<THandler, TView> _handle;
 
-    public AdHocMemoryView(THandler handler, MemoryViewHandle<THandler, TView> handle)
+    public LowLevelAbstractMemoryView(THandler handler, MemoryViewHandle<THandler, TView> handle)
     {
         _handler = handler;
         _handle = handle;

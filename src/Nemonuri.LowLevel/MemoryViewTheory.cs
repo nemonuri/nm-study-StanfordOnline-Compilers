@@ -54,7 +54,7 @@ public static class MemoryViewTheory
         theory)
         where TMemoryView : IMemoryView<TView>
     {
-        public unsafe AdHocMemoryView<TMemoryView, TView> ToAdHoc()
+        public unsafe LowLevelAbstractMemoryView<TMemoryView, TView> ToLowLevelAbstrct()
         {
             static int LengthGetter(in TMemoryView handler) => handler.Length;
             static ref TView ItemGetter(ref TMemoryView handler, int index) => ref handler[index];
