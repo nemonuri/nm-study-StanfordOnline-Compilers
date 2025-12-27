@@ -31,6 +31,12 @@ public readonly struct AdjacentsAndValue<TEdgeLabel, TNodeKey, TAdjacentsHandler
     where TNodeKey : IEquatable<TNodeKey>
     where TEdgeLabel : IEquatable<TEdgeLabel>
 {
-    public readonly LowLevelAbstractMemoryView<TAdjacentsHandler, LabeledKey<TEdgeLabel, TNodeKey>> Adjacents;
+    public readonly AbstractMemoryView<TAdjacentsHandler, LabeledKey<TEdgeLabel, TNodeKey>> Adjacents;
     public readonly TNodeValue NodeValue;
+
+    public AdjacentsAndValue(AbstractMemoryView<TAdjacentsHandler, LabeledKey<TEdgeLabel, TNodeKey>> adjacents, TNodeValue nodeValue)
+    {
+        Adjacents = adjacents;
+        NodeValue = nodeValue;
+    }
 }
