@@ -1,0 +1,26 @@
+
+namespace Nemonuri.LowLevel;
+
+public interface ILowLevelTable<TKey, TValue, TMemoryView> :
+    IMemoryViewProvider<LowLevelKeyValuePair<TKey, TValue>, TMemoryView>
+    where TMemoryView : IMemoryView<LowLevelKeyValuePair<TKey, TValue>>
+#if NET9_0_OR_GREATER
+    ,allows ref struct
+#endif
+    where TKey : IEquatable<TKey>
+{
+}
+
+public struct AbstractLowLevelTable<THandler, TKey, TValue> :
+    ILowLevelTable<TKey, TValue, AbstractMemoryView<THandler, LowLevelKeyValuePair<TKey, TValue>>>
+    where TKey : IEquatable<TKey>
+{
+    private AbstractMemoryViewProvider<THandler, LowLevelKeyValuePair<TKey, TValue>, AbstractMemoryView<THandler, LowLevelKeyValuePair<TKey, TValue>>> _provider;
+
+    public AbstractLowLevelTable(AbstractMemoryViewProvider<THandler, LowLevelKeyValuePair<TKey, TValue>, AbstractMemoryView<THandler, LowLevelKeyValuePair<TKey, TValue>>> provider)
+    {
+        _provider = provider;
+    }
+
+    public void GetMemoryView(scoped ref AbstractMemoryView<THandler, LowLevelKeyValuePair<TKey, TValue>> memoryView) => _provider.GetMemoryView(ref memoryView);
+}

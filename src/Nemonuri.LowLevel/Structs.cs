@@ -13,30 +13,32 @@ public readonly ref struct SpanAndSelector<T, TView>(Span<T> span, RefSelectorHa
     public readonly RefSelectorHandle<T, TView> Selector = selector;
 }
 
-public readonly struct LabeledKey<TLabel, TKey>
-    where TLabel : IEquatable<TLabel>
-    where TKey : IEquatable<TKey>
-{
-    public readonly TLabel Label;
-    public readonly TKey Key;
-
-    public LabeledKey(TLabel label, TKey key)
-    {
-        Label = label;
-        Key = key;
-    }
-}
-
-public readonly struct AdjacentsAndValue<TEdgeLabel, TNodeKey, TAdjacentsHandler, TNodeValue>
+public struct AdjacentTable<TEdgeLabel, TNodeKey, TConfig> : 
+    ILowLevelTable<TEdgeLabel, TNodeKey, AbstractMemoryView<TConfig, LowLevelKeyValuePair<TEdgeLabel, TNodeKey>>>
     where TNodeKey : IEquatable<TNodeKey>
     where TEdgeLabel : IEquatable<TEdgeLabel>
 {
-    public readonly AbstractMemoryView<TAdjacentsHandler, LabeledKey<TEdgeLabel, TNodeKey>> Adjacents;
+    private AbstractLowLevelTable<TConfig, TEdgeLabel, TNodeKey> _table;
+
+    public AdjacentTable(AbstractLowLevelTable<TConfig, TEdgeLabel, TNodeKey> table)
+    {
+        _table = table;
+    }
+
+    public void GetMemoryView(scoped ref AbstractMemoryView<TConfig, LowLevelKeyValuePair<TEdgeLabel, TNodeKey>> memoryView) =>
+        _table.GetMemoryView(ref memoryView);
+}
+
+public readonly struct AdjacentTableAndValue<TEdgeLabel, TNodeKey, TNodeValue, TConfig>
+    where TNodeKey : IEquatable<TNodeKey>
+    where TEdgeLabel : IEquatable<TEdgeLabel>
+{
+    public readonly AdjacentTable<TEdgeLabel, TNodeKey, TConfig> AdjacentTable;
     public readonly TNodeValue NodeValue;
 
-    public AdjacentsAndValue(AbstractMemoryView<TAdjacentsHandler, LabeledKey<TEdgeLabel, TNodeKey>> adjacents, TNodeValue nodeValue)
+    public AdjacentTableAndValue(AdjacentTable<TEdgeLabel, TNodeKey, TConfig> adjacents, TNodeValue nodeValue)
     {
-        Adjacents = adjacents;
+        AdjacentTable = adjacents;
         NodeValue = nodeValue;
     }
 }
