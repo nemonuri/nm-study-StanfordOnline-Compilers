@@ -5,7 +5,12 @@ namespace Nemonuri.LowLevel;
 public static class UnsafeReadOnly
 {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static ref readonly TTo As<TFrom, TTo>(ref readonly TFrom from) =>
+    public static ref readonly TTo As<TFrom, TTo>(ref readonly TFrom from) 
+#if NET9_0_OR_GREATER
+    where TFrom : allows ref struct
+    where TTo : allows ref struct
+#endif
+        =>
         ref Unsafe.As<TFrom, TTo>(ref Unsafe.AsRef(in from));
     
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

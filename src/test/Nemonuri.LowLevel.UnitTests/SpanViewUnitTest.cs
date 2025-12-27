@@ -1,5 +1,3 @@
-using CommunityToolkit.HighPerformance;
-using Nemonuri.LowLevel;
 using Nemonuri.LowLevel.Extensions;
 
 namespace Nemonuri.LowLevel.UnitTests;

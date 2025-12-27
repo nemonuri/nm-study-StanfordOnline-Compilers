@@ -9,10 +9,10 @@ public class PackedTableUnitTest
     public void TryGetValue(string key, bool expectedSuccess, int expectedValue)
     {
         // Arrange
-        PackedTable<string, int> table = new(new([new("", 1), new("a", 1234), new("b", 5678)]));
+        PackedTable<string, int> table = new([new("", 1), new("a", 1234), new("b", 5678)]);
         
         // Act
-        bool actualSuccess = PackedTableTheory.Theorize<string, int, PackedTable<string, int>>(in table).TryGetValue(in key, out int actualValue);
+        bool actualSuccess = LowLevelTableTheory.Theorize<string, int, PackedTableView<string, int>, PackedTable<string, int>>(in table).TryGetValue(in key, out int actualValue);
         
         // Assert
         Assert.Equal(expectedSuccess, actualSuccess);

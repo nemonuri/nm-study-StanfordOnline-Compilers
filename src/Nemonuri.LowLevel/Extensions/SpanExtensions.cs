@@ -12,9 +12,7 @@ public static class SpanExtensions
 
         public unsafe SpanView<T, T> ToIdentityView()
         {
-            static ref T Identity(ref T source) => ref source;
-
-            return new(self, new(&Identity));
+            return new(self, new(&Internal.StaticMethods.Identity));
         }
     }
 
