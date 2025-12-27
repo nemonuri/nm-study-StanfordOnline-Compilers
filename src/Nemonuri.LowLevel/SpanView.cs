@@ -1,4 +1,6 @@
 
+using static Nemonuri.LowLevel.Extensions.SpanExtensions;
+
 namespace Nemonuri.LowLevel;
 
 public readonly ref partial struct SpanView<T, TView>
@@ -24,6 +26,8 @@ public readonly ref partial struct SpanView<T, TView>
         }
     }
 
+    public Enumerator GetEnumerator() => new(this);
+
     private bool TryCopyToCore<T2>(in SpanView<T2, TView> dest, bool throwIfError)
     {
         if (!(Length <= dest.Length))
@@ -42,8 +46,20 @@ public readonly ref partial struct SpanView<T, TView>
         }
         return true;
     }
-
     public bool TryCopyTo<T2>(in SpanView<T2, TView> dest) => TryCopyToCore(in dest, throwIfError: false);
     public void CopyTo<T2>(in SpanView<T2, TView> dest) => TryCopyToCore(in dest, throwIfError: true);
+
+
+    private bool TryCopyToCore(Span<TView> dest, bool throwIfError) => TryCopyToCore(dest.ToIdentityView(), throwIfError);
+    public bool TryCopyTo(Span<TView> dest) => TryCopyToCore(dest, throwIfError: false);
+    public void CopyTo(Span<TView> dest) => TryCopyToCore(dest, throwIfError: true);
+
+
+    public TView[] ToArray()
+    {
+        var destArray = new TView[Length];
+        CopyTo(destArray.AsSpan());
+        return destArray;
+    }
 
 }
