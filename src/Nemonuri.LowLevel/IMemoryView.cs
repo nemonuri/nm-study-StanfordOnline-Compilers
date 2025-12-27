@@ -7,12 +7,12 @@ public interface IMemoryView<TView>
     [UnscopedRef] ref TView this[int index] {get;}
 }
 
-public unsafe readonly struct MemoryViewHandle<THandler, TView>
+public unsafe readonly struct AbstractMemoryViewHandle<THandler, TView>
 {
     private readonly delegate*<in THandler, int> _lengthGetter;
     private readonly delegate*<ref THandler, int, ref TView> _itemGetter;
 
-    public MemoryViewHandle(delegate*<in THandler, int> lengthGetter, delegate*<ref THandler, int, ref TView> itemGetter)
+    public AbstractMemoryViewHandle(delegate*<in THandler, int> lengthGetter, delegate*<ref THandler, int, ref TView> itemGetter)
     {
         LowLevelGuard.IsNotNull(lengthGetter);
         LowLevelGuard.IsNotNull(itemGetter);
@@ -28,9 +28,9 @@ public unsafe readonly struct MemoryViewHandle<THandler, TView>
 public struct AbstractMemoryView<THandler, TView> : IMemoryView<TView>
 {
     private THandler _handler;
-    private readonly MemoryViewHandle<THandler, TView> _handle;
+    private readonly AbstractMemoryViewHandle<THandler, TView> _handle;
 
-    public AbstractMemoryView(THandler handler, MemoryViewHandle<THandler, TView> handle)
+    public AbstractMemoryView(THandler handler, AbstractMemoryViewHandle<THandler, TView> handle)
     {
         _handler = handler;
         _handle = handle;
