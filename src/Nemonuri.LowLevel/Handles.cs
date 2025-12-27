@@ -28,7 +28,7 @@ public unsafe readonly struct SpanViewProviderHandle<TSource, T, TView>
     }
 
 #pragma warning disable CS9088
-    public void Invoke(scoped in TSource owner, out SpanView<T, TView> spanView) => 
+    public void Invoke(scoped in TSource owner, scoped ref SpanView<T, TView> spanView) => 
         _spanViewProvider(in owner, out spanView);
 #pragma warning restore CS9088
 }

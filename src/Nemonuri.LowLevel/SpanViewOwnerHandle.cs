@@ -13,5 +13,5 @@ public readonly struct SpanViewOwnerHandle<TOwner, T, TView>
         _spanViewProviderHandle = spanViewProviderHandle;
     }
 
-    public void Invoke(out SpanView<T, TView> spanView) => _spanViewProviderHandle.Invoke(in _owner, out spanView);
+    public void Invoke(scoped ref SpanView<T, TView> spanView) => _spanViewProviderHandle.Invoke(in _owner, ref spanView);
 }
