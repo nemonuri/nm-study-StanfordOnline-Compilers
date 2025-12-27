@@ -12,4 +12,3 @@ public readonly struct Choice2Tagged<T>(T value)
 {
     public readonly T Value = value;
 }
-

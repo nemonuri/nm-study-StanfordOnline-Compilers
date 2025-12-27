@@ -14,7 +14,7 @@ public static class MemoryExtensions
         ToSpanViewOwner<TView>
         (
             RefSelectorHandle<T, TView> selectorHandle,
-            out SpanViewOwnerHandle<MemoryAndSelector<T, TView>, T, TView> destHandle
+            out SpanViewHandle<MemoryAndSelector<T, TView>, T, TView> destHandle
         )
         {
             static void SpanViewProvider(in MemoryAndSelector<T, TView> owner, out SpanView<T, TView> spanView)

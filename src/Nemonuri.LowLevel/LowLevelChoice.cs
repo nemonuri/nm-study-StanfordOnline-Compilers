@@ -10,14 +10,14 @@ public readonly struct LowLevelChoice<T1> : IEquatable<LowLevelChoice<T1>>
     //---|
 
     //--- Constructors ---
-    private LowLevelChoice(int index, Choice1Tagged<T1> choice1)
+    private LowLevelChoice(int index, ref readonly Choice1Tagged<T1> choice1)
     {
         Index = index;
         Choice1 = choice1;
     }
 
-    public static implicit operator LowLevelChoice<T1>(Nil nil) => new(0, default);
-    public static implicit operator LowLevelChoice<T1>(Choice1Tagged<T1> choice1) => new(1, choice1);
+    public static implicit operator LowLevelChoice<T1>(Nil nil) => new(0, in UnsafeReadOnly.GetDefaultRef<Choice1Tagged<T1>>());
+    public static implicit operator LowLevelChoice<T1>(in Choice1Tagged<T1> choice1) => new(1, in choice1);
     //---|
 
     //--- Validators ---
