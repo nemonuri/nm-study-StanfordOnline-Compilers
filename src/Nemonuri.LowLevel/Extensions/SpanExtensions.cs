@@ -16,6 +16,27 @@ public static class SpanExtensions
 
             return new(self, new(&Identity));
         }
+
+#if NET9_0_OR_GREATER
+        public unsafe void 
+        ToSpanViewOwner<TView>
+        (
+            RefSelectorHandle<T, TView> selectorHandle,
+            out SpanViewOwnerHandle<SpanAndSelector<T, TView>, T, TView> destHandle
+        )
+        {
+            static void SpanViewProvider(in SpanAndSelector<T, TView> owner, out SpanView<T, TView> spanView)
+            {
+                spanView = owner.Span.ToView(owner.Selector);
+            }
+
+            destHandle = new
+            (
+                owner: new(span: self, selector: selectorHandle),
+                spanViewProviderHandle: new(spanViewProvider: &SpanViewProvider)
+            );
+        }
+#endif
     }
 
     extension<TKey, TValue>(Span<LowLevelKeyValuePair<TKey, TValue>> self)
