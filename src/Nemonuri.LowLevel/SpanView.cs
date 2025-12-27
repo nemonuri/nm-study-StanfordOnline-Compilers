@@ -3,7 +3,7 @@ using static Nemonuri.LowLevel.Extensions.SpanExtensions;
 
 namespace Nemonuri.LowLevel;
 
-public readonly ref partial struct SpanView<T, TView> : ISpanView<TView>
+public readonly ref partial struct SpanView<T, TView> : IMemoryView<TView>
 {
     private readonly Span<T> _span;
     private readonly RefSelectorHandle<T, TView> _selectorHandle;
