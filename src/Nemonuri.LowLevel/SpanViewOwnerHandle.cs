@@ -1,10 +1,7 @@
 
 namespace Nemonuri.LowLevel;
 
-public readonly ref struct SpanViewOwnerHandle<TOwner, T, TView>
-#if NET9_0_OR_GREATER
-    where TOwner : allows ref struct
-#endif
+public readonly struct SpanViewOwnerHandle<TOwner, T, TView>
 {
     private readonly TOwner _owner;
     
