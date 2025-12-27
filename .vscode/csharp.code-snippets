@@ -34,6 +34,16 @@
 		]
 	},
 
+	"Ref field": {
+		"scope": "csharp",
+		"prefix": "reffield",
+		"body": [
+			"#if NET8_0_OR_GREATER",
+			"    ref",
+			"#endif"
+		]
+	},
+
 	"Summary ad-Hoc ": {
 		"scope": "csharp",
 		"prefix": ["summaryadhoc","sad"],

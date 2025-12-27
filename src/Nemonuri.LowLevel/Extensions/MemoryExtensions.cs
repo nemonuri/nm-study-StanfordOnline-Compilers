@@ -9,5 +9,21 @@ public static class MemoryExtensions
         {
             return new(self.Span, selectorHandle);
         }
+
+        public unsafe void 
+        ToSpanViewOwner<TView>
+        (
+            RefSelectorHandle<T, TView> selectorHandle,
+            out SpanViewOwnerHandle<MemoryAndSelector<T, TView>, T, TView> destHandle
+        )
+        {
+            static void SpanViewProvider(in MemoryAndSelector<T, TView> owner, out SpanView<T, TView> spanView)
+            {
+                spanView = owner.Memory.ToView(owner.Selector);
+            }
+
+            SpanViewProviderHandle<MemoryAndSelector<T, TView>, T, TView> providerHandle = new(spanViewProvider: &SpanViewProvider);
+            destHandle = new (owner: new(memory: self, selector: selectorHandle), spanViewProviderHandle: providerHandle);
+        }
     }
 }

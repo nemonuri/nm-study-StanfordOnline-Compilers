@@ -9,6 +9,13 @@ public static class SpanExtensions
         {
             return new(self, selectorHandle);
         }
+
+        public unsafe SpanView<T, T> ToIdentityView()
+        {
+            static ref T Identity(ref T source) => ref source;
+
+            return new(self, new(&Identity));
+        }
     }
 
     extension<TKey, TValue>(Span<LowLevelKeyValuePair<TKey, TValue>> self)
