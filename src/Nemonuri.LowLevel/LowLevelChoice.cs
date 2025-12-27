@@ -41,9 +41,9 @@ public readonly struct LowLevelChoice<T1> : IEquatable<LowLevelChoice<T1>>
     
     public override int GetHashCode()
     {
-        if (IsChoice1)
+        if (IsChoice1 && Choice1.Value is { } cv1)
         {
-            return HashCode.Combine(Index, EqualityComparer<T1>.Default.GetHashCode(Choice1.Value));
+            return HashCode.Combine(Index, EqualityComparer<T1>.Default.GetHashCode(cv1));
         }
         return 0;
     }
@@ -101,13 +101,13 @@ public readonly struct LowLevelChoice<T1, T2> : IEquatable<LowLevelChoice<T1, T2
     
     public override int GetHashCode()
     {
-        if (IsChoice1)
+        if (IsChoice1 && Choice1.Value is { } cv1)
         {
-            return HashCode.Combine(Index, EqualityComparer<T1>.Default.GetHashCode(Choice1.Value));
+            return HashCode.Combine(Index, EqualityComparer<T1>.Default.GetHashCode(cv1));
         }
-        else if (IsChoice2)
+        else if (IsChoice2 && Choice2.Value is { } cv2)
         {
-            return HashCode.Combine(Index, EqualityComparer<T2>.Default.GetHashCode(Choice2.Value));
+            return HashCode.Combine(Index, EqualityComparer<T2>.Default.GetHashCode(cv2));
         }
         return 0;
     }
