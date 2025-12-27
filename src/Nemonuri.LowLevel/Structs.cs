@@ -12,3 +12,25 @@ public readonly ref struct SpanAndSelector<T, TView>(Span<T> span, RefSelectorHa
     public readonly Span<T> Span = span;
     public readonly RefSelectorHandle<T, TView> Selector = selector;
 }
+
+public readonly struct LabeledKey<TLabel, TKey>
+    where TLabel : IEquatable<TLabel>
+    where TKey : IEquatable<TKey>
+{
+    public readonly TLabel Label;
+    public readonly TKey Key;
+
+    public LabeledKey(TLabel label, TKey key)
+    {
+        Label = label;
+        Key = key;
+    }
+}
+
+public readonly struct AdjacentsAndValue<TEdgeLabel, TNodeKey, TAdjacentsHandler, TNodeValue>
+    where TNodeKey : IEquatable<TNodeKey>
+    where TEdgeLabel : IEquatable<TEdgeLabel>
+{
+    public readonly AdHocMemoryView<TAdjacentsHandler, LabeledKey<TEdgeLabel, TNodeKey>> Adjacents;
+    public readonly TNodeValue NodeValue;
+}
