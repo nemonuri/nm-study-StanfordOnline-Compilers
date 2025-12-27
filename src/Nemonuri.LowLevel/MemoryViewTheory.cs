@@ -48,6 +48,22 @@ public static class MemoryViewTheory
     }
 
     extension
+    <TView, TMemoryView>
+    (scoped in 
+        TheoryBox<TView, TMemoryView>
+        theory)
+        where TMemoryView : IMemoryView<TView>
+    {
+        public unsafe AdHocMemoryView<TMemoryView, TView> ToAdHoc()
+        {
+            static int LengthGetter(in TMemoryView handler) => handler.Length;
+            static ref TView ItemGetter(ref TMemoryView handler, int index) => ref handler[index];
+
+            return new(theory.Self, new(&LengthGetter, &ItemGetter));
+        }
+    }
+
+    extension
     <TKey, TValue, TMemoryView>
     (scoped in TheoryBox<LowLevelKeyValuePair<TKey, TValue>, TMemoryView> theory)
         where TMemoryView : IMemoryView<LowLevelKeyValuePair<TKey, TValue>>
