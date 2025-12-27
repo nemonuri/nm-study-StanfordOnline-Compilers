@@ -3,6 +3,14 @@ namespace Nemonuri.LowLevel.Extensions;
 
 public static class SpanExtensions
 {
+    extension<T>(Span<T> self)
+    {
+        public SpanView<T, TView> ToView<TView>(RefSelectorHandle<T, TView> selectorHandle)
+        {
+            return new(self, selectorHandle);
+        }
+    }
+
     extension<TKey, TValue>(Span<LowLevelKeyValuePair<TKey, TValue>> self)
         where TKey : IEquatable<TKey>
     {
