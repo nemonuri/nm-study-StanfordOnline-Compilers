@@ -3,11 +3,11 @@ using System.Buffers;
 
 namespace Nemonuri.LowLevel;
 
-public interface ISpanViewProvider<TView>
+public interface ISpanViewHandleOwner<TView>
 {
 }
 
-public interface ISpanViewOwner<T, TView> : ISpanViewProvider<TView>
+public interface ISpanViewHandle<T, TView> : ISpanViewHandleOwner<TView>
 {
     void GetSpanView(scoped ref SpanView<T, TView> spanView);
 }

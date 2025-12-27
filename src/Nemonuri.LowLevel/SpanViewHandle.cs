@@ -1,7 +1,7 @@
 
 namespace Nemonuri.LowLevel;
 
-public readonly struct SpanViewHandle<TOwner, T, TView> : ISpanViewOwner<T, TView>
+public readonly struct SpanViewHandle<TOwner, T, TView> : ISpanViewHandle<T, TView>
 {
     private readonly TOwner _owner;
     
