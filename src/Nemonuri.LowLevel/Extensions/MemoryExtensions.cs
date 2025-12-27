@@ -10,6 +10,11 @@ public static class MemoryExtensions
             return new(self.Span, selectorHandle);
         }
 
+        public void ToView<TView>(RefSelectorHandle<T, TView> selectorHandle, scoped ref SpanView<T, TView> spanView)
+        {
+            spanView = new(self.Span, selectorHandle);
+        }
+
         public unsafe void 
         ToSpanViewOwner<TView>
         (
