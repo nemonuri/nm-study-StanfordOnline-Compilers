@@ -21,4 +21,3 @@ public readonly partial struct PackedTable<TKey, TValue> where TKey : IEquatable
         public void Add(TKey key, TValue value) => _builder.Add(new(key, value));
     }
 }
-
