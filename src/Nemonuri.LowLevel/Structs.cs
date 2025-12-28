@@ -1,4 +1,6 @@
 
+using CommunityToolkit.HighPerformance;
+
 namespace Nemonuri.LowLevel;
 
 public readonly struct MemoryAndSelector<T, TView>(Memory<T> memory, RefSelectorHandle<T, TView> selector)
