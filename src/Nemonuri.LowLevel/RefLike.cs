@@ -1,4 +1,6 @@
 
+using CommunityToolkit.HighPerformance;
+
 namespace Nemonuri.LowLevel;
 
 public readonly ref struct RefLike<T>
@@ -45,13 +47,6 @@ public readonly ref struct RefLike<T>
 
 public static class RefLike
 {
-    [StructLayout(LayoutKind.Sequential, Pack = 1)]
-    private struct ManagedBaseAndSelector<T>(object managedBase, RefSelectorHandle<object, T> selector)
-    {
-        public object ManagedBase = managedBase;
-        public readonly RefSelectorHandle<object, T> Selector = selector;
-    }
-
     public unsafe static RefLike<T> FromManaged<T>(object managedBase, delegate*<object, ref T> selector)
     {
         static ref T SelectorImpl(in nint voidSelector, ref byte byteSource)
@@ -66,19 +61,23 @@ public static class RefLike
         return new RefLike<T>(managedBase, new(&SelectorImpl), (nint)selector);
     }
 
-
-    [StructLayout(LayoutKind.Sequential, Pack = 1)]
-    private struct UnmanagedBaseAndSelector<TFrom, TTo>(TFrom unmanagedBase, RefSelectorHandle<TFrom, TTo> selector)
-        where TFrom : unmanaged
-        where TTo : unmanaged
+    public unsafe static RefLike<TTo> FromManagedStruct<TFrom, TTo>(TFrom managedBase, delegate*<ref TFrom, ref TTo> selector)
+        where TFrom : struct
     {
-        public TFrom UnmanagedBase = unmanagedBase;
-        public readonly RefSelectorHandle<TFrom, TTo> Selector = selector;
+        static ref TTo SelectorImpl(in nint voidSelector, ref byte byteSource)
+        {
+            ref var source = ref Unsafe.As<byte, Box<TFrom>>(ref byteSource).GetReference();
+            var selector = (delegate*<ref TFrom, ref TTo>)voidSelector;
+            return ref selector(ref source);
+        }
+
+        LowLevelGuard.IsNotNull(selector);
+        Box<TFrom> boxed = managedBase;
+        return new RefLike<TTo>(boxed, new(&SelectorImpl), (nint)selector);
     }
 
     public unsafe static RefLike<TTo> FromUnmanaged<TFrom, TTo>(Span<TFrom> unmanagedBaseSingleton, delegate*<ref TFrom, ref TTo> selector)
         where TFrom : unmanaged
-        where TTo : unmanaged
     {
         static ref TTo SelectorImpl(in nint voidSelector, ref byte byteSource)
         {
