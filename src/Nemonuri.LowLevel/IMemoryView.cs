@@ -1,5 +1,12 @@
 namespace Nemonuri.LowLevel;
 
+public interface IReadOnlyMemoryView<TView>
+{
+    int Length {get;}
+
+    [UnscopedRef] ref readonly TView this[int index] {get;}
+}
+
 public interface IMemoryView<TView>
 {
     int Length {get;}

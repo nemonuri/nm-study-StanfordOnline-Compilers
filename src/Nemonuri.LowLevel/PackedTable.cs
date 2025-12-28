@@ -1,13 +1,15 @@
 
+using System.Collections.Immutable;
+
 namespace Nemonuri.LowLevel;
 
 public readonly struct PackedTableView<TKey, TValue> :
     IMemoryView<LowLevelKeyValuePair<TKey, TValue>>
     where TKey : IEquatable<TKey>
 {
-    private readonly ArrayView<LowLevelKeyValuePair<TKey, TValue>, LowLevelKeyValuePair<TKey, TValue>> _arrayView;
+    private readonly ArrayView<LowLevelKeyValuePair<TKey, TValue>> _arrayView;
 
-    internal PackedTableView(ArrayView<LowLevelKeyValuePair<TKey, TValue>, LowLevelKeyValuePair<TKey, TValue>> arrayView)
+    internal PackedTableView(ArrayView<LowLevelKeyValuePair<TKey, TValue>> arrayView)
     {
         _arrayView = arrayView;
     }
@@ -17,7 +19,7 @@ public readonly struct PackedTableView<TKey, TValue> :
     public ref LowLevelKeyValuePair<TKey, TValue> this[int index] => ref _arrayView[index];
 }
 
-public readonly struct PackedTable<TKey, TValue> : 
+public readonly partial struct PackedTable<TKey, TValue> : 
     ILowLevelTable<TKey, TValue, PackedTableView<TKey, TValue>>
     where TKey : IEquatable<TKey>
 {
@@ -32,7 +34,8 @@ public readonly struct PackedTable<TKey, TValue> :
     {
         unsafe
         {
-            memoryView = new(new(Memory, new(&Internal.StaticMethods.Identity)));
+            memoryView = new(new(Memory));
         }
     }
 }
+

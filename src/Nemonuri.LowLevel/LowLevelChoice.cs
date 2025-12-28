@@ -63,16 +63,16 @@ public readonly struct LowLevelChoice<T1, T2> : IEquatable<LowLevelChoice<T1, T2
     //---|
 
     //--- Constructors ---
-    private LowLevelChoice(int index, Choice1Tagged<T1> choice1, Choice2Tagged<T2> choice2)
+    private LowLevelChoice(int index, ref readonly Choice1Tagged<T1> choice1, ref readonly Choice2Tagged<T2> choice2)
     {
         Index = index;
         Choice1 = choice1;
         Choice2 = choice2;
     }
 
-    public static implicit operator LowLevelChoice<T1, T2>(Nil nil) => new(0, default, default);
-    public static implicit operator LowLevelChoice<T1, T2>(Choice1Tagged<T1> choice1) => new(1, choice1, default);
-    public static implicit operator LowLevelChoice<T1, T2>(Choice2Tagged<T2> choice2) => new(2, default, choice2);
+    public static implicit operator LowLevelChoice<T1, T2>(Nil nil) => new(0, in UnsafeReadOnly.GetDefaultRef<Choice1Tagged<T1>>(), in UnsafeReadOnly.GetDefaultRef<Choice2Tagged<T2>>());
+    public static implicit operator LowLevelChoice<T1, T2>(Choice1Tagged<T1> choice1) => new(1, in choice1, in UnsafeReadOnly.GetDefaultRef<Choice2Tagged<T2>>());
+    public static implicit operator LowLevelChoice<T1, T2>(Choice2Tagged<T2> choice2) => new(2, in UnsafeReadOnly.GetDefaultRef<Choice1Tagged<T1>>(), in choice2);
     //---|
 
     //--- Validators ---
