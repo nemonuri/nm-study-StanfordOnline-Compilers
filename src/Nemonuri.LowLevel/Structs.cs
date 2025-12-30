@@ -16,7 +16,7 @@ public readonly ref struct SpanAndSelector<T, TView>(Span<T> span, RefSelectorHa
 }
 
 public struct AdjacentTable<TEdgeLabel, TNodeKey, TConfig> : 
-    ILowLevelTable<TEdgeLabel, TNodeKey, AbstractMemoryView<TConfig, LowLevelKeyValuePair<TEdgeLabel, TNodeKey>>>
+    ILowLevelTable<TEdgeLabel, TNodeKey, MemoryViewReceiver<TConfig, LowLevelKeyValuePair<TEdgeLabel, TNodeKey>>>
     where TNodeKey : IEquatable<TNodeKey>
     where TEdgeLabel : IEquatable<TEdgeLabel>
 {
@@ -27,7 +27,7 @@ public struct AdjacentTable<TEdgeLabel, TNodeKey, TConfig> :
         _table = table;
     }
 
-    public void GetMemoryView(scoped ref AbstractMemoryView<TConfig, LowLevelKeyValuePair<TEdgeLabel, TNodeKey>> memoryView) =>
+    public void GetMemoryView(scoped ref MemoryViewReceiver<TConfig, LowLevelKeyValuePair<TEdgeLabel, TNodeKey>> memoryView) =>
         _table.GetMemoryView(ref memoryView);
 }
 

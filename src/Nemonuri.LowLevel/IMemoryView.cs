@@ -14,12 +14,12 @@ public interface IMemoryView<TView>
     [UnscopedRef] ref TView this[int index] {get;}
 }
 
-public unsafe readonly struct AbstractMemoryViewHandle<THandler, TView>
+public unsafe readonly struct MemoryViewHandle<TReceiver, T>
 {
-    private readonly delegate*<in THandler, int> _lengthGetter;
-    private readonly delegate*<ref THandler, int, ref TView> _itemGetter;
+    private readonly delegate*<in TReceiver, int> _lengthGetter;
+    private readonly delegate*<ref TReceiver, int, ref T> _itemGetter;
 
-    public AbstractMemoryViewHandle(delegate*<in THandler, int> lengthGetter, delegate*<ref THandler, int, ref TView> itemGetter)
+    public MemoryViewHandle(delegate*<in TReceiver, int> lengthGetter, delegate*<ref TReceiver, int, ref T> itemGetter)
     {
         LowLevelGuard.IsNotNull(lengthGetter);
         LowLevelGuard.IsNotNull(itemGetter);
@@ -28,22 +28,22 @@ public unsafe readonly struct AbstractMemoryViewHandle<THandler, TView>
         _itemGetter = itemGetter;
     }
 
-    public int GetLength(in THandler handler) => _lengthGetter(in handler);
-    public ref TView GetItem(ref THandler handler, int index) => ref _itemGetter(ref handler, index);
+    public int GetLength(in TReceiver handler) => _lengthGetter(in handler);
+    public ref T GetItem(ref TReceiver handler, int index) => ref _itemGetter(ref handler, index);
 }
 
-public struct AbstractMemoryView<THandler, TView> : IMemoryView<TView>
+public struct MemoryViewReceiver<TReceiver, T> : IMemoryView<T>
 {
-    private THandler _handler;
-    private readonly AbstractMemoryViewHandle<THandler, TView> _handle;
+    private TReceiver _receiver;
+    private readonly MemoryViewHandle<TReceiver, T> _handle;
 
-    public AbstractMemoryView(THandler handler, AbstractMemoryViewHandle<THandler, TView> handle)
+    public MemoryViewReceiver(TReceiver receiver, MemoryViewHandle<TReceiver, T> handle)
     {
-        _handler = handler;
+        _receiver = receiver;
         _handle = handle;
     }
 
-    public readonly int Length => _handle.GetLength(in _handler);
+    public readonly int Length => _handle.GetLength(in _receiver);
 
-    [UnscopedRef] public ref TView this[int index] => ref _handle.GetItem(ref _handler, index);
+    [UnscopedRef] public ref T this[int index] => ref _handle.GetItem(ref _receiver, index);
 }

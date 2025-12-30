@@ -12,15 +12,15 @@ public interface ILowLevelTable<TKey, TValue, TMemoryView> :
 }
 
 public struct AbstractLowLevelTable<THandler, TKey, TValue> :
-    ILowLevelTable<TKey, TValue, AbstractMemoryView<THandler, LowLevelKeyValuePair<TKey, TValue>>>
+    ILowLevelTable<TKey, TValue, MemoryViewReceiver<THandler, LowLevelKeyValuePair<TKey, TValue>>>
     where TKey : IEquatable<TKey>
 {
-    private AbstractMemoryViewProvider<THandler, LowLevelKeyValuePair<TKey, TValue>, AbstractMemoryView<THandler, LowLevelKeyValuePair<TKey, TValue>>> _provider;
+    private MemoryViewProviderReceiver<THandler, LowLevelKeyValuePair<TKey, TValue>, MemoryViewReceiver<THandler, LowLevelKeyValuePair<TKey, TValue>>> _provider;
 
-    public AbstractLowLevelTable(AbstractMemoryViewProvider<THandler, LowLevelKeyValuePair<TKey, TValue>, AbstractMemoryView<THandler, LowLevelKeyValuePair<TKey, TValue>>> provider)
+    public AbstractLowLevelTable(MemoryViewProviderReceiver<THandler, LowLevelKeyValuePair<TKey, TValue>, MemoryViewReceiver<THandler, LowLevelKeyValuePair<TKey, TValue>>> provider)
     {
         _provider = provider;
     }
 
-    public void GetMemoryView(scoped ref AbstractMemoryView<THandler, LowLevelKeyValuePair<TKey, TValue>> memoryView) => _provider.GetMemoryView(ref memoryView);
+    public void GetMemoryView(scoped ref MemoryViewReceiver<THandler, LowLevelKeyValuePair<TKey, TValue>> memoryView) => _provider.GetMemoryView(ref memoryView);
 }
