@@ -4,7 +4,7 @@ namespace Nemonuri.LowLevel;
 public interface ITree<TLeaf, TNode, TNodeSequence, TChildrenProvider> 
     where TNode : IRefBox<LowLevelChoice<TLeaf, TChildrenProvider>>
     where TNodeSequence : IMemoryView<TNode>
-    where TChildrenProvider : ISingleOrSequenceProvider<TNode, TNodeSequence>
+    where TChildrenProvider : ISingleOrMemoryViewProvider<TNode, TNodeSequence>
 {
     [UnscopedRef] ref TNode RootNode {get;}
 }
@@ -12,7 +12,7 @@ public interface ITree<TLeaf, TNode, TNodeSequence, TChildrenProvider>
 public unsafe readonly struct TreeHandle<TReceiver, TLeaf, TNode, TNodeSequence, TChildrenProvider> 
     where TNode : IRefBox<LowLevelChoice<TLeaf, TChildrenProvider>>
     where TNodeSequence : IMemoryView<TNode>
-    where TChildrenProvider : ISingleOrSequenceProvider<TNode, TNodeSequence>
+    where TChildrenProvider : ISingleOrMemoryViewProvider<TNode, TNodeSequence>
 {
     private readonly delegate*<ref TReceiver, ref TNode> _pRootNode;
 
@@ -29,7 +29,7 @@ public struct TreeReceiver<TReceiver, TLeaf, TNode, TNodeSequence, TChildrenProv
     ITree<TLeaf, TNode, TNodeSequence, TChildrenProvider>
     where TNode : IRefBox<LowLevelChoice<TLeaf, TChildrenProvider>>
     where TNodeSequence : IMemoryView<TNode>
-    where TChildrenProvider : ISingleOrSequenceProvider<TNode, TNodeSequence>
+    where TChildrenProvider : ISingleOrMemoryViewProvider<TNode, TNodeSequence>
 {
     private TReceiver _receiver;
     private readonly TreeHandle<TReceiver, TLeaf, TNode, TNodeSequence, TChildrenProvider> _handle;
@@ -48,7 +48,7 @@ public struct TreeReceiver<TReceiver, TLeaf> :
         TLeaf, 
         TreeNodeReceiver<TReceiver, TLeaf>, 
         MemoryViewReceiver<TReceiver, TreeNodeReceiver<TReceiver, TLeaf>>,
-        SingleOrSequenceProviderReceiver<TReceiver, TreeNodeReceiver<TReceiver, TLeaf>>>
+        SingleOrMemoryViewProviderReceiver<TReceiver, TreeNodeReceiver<TReceiver, TLeaf>>>
 {
     private TReceiver _receiver;
     
@@ -57,13 +57,13 @@ public struct TreeReceiver<TReceiver, TLeaf> :
         TLeaf, 
         TreeNodeReceiver<TReceiver, TLeaf>, 
         MemoryViewReceiver<TReceiver, TreeNodeReceiver<TReceiver, TLeaf>>,
-        SingleOrSequenceProviderReceiver<TReceiver, TreeNodeReceiver<TReceiver, TLeaf>>>
+        SingleOrMemoryViewProviderReceiver<TReceiver, TreeNodeReceiver<TReceiver, TLeaf>>>
     _handle;
 
     public TreeReceiver
     (
         TReceiver receiver, 
-        TreeHandle<TReceiver, TLeaf, TreeNodeReceiver<TReceiver, TLeaf>, MemoryViewReceiver<TReceiver, TreeNodeReceiver<TReceiver, TLeaf>>, SingleOrSequenceProviderReceiver<TReceiver, TreeNodeReceiver<TReceiver, TLeaf>>> handle
+        TreeHandle<TReceiver, TLeaf, TreeNodeReceiver<TReceiver, TLeaf>, MemoryViewReceiver<TReceiver, TreeNodeReceiver<TReceiver, TLeaf>>, SingleOrMemoryViewProviderReceiver<TReceiver, TreeNodeReceiver<TReceiver, TLeaf>>> handle
     )
     {
         _receiver = receiver;

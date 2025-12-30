@@ -6,7 +6,7 @@ public static class SingleOrSequenceProviderTheory
     extension<T, TSequence, TProvider>
     (scoped in TheoryBox<(T, TSequence), TProvider> theory)
         where TSequence : IMemoryView<T>
-        where TProvider : ISingleOrSequenceProvider<T, TSequence>
+        where TProvider : ISingleOrMemoryViewProvider<T, TSequence>
     {
         public static
         TheoryBox<(T, TSequence), TProvider>
@@ -25,7 +25,7 @@ public static class SingleOrSequenceProviderTheory
         {
             single = default;
             sequence = default;
-            if (theory.Self.GetSingleOrSequence(ref single, ref sequence))
+            if (theory.Self.GetSingleOrMemory(ref single, ref sequence))
             {
                 return 1;
             }
@@ -43,8 +43,8 @@ public static class SingleOrSequenceProviderTheory
     extension<T, TSequence, TProvider>
     (scoped in TheoryBox<(T, TSequence), TProvider> theory)
         where TSequence : IMemoryView<T>
-        where TProvider : ISingleOrSequenceProvider<T, TSequence>
-        where T : ISingleOrSequenceProvider<T, TSequence>
+        where TProvider : ISingleOrMemoryViewProvider<T, TSequence>
+        where T : ISingleOrMemoryViewProvider<T, TSequence>
     {
 
         private int CompareSequence<TComparer>

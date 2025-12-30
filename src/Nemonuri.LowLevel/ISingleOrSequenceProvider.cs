@@ -1,34 +1,35 @@
 
 namespace Nemonuri.LowLevel;
 
-public interface ISingleOrSequenceProvider<T, TSequence>
+public interface ISingleOrMemoryViewProvider<T, TMemoryView>
 #if NET9_0_OR_GREATER
     where T : allows ref struct
 #endif
-    where TSequence : IMemoryView<T>
+    where TMemoryView : IMemoryView<T>
 #if NET9_0_OR_GREATER
     , allows ref struct
 #endif
 {
-    bool GetSingleOrSequence
+    bool GetSingleOrMemory
     (
         [NotNullWhen(true)] scoped ref T? single, 
-        [NotNullWhen(false)] scoped ref TSequence? sequence
+        [NotNullWhen(false)] scoped ref TMemoryView? sequence
     );
 }
 
-public unsafe readonly struct SingleOrSequenceProviderHandle<TReceiver, T, TSequence>
+public unsafe readonly struct SingleOrMemoryViewProviderHandle<TReceiver, T, TSequence>
 #if NET9_0_OR_GREATER
     where T : allows ref struct
 #endif
     where TSequence : IMemoryView<T>
 #if NET9_0_OR_GREATER
     , allows ref struct
+    where TReceiver : allows ref struct
 #endif
 {
     private readonly delegate*<ref TReceiver, out T?, out TSequence?, bool> _pGetSingleOrSequence;
 
-    public SingleOrSequenceProviderHandle(delegate*<ref TReceiver, out T?, out TSequence?, bool> pGetSingleOrSequence)
+    public SingleOrMemoryViewProviderHandle(delegate*<ref TReceiver, out T?, out TSequence?, bool> pGetSingleOrSequence)
     {
         _pGetSingleOrSequence = pGetSingleOrSequence;
     }
@@ -46,7 +47,7 @@ public unsafe readonly struct SingleOrSequenceProviderHandle<TReceiver, T, TSequ
     }
 }
 
-public struct SingleOrSequenceProviderReceiver<TReceiver, T, TSequence> : ISingleOrSequenceProvider<T, TSequence>
+public struct SingleOrSequenceProviderReceiver<TReceiver, T, TSequence> : ISingleOrMemoryViewProvider<T, TSequence>
 #if NET9_0_OR_GREATER
     where T : allows ref struct
 #endif
@@ -56,35 +57,57 @@ public struct SingleOrSequenceProviderReceiver<TReceiver, T, TSequence> : ISingl
 #endif
 {
     private TReceiver _receiver;
-    private readonly SingleOrSequenceProviderHandle<TReceiver, T, TSequence> _handle;
+    private readonly SingleOrMemoryViewProviderHandle<TReceiver, T, TSequence> _handle;
 
-    public SingleOrSequenceProviderReceiver(TReceiver receiver, SingleOrSequenceProviderHandle<TReceiver, T, TSequence> handle)
+    public SingleOrSequenceProviderReceiver(TReceiver receiver, SingleOrMemoryViewProviderHandle<TReceiver, T, TSequence> handle)
     {
         _receiver = receiver;
         _handle = handle;
     }
 
-    public bool GetSingleOrSequence([NotNullWhen(true)] scoped ref T? single, [NotNullWhen(false)] scoped ref TSequence? sequence)
+    public bool GetSingleOrMemory([NotNullWhen(true)] scoped ref T? single, [NotNullWhen(false)] scoped ref TSequence? sequence)
     {
         return _handle.GetSingleOrSequence(ref _receiver, ref single, ref sequence);
     }
 }
 
-public struct SingleOrSequenceProviderReceiver<TReceiver, T> : ISingleOrSequenceProvider<T, MemoryViewReceiver<TReceiver, T>>
+public struct SingleOrMemoryViewProviderReceiver<TReceiver, T> : ISingleOrMemoryViewProvider<T, MemoryViewReceiver<TReceiver, T>>
+#if NET9_0_OR_GREATER
+    where T : allows ref struct
+#endif
 {
-    private SingleOrSequenceProviderReceiver<TReceiver, T, MemoryViewReceiver<TReceiver, T>> _provider;
+    private TReceiver _receiver;
+    private readonly SingleOrMemoryViewProviderHandle<TReceiver, T,  MemoryViewReceiver<TReceiver, T>> _handle;
 
-    public SingleOrSequenceProviderReceiver(SingleOrSequenceProviderReceiver<TReceiver, T, MemoryViewReceiver<TReceiver, T>> provider)
+    public SingleOrMemoryViewProviderReceiver(TReceiver receiver, SingleOrMemoryViewProviderHandle<TReceiver, T,  MemoryViewReceiver<TReceiver, T>> handle)
     {
-        _provider = provider;
+        _receiver = receiver;
+        _handle = handle;
     }
 
-    public SingleOrSequenceProviderReceiver(TReceiver receiver, SingleOrSequenceProviderHandle<TReceiver, T,  MemoryViewReceiver<TReceiver, T>> handle) :
-        this(new(receiver, handle))
-    {}
-
-    public bool GetSingleOrSequence([NotNullWhen(true)] scoped ref T? single, [NotNullWhen(false)] scoped ref MemoryViewReceiver<TReceiver, T> sequence)
+    public bool GetSingleOrMemory([NotNullWhen(true)] scoped ref T? single, [NotNullWhen(false)] scoped ref MemoryViewReceiver<TReceiver, T> sequence)
     {
-        return _provider.GetSingleOrSequence(ref single, ref sequence);
+        return _handle.GetSingleOrSequence(ref _receiver, ref single, ref sequence);
     }
 }
+
+#if NET9_0_OR_GREATER
+public ref struct SingleOrSpanViewProviderReceiver<TReceiver, T> : ISingleOrMemoryViewProvider<T, SpanViewReceiver<TReceiver, T>>
+    where T : allows ref struct
+    where TReceiver : allows ref struct
+{
+    private TReceiver _receiver;
+    private readonly SingleOrMemoryViewProviderHandle<TReceiver, T,  SpanViewReceiver<TReceiver, T>> _handle;
+
+    public SingleOrSpanViewProviderReceiver(TReceiver receiver, SingleOrMemoryViewProviderHandle<TReceiver, T,  SpanViewReceiver<TReceiver, T>> handle)
+    {
+        _receiver = receiver;
+        _handle = handle;
+    }
+
+    public bool GetSingleOrMemory([NotNullWhen(true)] scoped ref T? single, [NotNullWhen(false)] scoped ref SpanViewReceiver<TReceiver, T> sequence)
+    {
+        return _handle.GetSingleOrSequence(ref _receiver, ref single, ref sequence);
+    }
+}
+#endif
