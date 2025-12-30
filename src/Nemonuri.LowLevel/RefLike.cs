@@ -76,7 +76,7 @@ public static class RefLike
         return new RefLike<TTo>(MemoryMarshal.AsBytes(unmanagedBaseSingleton), new(&SelectorImpl), (nint)selector);
     }
 
-    public unsafe static RefLike<TTo> DangerousFromManagedStruct<TFrom, TTo>(TFrom managedBase, delegate*<ref TFrom, ref TTo?> selector)
+    public unsafe static RefLike<TTo> FromManagedStruct<TFrom, TTo>(TFrom managedBase, delegate*<ref TFrom, ref TTo?> selector)
         where TFrom : struct
     {
         static ref TTo? SelectorImpl(in nint voidSelector, ref byte byteSource)
