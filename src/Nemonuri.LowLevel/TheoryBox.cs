@@ -6,6 +6,7 @@ public struct TheoryDomain<TDom>{}
 [StructLayout(LayoutKind.Sequential)]
 public readonly ref struct TheoryBox<TDom, TSource>
 #if NET9_0_OR_GREATER
+    where TDom : allows ref struct
     where TSource : allows ref struct
 #endif
 {
@@ -16,6 +17,7 @@ public static class TheoryBox
 {
     public static ref readonly TheoryBox<TDom, TSource> Box<TDom, TSource>(ref readonly TSource source) 
 #if NET9_0_OR_GREATER
+    where TDom : allows ref struct
     where TSource : allows ref struct
 #endif
         =>

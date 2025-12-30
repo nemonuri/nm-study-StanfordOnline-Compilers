@@ -34,6 +34,16 @@
 		]
 	},
 
+	"NETSTANDARD2_1_OR_GREATER": {
+		"scope": "csharp",
+		"prefix": "netstandard2_1",
+		"body": [
+			"#if${1| !, |}NETSTANDARD2_1_OR_GREATER",
+			"    $0",
+			"#endif"
+		]
+	},
+
 	"Ref field": {
 		"scope": "csharp",
 		"prefix": "reffield",
