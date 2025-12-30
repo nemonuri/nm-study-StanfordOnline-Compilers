@@ -1,8 +1,8 @@
 
 namespace Nemonuri.LowLevel;
 
-public interface IMemoryViewProvider<TView, TMemoryView>
-    where TMemoryView : IMemoryView<TView>
+public interface IMemoryViewProvider<T, TMemoryView>
+    where TMemoryView : IMemoryView<T>
 #if NET9_0_OR_GREATER
     ,allows ref struct
 #endif
@@ -29,17 +29,17 @@ public unsafe readonly struct MemoryViewProviderHandle<TReceiver, T, TMemoryView
 #pragma warning restore CS9094
 }
 
-public struct MemoryViewProviderReceiver<TReceiver, TView, TMemoryView> :
-    IMemoryViewProvider<TView, TMemoryView>
-    where TMemoryView : IMemoryView<TView>
+public struct MemoryViewProviderReceiver<TReceiver, T, TMemoryView> :
+    IMemoryViewProvider<T, TMemoryView>
+    where TMemoryView : IMemoryView<T>
 #if NET9_0_OR_GREATER
     ,allows ref struct
 #endif
 {
     private TReceiver _receiver;
-    private readonly MemoryViewProviderHandle<TReceiver, TView, TMemoryView> _handle;
+    private readonly MemoryViewProviderHandle<TReceiver, T, TMemoryView> _handle;
 
-    public MemoryViewProviderReceiver(TReceiver receiver, MemoryViewProviderHandle<TReceiver, TView, TMemoryView> handle)
+    public MemoryViewProviderReceiver(TReceiver receiver, MemoryViewProviderHandle<TReceiver, T, TMemoryView> handle)
     {
         _receiver = receiver;
         _handle = handle;

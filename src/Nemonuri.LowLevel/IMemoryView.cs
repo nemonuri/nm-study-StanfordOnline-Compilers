@@ -1,17 +1,23 @@
 namespace Nemonuri.LowLevel;
 
-public interface IReadOnlyMemoryView<TView>
+public interface IReadOnlyMemoryView<T>
+#if NET9_0_OR_GREATER
+    where T : allows ref struct
+#endif
 {
     int Length {get;}
 
-    [UnscopedRef] ref readonly TView this[int index] {get;}
+    [UnscopedRef] ref readonly T this[int index] {get;}
 }
 
-public interface IMemoryView<TView>
+public interface IMemoryView<T>
+#if NET9_0_OR_GREATER
+    where T : allows ref struct
+#endif
 {
     int Length {get;}
 
-    [UnscopedRef] ref TView this[int index] {get;}
+    [UnscopedRef] ref T this[int index] {get;}
 }
 
 public unsafe readonly struct MemoryViewHandle<TReceiver, T>
