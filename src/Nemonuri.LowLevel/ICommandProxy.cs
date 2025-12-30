@@ -18,6 +18,7 @@ public interface ICommandProxy<TState, TEvent, TArgument, TError, TReceiver>
     );
 
     //TreeProviderReceiver<TReceiver, uint, MemoryViewReceiver<TReceiver, uint>> MapArgumentToUInt32Tree(scoped in TArgument? argument);
+    //TreeReceiver<TReceiver, uint, TreeNodeReceiver<TReceiver, uint, 
 }
 
 public readonly struct InvocationInfo<TCommandId, TArgument>(TCommandId commandId, TArgument argument)

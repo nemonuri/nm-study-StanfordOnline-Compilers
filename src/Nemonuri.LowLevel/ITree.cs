@@ -43,22 +43,11 @@ public struct TreeReceiver<TReceiver, TLeaf, TNode, TNodeSequence, TChildrenProv
     [UnscopedRef] public ref TNode RootNode => ref _handle.GetRootNode(ref _receiver);
 }
 
-//public readonly struct TreeNodeHandle
-
-public readonly struct TreeProviderHandle<TReceiver, TLeaf, TNode, TNodeSequence> 
-    where TNode : IRefBox<LowLevelChoice<TLeaf, SingleOrSequenceProviderReceiver<TReceiver, TNode, TNodeSequence>>>
-    where TNodeSequence : IMemoryView<TNode>
+public struct TreeReceiver<TReceiver, TLeaf>
 {
-    public readonly TreeHandle<TReceiver, TLeaf, TNode, TNodeSequence, SingleOrSequenceProviderReceiver<TReceiver, TNode, TNodeSequence>> RootProviderHandle;
-    public readonly SingleOrSequenceProviderHandle<TReceiver, TNode, TNodeSequence> ChildrenProviderHandle;
-
-    public TreeProviderHandle
-    (
-        TreeHandle<TReceiver, TLeaf, TNode, TNodeSequence, SingleOrSequenceProviderReceiver<TReceiver, TNode, TNodeSequence>> rootProviderHandle,
-        SingleOrSequenceProviderHandle<TReceiver, TNode, TNodeSequence> childrenProviderHandle
-    )
-    {
-        RootProviderHandle = rootProviderHandle;
-        ChildrenProviderHandle = childrenProviderHandle;
-    }
+    private TReceiver _receiver;
+    private readonly 
+    TreeHandle<TReceiver, TLeaf, 
+        TreeNodeReceiver<TReceiver, TLeaf, 
+        TNodeSequence, TChildrenProvider> _handle;
 }

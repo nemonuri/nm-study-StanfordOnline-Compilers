@@ -27,3 +27,25 @@ public struct TreeNodeReceiver<TReceiver, TLeaf, TNodeSequence, TChildrenProvide
 
     [UnscopedRef] public ref LowLevelChoice<TLeaf, TChildrenProvider> Value => ref _refBoxReceiver.Value;
 }
+
+public struct TreeNodeReceiver<TReceiver, TLeaf> :
+    ITreeNode<
+        TLeaf, 
+        TreeNodeReceiver<TReceiver, TLeaf>, 
+        MemoryViewReceiver<TReceiver, TreeNodeReceiver<TReceiver, TLeaf>>,
+        SingleOrSequenceProviderReceiver<TReceiver, TreeNodeReceiver<TReceiver, TLeaf>>>
+{
+    private RefBoxReceiver<TReceiver, LowLevelChoice<TLeaf, SingleOrSequenceProviderReceiver<TReceiver, TreeNodeReceiver<TReceiver, TLeaf>>>> _refBoxReceiver;
+
+    public TreeNodeReceiver(RefBoxReceiver<TReceiver, LowLevelChoice<TLeaf, SingleOrSequenceProviderReceiver<TReceiver, TreeNodeReceiver<TReceiver, TLeaf>>>> refBoxReceiver)
+    {
+        _refBoxReceiver = refBoxReceiver;
+    }
+
+    public TreeNodeReceiver(TReceiver receiver, RefBoxHandle<TReceiver, LowLevelChoice<TLeaf, SingleOrSequenceProviderReceiver<TReceiver, TreeNodeReceiver<TReceiver, TLeaf>>>> handle) :
+        this(new(receiver, handle))
+    {
+    }
+
+    [UnscopedRef] public ref LowLevelChoice<TLeaf, SingleOrSequenceProviderReceiver<TReceiver, TreeNodeReceiver<TReceiver, TLeaf>>> Value => ref _refBoxReceiver.Value;
+}

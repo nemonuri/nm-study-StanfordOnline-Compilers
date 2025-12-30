@@ -69,3 +69,22 @@ public struct SingleOrSequenceProviderReceiver<TReceiver, T, TSequence> : ISingl
         return _handle.GetSingleOrSequence(ref _receiver, ref single, ref sequence);
     }
 }
+
+public struct SingleOrSequenceProviderReceiver<TReceiver, T> : ISingleOrSequenceProvider<T, MemoryViewReceiver<TReceiver, T>>
+{
+    private SingleOrSequenceProviderReceiver<TReceiver, T, MemoryViewReceiver<TReceiver, T>> _provider;
+
+    public SingleOrSequenceProviderReceiver(SingleOrSequenceProviderReceiver<TReceiver, T, MemoryViewReceiver<TReceiver, T>> provider)
+    {
+        _provider = provider;
+    }
+
+    public SingleOrSequenceProviderReceiver(TReceiver receiver, SingleOrSequenceProviderHandle<TReceiver, T,  MemoryViewReceiver<TReceiver, T>> handle) :
+        this(new(receiver, handle))
+    {}
+
+    public bool GetSingleOrSequence([NotNullWhen(true)] scoped ref T? single, [NotNullWhen(false)] scoped ref MemoryViewReceiver<TReceiver, T> sequence)
+    {
+        return _provider.GetSingleOrSequence(ref single, ref sequence);
+    }
+}
