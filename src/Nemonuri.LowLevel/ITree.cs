@@ -43,11 +43,32 @@ public struct TreeReceiver<TReceiver, TLeaf, TNode, TNodeSequence, TChildrenProv
     [UnscopedRef] public ref TNode RootNode => ref _handle.GetRootNode(ref _receiver);
 }
 
-public struct TreeReceiver<TReceiver, TLeaf>
+public struct TreeReceiver<TReceiver, TLeaf> : 
+    ITree<
+        TLeaf, 
+        TreeNodeReceiver<TReceiver, TLeaf>, 
+        MemoryViewReceiver<TReceiver, TreeNodeReceiver<TReceiver, TLeaf>>,
+        SingleOrSequenceProviderReceiver<TReceiver, TreeNodeReceiver<TReceiver, TLeaf>>>
 {
     private TReceiver _receiver;
-    private readonly 
-    TreeHandle<TReceiver, TLeaf, 
-        TreeNodeReceiver<TReceiver, TLeaf, 
-        TNodeSequence, TChildrenProvider> _handle;
+    
+    private readonly TreeHandle<
+        TReceiver, 
+        TLeaf, 
+        TreeNodeReceiver<TReceiver, TLeaf>, 
+        MemoryViewReceiver<TReceiver, TreeNodeReceiver<TReceiver, TLeaf>>,
+        SingleOrSequenceProviderReceiver<TReceiver, TreeNodeReceiver<TReceiver, TLeaf>>>
+    _handle;
+
+    public TreeReceiver
+    (
+        TReceiver receiver, 
+        TreeHandle<TReceiver, TLeaf, TreeNodeReceiver<TReceiver, TLeaf>, MemoryViewReceiver<TReceiver, TreeNodeReceiver<TReceiver, TLeaf>>, SingleOrSequenceProviderReceiver<TReceiver, TreeNodeReceiver<TReceiver, TLeaf>>> handle
+    )
+    {
+        _receiver = receiver;
+        _handle = handle;
+    }
+
+    [UnscopedRef] public ref TreeNodeReceiver<TReceiver, TLeaf> RootNode => ref _handle.GetRootNode(ref _receiver);
 }
