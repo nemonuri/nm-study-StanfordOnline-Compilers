@@ -54,12 +54,32 @@ public static class MemoryViewTheory
         theory)
         where TMemoryView : IMemoryView<TView>
     {
-        public unsafe MemoryViewReceiver<TMemoryView, TView> ToLowLevelAbstrct()
+        public unsafe MemoryViewReceiver<TMemoryView, TView> ToLowLevelAbstract()
         {
-            static int LengthGetter(in TMemoryView handler) => handler.Length;
-            static ref TView ItemGetter(ref TMemoryView handler, int index) => ref handler[index];
+            return new(theory.Self, new(&LengthGetterImpl<TView, TMemoryView>, &ItemGetterImpl<TView, TMemoryView>));
+        }
 
-            return new(theory.Self, new(&LengthGetter, &ItemGetter));
+        private static int LengthGetterImpl(in TMemoryView handler) => handler.Length;
+        private static ref TView ItemGetterImpl(ref TMemoryView handler, int index) => ref handler[index];
+    }
+
+    extension
+    <TView, TMemoryView>
+    (scoped in 
+        TheoryBox<TView, TMemoryView>
+        theory)
+        where TMemoryView : IMemoryView<TView>, IMaybeSupportsRawSpan<TView>
+    {
+        public unsafe MemoryViewReceiver<TMemoryView, TView> ToLowLevelAbstractWithRawSpanSupport()
+        {
+            static Span<TView> AsSpanImpl(ref TMemoryView receiver) => receiver.AsSpan;
+
+            return new
+            (
+                theory.Self, 
+                new(&LengthGetterImpl<TView, TMemoryView>, &ItemGetterImpl<TView, TMemoryView>),
+                new(theory.Self.SupportsRawSpan ? &AsSpanImpl : default)
+            );
         }
     }
 

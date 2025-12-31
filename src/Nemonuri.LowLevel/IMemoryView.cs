@@ -32,41 +32,62 @@ public unsafe readonly struct MemoryViewHandle<TReceiver, T>
     public ref T GetItem(ref TReceiver handler, int index) => ref _itemGetter(ref handler, index);
 }
 
-public struct MemoryViewReceiver<TReceiver, T> : IMemoryView<T>
-#if NET9_0_OR_GREATER
-    where T : allows ref struct
-#endif
+public struct MemoryViewReceiver<TReceiver, T> : IMemoryView<T>, IMaybeSupportsRawSpan<T>
 {
     private TReceiver _receiver;
-    private readonly MemoryViewHandle<TReceiver, T> _handle;
+    private readonly MemoryViewHandle<TReceiver, T> _memoryViewhandle;
+    private readonly MaybeSupportsRawSpanHandle<TReceiver, T> _rawSpanHandle;
 
-    public MemoryViewReceiver(TReceiver receiver, MemoryViewHandle<TReceiver, T> handle)
+    public MemoryViewReceiver
+    (
+        TReceiver receiver, 
+        MemoryViewHandle<TReceiver, T> memoryViewhandle,
+        MaybeSupportsRawSpanHandle<TReceiver, T> rawSpanHandle = default
+    )
     {
         _receiver = receiver;
-        _handle = handle;
+        _memoryViewhandle = memoryViewhandle;
+        _rawSpanHandle = rawSpanHandle;
     }
 
-    public readonly int Length => _handle.GetLength(in _receiver);
+    public readonly int Length => _memoryViewhandle.GetLength(in _receiver);
 
-    [UnscopedRef] public ref T this[int index] => ref _handle.GetItem(ref _receiver, index);
+    [UnscopedRef] public ref T this[int index] => ref _memoryViewhandle.GetItem(ref _receiver, index);
+
+    public readonly bool SupportsRawSpan => _rawSpanHandle.SupportsRawSpan;
+
+    [UnscopedRef] public Span<T> AsSpan => _rawSpanHandle.AsSpan(ref _receiver);
 }
 
 #if NET9_0_OR_GREATER
-public ref struct SpanViewReceiver<TReceiver, T> : IMemoryView<T>
+// Note
+// - This is just copy-paste of 'MemoryViewReceiver'.
+// - Can I Automate it?
+public ref struct SpanViewReceiver<TReceiver, T> : IMemoryView<T>, IMaybeSupportsRawSpan<T>
     where TReceiver : allows ref struct
-    where T : allows ref struct
 {
     private TReceiver _receiver;
-    private readonly MemoryViewHandle<TReceiver, T> _handle;
+    private readonly MemoryViewHandle<TReceiver, T> _memoryViewhandle;
+    private readonly MaybeSupportsRawSpanHandle<TReceiver, T> _rawSpanHandle;
 
-    public SpanViewReceiver(TReceiver receiver, MemoryViewHandle<TReceiver, T> handle)
+    public SpanViewReceiver
+    (
+        TReceiver receiver, 
+        MemoryViewHandle<TReceiver, T> memoryViewhandle,
+        MaybeSupportsRawSpanHandle<TReceiver, T> rawSpanHandle = default
+    )
     {
         _receiver = receiver;
-        _handle = handle;
+        _memoryViewhandle = memoryViewhandle;
+        _rawSpanHandle = rawSpanHandle;
     }
 
-    public int Length => _handle.GetLength(in _receiver);
+    public int Length => _memoryViewhandle.GetLength(in _receiver);
 
-    [UnscopedRef] public ref T this[int index] => ref _handle.GetItem(ref _receiver, index);
+    [UnscopedRef] public ref T this[int index] => ref _memoryViewhandle.GetItem(ref _receiver, index);
+
+    public readonly bool SupportsRawSpan => _rawSpanHandle.SupportsRawSpan;
+
+    [UnscopedRef] public Span<T> AsSpan => _rawSpanHandle.AsSpan(ref _receiver);
 }
 #endif

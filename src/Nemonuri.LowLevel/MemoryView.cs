@@ -40,7 +40,7 @@ public readonly struct ArraySegmentView<T, TView> : IMemoryView<TView>
     public ref TView this[int index] => ref _selectorHandle.Invoke(ref GetRef(index));
 }
 
-public readonly struct ArrayView<T> : IMemoryView<T>
+public readonly struct ArrayView<T> : IMemoryView<T>, IMaybeSupportsRawSpan<T>
 {
     private readonly T[] _values;
 
@@ -52,6 +52,10 @@ public readonly struct ArrayView<T> : IMemoryView<T>
     public int Length => _values.Length;
 
     public ref T this[int index] => ref _values[index];
+
+    public bool SupportsRawSpan => true;
+
+    public Span<T> AsSpan => _values.AsSpan();
 }
 
 public struct ArrayView<TSource, TResult> : IMemoryView<TResult>
