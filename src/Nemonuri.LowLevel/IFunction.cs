@@ -2,18 +2,32 @@ namespace Nemonuri.LowLevel;
 
 public interface IFunction<T, TOut>
 {
-    TOut? Invoke(ref T arg);
+    TOut? InvokeFunction(ref T arg);
 }
 
 public unsafe readonly struct FunctionHandle<TReceiver, T, TOut>
 {
-    private readonly delegate*<ref TReceiver, ref T, TOut?> _pInvoke;
+    private readonly delegate*<ref TReceiver, ref T, TOut?> _pInvokeFunction;
 
-    public FunctionHandle(delegate*<ref TReceiver, ref T, TOut?> pInvoke)
+    public FunctionHandle(delegate*<ref TReceiver, ref T, TOut?> pInvokeFunction)
     {
-        LowLevelGuard.IsNotNull(pInvoke);
-        _pInvoke = pInvoke;
+        LowLevelGuard.IsNotNull(pInvokeFunction);
+        _pInvokeFunction = pInvokeFunction;
     }
 
-    public TOut? InvokeInvoke(ref TReceiver receiver, ref T arg) => _pInvoke(ref receiver, ref arg);
+    public TOut? InvokeFunction(ref TReceiver receiver, ref T arg) => _pInvokeFunction(ref receiver, ref arg);
+}
+
+public static class FunctionTheory
+{
+    extension<T, TOut, TFunction>(TFunction func)
+        where TFunction : IFunction<T, TOut>
+    {
+        public FunctionHandle<TFunction, T, TOut> ToFunctionHandle()
+        {
+            static TOut? InvokeImpl(ref TFunction func0, ref T arg) => func0.InvokeFunction(ref arg);
+
+            unsafe { return new(&InvokeImpl); }
+        }
+    }
 }

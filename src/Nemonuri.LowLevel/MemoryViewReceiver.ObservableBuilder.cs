@@ -17,7 +17,7 @@ public partial struct MemoryViewReceiver<TReceiver, T>
             FunctionHandle<TReceiver, ArrayView<T>, MemoryViewReceiver<TReceiver, T>> liftHandle
         )
         {
-            ArrayViewBuilderObserverHandle<TReceiver, T> embedded = embedHandle.InvokeInvoke(ref receiver, ref observerHandle);
+            ArrayViewBuilderObserverHandle<TReceiver, T> embedded = embedHandle.InvokeFunction(ref receiver, ref observerHandle);
             _liftHandle = liftHandle;
             _builder = new(receiver, ref embedded, initialCapacity);
         }
@@ -30,8 +30,7 @@ public partial struct MemoryViewReceiver<TReceiver, T>
         public MemoryViewReceiver<TReceiver, T> Build()
         {
             ArrayView<T> resultArrayView = _builder.Build();
-            return _liftHandle.InvokeInvoke(ref _builder.Value!, ref resultArrayView);
+            return _liftHandle.InvokeFunction(ref _builder.Value!, ref resultArrayView);
         }
     }
 }
-
