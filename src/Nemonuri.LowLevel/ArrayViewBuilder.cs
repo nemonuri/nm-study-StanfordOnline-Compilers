@@ -2,7 +2,7 @@
 
 namespace Nemonuri.LowLevel;
 
-public struct ArrayViewBuilder<T> : IMemoryView<T>, IMaybeSupportsRawSpan<T>
+public struct ArrayViewBuilder<T> : IMemoryView<T>, IMaybeSupportsRawSpan<T>, IBuilder<T, ArrayView<T>>
 {
     private T[]? _array;
     private int _length;
@@ -22,12 +22,12 @@ public struct ArrayViewBuilder<T> : IMemoryView<T>, IMaybeSupportsRawSpan<T>
         return newArray;
     }
 
-    public ArrayView<T> ToArrayView()
+    public ArrayView<T> Build()
     {
         return new(ToArray());
     }
 
-    public void Add(T item)
+    public void Add(in T item)
     {
         EnsureCapacity(Length+1);
         RawArray[_length] = item;
