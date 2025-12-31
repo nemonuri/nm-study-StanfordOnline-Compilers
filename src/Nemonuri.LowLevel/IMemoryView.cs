@@ -32,7 +32,7 @@ public unsafe readonly struct MemoryViewHandle<TReceiver, T>
     public ref T GetItem(ref TReceiver handler, int index) => ref _itemGetter(ref handler, index);
 }
 
-public struct MemoryViewReceiver<TReceiver, T> : IMemoryView<T>, IMaybeSupportsRawSpan<T>
+public partial struct MemoryViewReceiver<TReceiver, T> : IMemoryView<T>, IMaybeSupportsRawSpan<T>
 {
     private TReceiver _receiver;
     private readonly MemoryViewHandle<TReceiver, T> _memoryViewhandle;

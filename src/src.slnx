@@ -3,6 +3,7 @@
     <Project Path="test/Nemonuri.LowLevel.UnitTests/Nemonuri.LowLevel.UnitTests.csproj" />
   </Folder>
   <Project Path="DscTool/DscTool.csproj" />
+  <Project Path="Nemonuri.Graph.LowLevel/Nemonuri.Graph.LowLevel.csproj" />
   <Project Path="Nemonuri.Json.LowLevel/Nemonuri.Json.LowLevel.csproj" />
   <Project Path="Nemonuri.LowLevel/Nemonuri.LowLevel.csproj" />
 </Solution>

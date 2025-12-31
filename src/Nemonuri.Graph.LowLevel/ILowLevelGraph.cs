@@ -1,5 +1,4 @@
-
-namespace Nemonuri.LowLevel;
+﻿namespace Nemonuri.Graph.LowLevel;
 
 public interface ILowLevelGraph<TNodeKey, TEdgeLabel, TNodeValue, TMemoryView, TConfig> :
     ILowLevelTable<TNodeKey, AdjacentTableAndValue<TEdgeLabel, TNodeKey, TNodeValue, TConfig>, TMemoryView>

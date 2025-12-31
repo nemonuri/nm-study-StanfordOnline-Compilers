@@ -1,23 +1,34 @@
 
-using System.Collections.Immutable;
-
 namespace Nemonuri.LowLevel;
 
 public readonly partial struct PackedTable<TKey, TValue> where TKey : IEquatable<TKey>
 {
-    public class Builder : IMemoryView<LowLevelKeyValuePair<TKey, TValue>>
-    {
-        private readonly ImmutableArray<LowLevelKeyValuePair<TKey, TValue>>.Builder _builder;
+    public static Builder CreateBuilder(int initialCapacity = 4) => new(initialCapacity);
 
-        internal Builder()
+    public readonly struct Builder : 
+        IMemoryView<LowLevelKeyValuePair<TKey, TValue>>, 
+        IMaybeSupportsRawSpan<LowLevelKeyValuePair<TKey, TValue>>
+    {
+        private readonly ArrayViewBuilder<LowLevelKeyValuePair<TKey, TValue>> _builder;
+
+        internal Builder(int initialCapacity)
         {
-            _builder = ImmutableArray.CreateBuilder<LowLevelKeyValuePair<TKey, TValue>>();
+            _builder = new(initialCapacity);
         }
 
-        public int Length => _builder.Count;
+        public PackedTable<TKey, TValue> ToPackedTable()
+        {
+            return new(_builder.ToArray());
+        }
 
-        public ref LowLevelKeyValuePair<TKey, TValue> this[int index] => ref Unsafe.AsRef(in _builder.ItemRef(index));
+        public int Length => _builder.Length;
+
+        public ref LowLevelKeyValuePair<TKey, TValue> this[int index] => ref _builder[index];
 
         public void Add(TKey key, TValue value) => _builder.Add(new(key, value));
+
+        public bool SupportsRawSpan => _builder.SupportsRawSpan;
+
+        public Span<LowLevelKeyValuePair<TKey, TValue>> AsSpan => _builder.AsSpan;
     }
 }

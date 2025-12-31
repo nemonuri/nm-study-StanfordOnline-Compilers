@@ -55,9 +55,6 @@ public struct MemoryViewProviderReceiver<TReceiver, T, TMemoryView> :
 
 public readonly struct MemoryViewProviderReceiver<TReceiver, T> :
     IMemoryViewProvider<T, MemoryViewReceiver<TReceiver, T>>
-#if NET9_0_OR_GREATER
-    where T : allows ref struct
-#endif
 {
     private readonly MemoryViewProviderReceiver<TReceiver, T, MemoryViewReceiver<TReceiver, T>> _provider;
 
@@ -78,7 +75,6 @@ public readonly struct MemoryViewProviderReceiver<TReceiver, T> :
 public ref struct SpanViewProviderReceiver<TReceiver, T> :
     IMemoryViewProvider<T, SpanViewReceiver<TReceiver, T>>
     where TReceiver : allows ref struct
-    where T : allows ref struct
 {
     private TReceiver _receiver;
     private readonly MemoryViewProviderHandle<TReceiver, T, SpanViewReceiver<TReceiver, T>> _handle;

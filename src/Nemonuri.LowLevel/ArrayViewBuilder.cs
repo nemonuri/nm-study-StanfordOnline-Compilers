@@ -18,7 +18,7 @@ public struct ArrayViewBuilder<T> : IMemoryView<T>, IMaybeSupportsRawSpan<T>
         if (Length == 0) { return []; }
 
         T[] newArray = new T[Length];
-        Array.Copy(AsArray, newArray, Length);
+        Array.Copy(RawArray, newArray, Length);
         return newArray;
     }
 
@@ -30,7 +30,7 @@ public struct ArrayViewBuilder<T> : IMemoryView<T>, IMaybeSupportsRawSpan<T>
     public void Add(T item)
     {
         EnsureCapacity(Length+1);
-        AsArray[_length] = item;
+        RawArray[_length] = item;
         _length += 1;
     }
 
@@ -49,14 +49,14 @@ public struct ArrayViewBuilder<T> : IMemoryView<T>, IMaybeSupportsRawSpan<T>
         Array.Resize(ref _array, newCapacity);
     }
 
-    public T[] AsArray => _array ??= [];
+    public T[] RawArray => _array ??= [];
 
     public readonly int Length => _length;
-    public int Capacity => AsArray.Length;
+    public int Capacity => RawArray.Length;
 
-    public ref T this[int index] => ref AsArray[index];
+    public ref T this[int index] => ref RawArray[index];
 
-    public bool SupportsRawSpan => true;
+    public readonly bool SupportsRawSpan => true;
 
-    public Span<T> AsSpan => AsArray.AsSpan();
+    public Span<T> AsSpan => RawArray.AsSpan()[..Length];
 }

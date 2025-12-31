@@ -13,9 +13,9 @@ public struct TreeNodeReceiver<TReceiver, TLeaf, TNodeSequence, TChildrenProvide
     where TNodeSequence : IMemoryView<TreeNodeReceiver<TReceiver, TLeaf, TNodeSequence, TChildrenProvider>>
     where TChildrenProvider : ISingleOrMemoryViewProvider<TreeNodeReceiver<TReceiver, TLeaf, TNodeSequence, TChildrenProvider>, TNodeSequence>
 {
-    private BoxableRefBoxReceiver<TReceiver, LowLevelChoice<TLeaf, TChildrenProvider>> _refBoxReceiver;
+    private RefBoxReceiver<TReceiver, LowLevelChoice<TLeaf, TChildrenProvider>> _refBoxReceiver;
 
-    public TreeNodeReceiver(BoxableRefBoxReceiver<TReceiver, LowLevelChoice<TLeaf, TChildrenProvider>> refBoxReceiver)
+    public TreeNodeReceiver(RefBoxReceiver<TReceiver, LowLevelChoice<TLeaf, TChildrenProvider>> refBoxReceiver)
     {
         _refBoxReceiver = refBoxReceiver;
     }
@@ -35,9 +35,9 @@ public struct TreeNodeReceiver<TReceiver, TLeaf> :
         MemoryViewReceiver<TReceiver, TreeNodeReceiver<TReceiver, TLeaf>>,
         SingleOrMemoryViewProviderReceiver<TReceiver, TreeNodeReceiver<TReceiver, TLeaf>>>
 {
-    private BoxableRefBoxReceiver<TReceiver, LowLevelChoice<TLeaf, SingleOrMemoryViewProviderReceiver<TReceiver, TreeNodeReceiver<TReceiver, TLeaf>>>> _refBoxReceiver;
+    private RefBoxReceiver<TReceiver, LowLevelChoice<TLeaf, SingleOrMemoryViewProviderReceiver<TReceiver, TreeNodeReceiver<TReceiver, TLeaf>>>> _refBoxReceiver;
 
-    public TreeNodeReceiver(BoxableRefBoxReceiver<TReceiver, LowLevelChoice<TLeaf, SingleOrMemoryViewProviderReceiver<TReceiver, TreeNodeReceiver<TReceiver, TLeaf>>>> refBoxReceiver)
+    public TreeNodeReceiver(RefBoxReceiver<TReceiver, LowLevelChoice<TLeaf, SingleOrMemoryViewProviderReceiver<TReceiver, TreeNodeReceiver<TReceiver, TLeaf>>>> refBoxReceiver)
     {
         _refBoxReceiver = refBoxReceiver;
     }

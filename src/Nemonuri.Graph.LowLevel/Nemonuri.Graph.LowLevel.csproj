@@ -1,0 +1,17 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks Condition="true">netstandard2.0</TargetFrameworks>
+    <TargetFrameworks Condition="!$(_IsNetStandard2_0Only)">$(TargetFrameworks);net8.0;net10.0</TargetFrameworks>
+    <LangVersion>14</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <EmitCompilerGeneratedFiles>enable</EmitCompilerGeneratedFiles>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Nemonuri.LowLevel\Nemonuri.LowLevel.csproj" />
+  </ItemGroup>
+
+</Project>

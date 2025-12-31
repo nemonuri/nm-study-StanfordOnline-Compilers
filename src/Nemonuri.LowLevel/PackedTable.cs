@@ -1,10 +1,9 @@
 
-using System.Collections.Immutable;
-
 namespace Nemonuri.LowLevel;
 
 public readonly struct PackedTableView<TKey, TValue> :
-    IMemoryView<LowLevelKeyValuePair<TKey, TValue>>
+    IMemoryView<LowLevelKeyValuePair<TKey, TValue>>,
+    IMaybeSupportsRawSpan<LowLevelKeyValuePair<TKey, TValue>>
     where TKey : IEquatable<TKey>
 {
     private readonly ArrayView<LowLevelKeyValuePair<TKey, TValue>> _arrayView;
@@ -17,6 +16,10 @@ public readonly struct PackedTableView<TKey, TValue> :
     public int Length => _arrayView.Length;
 
     public ref LowLevelKeyValuePair<TKey, TValue> this[int index] => ref _arrayView[index];
+
+    public bool SupportsRawSpan => true;
+
+    public Span<LowLevelKeyValuePair<TKey, TValue>> AsSpan => _arrayView.AsSpan;
 }
 
 public readonly partial struct PackedTable<TKey, TValue> : 
