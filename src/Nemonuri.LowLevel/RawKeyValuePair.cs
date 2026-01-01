@@ -1,6 +1,7 @@
 
 namespace Nemonuri.LowLevel;
 
+[StructLayout(LayoutKind.Sequential)]
 public struct RawKeyValuePair<TKey, TValue>
 {
     public readonly TKey Key;
