@@ -24,7 +24,7 @@ public unsafe readonly struct GoPointer<T> : IRefBox<T>
 
     public bool IsNull => Boxed is null && Unmanaged == null;
 
-    public ref T Value
+    public ref T RefValue
     {
         get
         {
@@ -54,7 +54,7 @@ public readonly ref struct ManagedGoPointer<T> : IRefBox<T>
 
     public bool IsNull => Boxed is null && Unsafe.IsNullRef(in Managed);
 
-    public ref T Value
+    public ref T RefValue
     {
         get
         {

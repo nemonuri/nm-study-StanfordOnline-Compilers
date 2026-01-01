@@ -8,9 +8,11 @@ public interface IMemoryViewProvider<T, TMemoryView>
     where T : allows ref struct
 #endif
 {
-    void GetMemoryView(scoped ref TMemoryView memoryView);
+    [UnscopedRef]
+    void GetMemoryView(out TMemoryView memoryView);
 }
 
+[StructLayout(LayoutKind.Sequential)]
 public unsafe readonly struct MemoryViewProviderHandle<TReceiver, T, TMemoryView>
     where TMemoryView : IMemoryView<T>
 #if NET9_0_OR_GREATER
@@ -27,10 +29,8 @@ public unsafe readonly struct MemoryViewProviderHandle<TReceiver, T, TMemoryView
         _getMemoryViewImpl = getMemoryViewImpl;
     }
 
-#pragma warning disable CS9094
-    public void GetMemoryView(ref TReceiver handler, scoped ref TMemoryView memoryView) => 
-        _getMemoryViewImpl(ref handler, out memoryView);
-#pragma warning restore CS9094
+    public void GetMemoryView(ref TReceiver receiver, out TMemoryView memoryView) => 
+        _getMemoryViewImpl(ref receiver, out memoryView);
 }
 
 public struct MemoryViewProviderReceiver<TReceiver, T, TMemoryView> :
@@ -50,7 +50,8 @@ public struct MemoryViewProviderReceiver<TReceiver, T, TMemoryView> :
         _handle = handle;
     }
 
-    public void GetMemoryView(scoped ref TMemoryView memoryView) => _handle.GetMemoryView(ref _receiver, ref memoryView);
+    [UnscopedRef]
+    public void GetMemoryView(out TMemoryView memoryView) => _handle.GetMemoryView(ref _receiver, out memoryView);
 }
 
 public readonly struct MemoryViewProviderReceiver<TReceiver, T> :
@@ -68,7 +69,7 @@ public readonly struct MemoryViewProviderReceiver<TReceiver, T> :
     {
     }
 
-    public void GetMemoryView(scoped ref MemoryViewReceiver<TReceiver, T> memoryView) => _provider.GetMemoryView(ref memoryView);
+    public void GetMemoryView(out MemoryViewReceiver<TReceiver, T> memoryView) => _provider.GetMemoryView(out memoryView);
 }
 
 #if NET9_0_OR_GREATER
@@ -85,6 +86,7 @@ public ref struct SpanViewProviderReceiver<TReceiver, T> :
         _handle = handle;
     }
 
-    public void GetMemoryView(scoped ref SpanViewReceiver<TReceiver, T> memoryView) => _handle.GetMemoryView(ref _receiver, ref memoryView);
+    [UnscopedRef]
+    public void GetMemoryView(out SpanViewReceiver<TReceiver, T> memoryView) => _handle.GetMemoryView(ref _receiver, out memoryView);
 }
 #endif

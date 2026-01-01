@@ -49,5 +49,5 @@ public struct ArrayViewObservableBuilder<T, TReceiver> :
     }
 
     [UnscopedRef]
-    public ref TReceiver? Value => ref _receiver!;
+    public ref TReceiver? RefValue => ref _receiver!;
 }

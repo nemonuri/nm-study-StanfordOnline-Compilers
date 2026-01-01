@@ -25,7 +25,7 @@ public struct TreeNodeReceiver<TReceiver, TLeaf, TNodeSequence, TChildrenProvide
     {
     }
 
-    [UnscopedRef] public ref LowLevelChoice<TLeaf, TChildrenProvider> Value => ref _refBoxReceiver.Value;
+    [UnscopedRef] public ref LowLevelChoice<TLeaf, TChildrenProvider> RefValue => ref _refBoxReceiver.RefValue;
 }
 
 public struct TreeNodeReceiver<TReceiver, TLeaf> :
@@ -47,5 +47,5 @@ public struct TreeNodeReceiver<TReceiver, TLeaf> :
     {
     }
 
-    [UnscopedRef] public ref LowLevelChoice<TLeaf, SingleOrMemoryViewProviderReceiver<TReceiver, TreeNodeReceiver<TReceiver, TLeaf>>> Value => ref _refBoxReceiver.Value;
+    [UnscopedRef] public ref LowLevelChoice<TLeaf, SingleOrMemoryViewProviderReceiver<TReceiver, TreeNodeReceiver<TReceiver, TLeaf>>> RefValue => ref _refBoxReceiver.RefValue;
 }

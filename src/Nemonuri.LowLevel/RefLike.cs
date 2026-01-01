@@ -27,7 +27,7 @@ public readonly ref struct RefLike<T> : IRefBox<T>
     }
 
     [UnscopedRef]
-    public ref T? Value
+    public ref T? RefValue
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get

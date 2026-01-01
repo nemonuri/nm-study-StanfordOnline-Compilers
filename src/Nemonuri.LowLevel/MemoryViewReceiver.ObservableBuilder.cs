@@ -30,7 +30,7 @@ public partial struct MemoryViewReceiver<TReceiver, T>
         public MemoryViewReceiver<TReceiver, T> Build()
         {
             ArrayView<T> resultArrayView = _builder.Build();
-            return _liftHandle.InvokeFunction(ref _builder.Value!, ref resultArrayView);
+            return _liftHandle.InvokeFunction(ref _builder.RefValue!, ref resultArrayView);
         }
     }
 }

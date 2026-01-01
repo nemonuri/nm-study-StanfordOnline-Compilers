@@ -5,7 +5,7 @@ public interface IRefBox<T>
     where T : allows ref struct
 #endif
 {
-    [UnscopedRef] ref T? Value {get;}
+    [UnscopedRef] ref T? RefValue {get;}
 }
 
 public unsafe readonly struct RefBoxHandle<TReceiver, T>
@@ -38,7 +38,7 @@ public struct RefBoxReceiver<TReceiver, T> : IRefBox<T>
         _handle = handle;
     }
 
-    [UnscopedRef] public ref T? Value => ref _handle.GetValueRef(ref _receiver);
+    [UnscopedRef] public ref T? RefValue => ref _handle.GetValueRef(ref _receiver);
 }
 
 #if NET9_0_OR_GREATER
@@ -55,6 +55,7 @@ public ref struct ByRefLikeRefBoxReceiver<TReceiver, T> : IRefBox<T>
         _handle = handle;
     }
 
-    [UnscopedRef] public ref T? Value => ref _handle.GetValueRef(ref _receiver);
+    [UnscopedRef] public ref T? RefValue => ref _handle.GetValueRef(ref _receiver);
 }
+
 #endif

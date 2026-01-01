@@ -45,8 +45,8 @@ public static class RefBoxThoery
 
         public BoxReceiver<TRefBox, T> ToBox()
         {
-            static T? ValueGetter(ref TRefBox receiver) => receiver.Value;
-            static void ValueSetter(ref TRefBox receiver, in T? value) => receiver.Value = value;
+            static T? ValueGetter(ref TRefBox receiver) => receiver.RefValue;
+            static void ValueSetter(ref TRefBox receiver, in T? value) => receiver.RefValue = value;
 
             unsafe { return new(theory.Self, new(&ValueGetter, &ValueSetter)); }
         }
