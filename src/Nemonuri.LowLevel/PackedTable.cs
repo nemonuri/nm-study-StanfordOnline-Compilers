@@ -2,36 +2,36 @@
 namespace Nemonuri.LowLevel;
 
 public readonly struct PackedTableView<TKey, TValue> :
-    IMemoryView<LowLevelKeyValuePair<TKey, TValue>>,
-    IMaybeSupportsRawSpan<LowLevelKeyValuePair<TKey, TValue>>
+    IMemoryView<RawKeyValuePair<TKey, TValue>>,
+    IMaybeSupportsRawSpan<RawKeyValuePair<TKey, TValue>>
     where TKey : IEquatable<TKey>
 {
-    private readonly ArrayView<LowLevelKeyValuePair<TKey, TValue>> _arrayView;
+    private readonly ArrayView<RawKeyValuePair<TKey, TValue>> _arrayView;
 
-    internal PackedTableView(ArrayView<LowLevelKeyValuePair<TKey, TValue>> arrayView)
+    internal PackedTableView(ArrayView<RawKeyValuePair<TKey, TValue>> arrayView)
     {
         _arrayView = arrayView;
     }
 
     public int Length => _arrayView.Length;
 
-    public ref LowLevelKeyValuePair<TKey, TValue> this[int index] => ref _arrayView[index];
+    public ref RawKeyValuePair<TKey, TValue> this[int index] => ref _arrayView[index];
 
     public bool SupportsRawSpan => true;
 
-    public Span<LowLevelKeyValuePair<TKey, TValue>> AsSpan => _arrayView.AsSpan;
+    public Span<RawKeyValuePair<TKey, TValue>> AsSpan => _arrayView.AsSpan;
 }
 
 public readonly partial struct PackedTable<TKey, TValue> : 
     ILowLevelTable<TKey, TValue, PackedTableView<TKey, TValue>>
     where TKey : IEquatable<TKey>
 {
-    public PackedTable(LowLevelKeyValuePair<TKey, TValue>[] memory)
+    public PackedTable(RawKeyValuePair<TKey, TValue>[] memory)
     {
         Memory = memory;
     }
 
-    public LowLevelKeyValuePair<TKey, TValue>[] Memory {get;}
+    public RawKeyValuePair<TKey, TValue>[] Memory {get;}
 
     public void GetMemoryView(scoped ref PackedTableView<TKey, TValue> memoryView)
     {

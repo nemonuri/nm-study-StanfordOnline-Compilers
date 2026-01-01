@@ -21,7 +21,7 @@ public unsafe readonly struct MemoryViewProviderHandle<TReceiver, T, TMemoryView
     where TReceiver : allows ref struct
 #endif
 {
-    private readonly delegate*<ref TReceiver, out TMemoryView, void> _getMemoryViewImpl;
+    private readonly delegate*<ref TReceiver, out TMemoryView, void> _getMemoryViewImpl; // unique field
 
     public MemoryViewProviderHandle(delegate*<ref TReceiver, out TMemoryView, void> getMemoryViewImpl)
     {
@@ -54,22 +54,59 @@ public struct MemoryViewProviderReceiver<TReceiver, T, TMemoryView> :
     public void GetMemoryView(out TMemoryView memoryView) => _handle.GetMemoryView(ref _receiver, out memoryView);
 }
 
-public readonly struct MemoryViewProviderReceiver<TReceiver, T> :
+public struct MemoryViewProviderReceiver<TReceiver, T> :
     IMemoryViewProvider<T, MemoryViewReceiver<TReceiver, T>>
 {
-    private readonly MemoryViewProviderReceiver<TReceiver, T, MemoryViewReceiver<TReceiver, T>> _provider;
+    private TReceiver _receiver;
+    private readonly MemoryViewProviderHandle<TReceiver, T, MemoryViewReceiver<TReceiver, T>> _handle;
 
-    public MemoryViewProviderReceiver(MemoryViewProviderReceiver<TReceiver, T, MemoryViewReceiver<TReceiver, T>> provider)
+    public MemoryViewProviderReceiver(TReceiver receiver, MemoryViewProviderHandle<TReceiver, T, MemoryViewReceiver<TReceiver, T>> handle)
     {
-        _provider = provider;
+        _receiver = receiver; _handle = handle;
     }
 
-    public MemoryViewProviderReceiver(TReceiver receiver, MemoryViewProviderHandle<TReceiver, T, MemoryViewReceiver<TReceiver, T>> handle) :
-        this(new(receiver, handle))
+    public void GetMemoryView(out MemoryViewReceiver<TReceiver, T> memoryView) => _handle.GetMemoryView(ref _receiver, out memoryView);
+}
+
+public struct DangerousMemoryViewProviderReceiver<TReceiver>
+{
+    private TReceiver _receiver;
+    private RuntimeTypeHandle _handleType;
+    private readonly nint _handle;
+
+    private DangerousMemoryViewProviderReceiver(in TReceiver receiver, RuntimeTypeHandle handleType, nint handle)
     {
+        _receiver = receiver; 
+        _handleType = handleType;
+        _handle = handle;
     }
 
-    public void GetMemoryView(out MemoryViewReceiver<TReceiver, T> memoryView) => _provider.GetMemoryView(out memoryView);
+    public static DangerousMemoryViewProviderReceiver<TReceiver> Create<T, TMemoryView>(in TReceiver receiver, MemoryViewProviderHandle<TReceiver, T, TMemoryView> handle)
+        where TMemoryView : IMemoryView<T>
+#if NET9_0_OR_GREATER
+        ,allows ref struct
+        where T : allows ref struct
+#endif
+    {
+        return new(in receiver, handle.GetType().TypeHandle, Unsafe.As<MemoryViewProviderHandle<TReceiver, T, TMemoryView>, nint>(ref handle));
+    }
+
+    [UnscopedRef]
+    public void DangerousGetMemoryView<T, TMemoryView>(out TMemoryView memoryView)
+        where TMemoryView : IMemoryView<T>
+#if NET9_0_OR_GREATER
+        ,allows ref struct
+        where T : allows ref struct
+#endif
+    {
+        if (!_handleType.Equals(typeof(MemoryViewProviderHandle<TReceiver, T, TMemoryView>).TypeHandle))
+        {
+            throw new InvalidCastException($"Desired = ${typeof(MemoryViewProviderHandle<TReceiver, T, TMemoryView>)}, Actual = ${Type.GetTypeFromHandle(_handleType)}");
+        }
+
+        UnsafeReadOnly.As<nint, MemoryViewProviderHandle<TReceiver, T, TMemoryView>>(in _handle).GetMemoryView(ref _receiver, out memoryView);
+    }
+
 }
 
 #if NET9_0_OR_GREATER

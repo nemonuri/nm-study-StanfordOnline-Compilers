@@ -7,7 +7,7 @@ public struct ArrayViewBuilder<T> : IMemoryView<T>, IMaybeSupportsRawSpan<T>, IB
     private T[]? _array;
     private int _length;
 
-    public ArrayViewBuilder(int initialCapacity = 4)
+    public ArrayViewBuilder(int initialCapacity)
     {
         _array = new T[initialCapacity];
         _length = 0;

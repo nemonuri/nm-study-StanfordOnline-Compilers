@@ -1,24 +1,41 @@
 
+using CommunityToolkit.HighPerformance;
+
 namespace Nemonuri.LowLevel;
 
-public interface IMemoryViewManager<TSelf, TKey, TMemoryView> :
-    IBuilder<
-        LowLevelKeyValuePair<TKey, LowLevelKeyValuePair<TKey, KeyedMemoryViewProviderHandle<TSelf, TKey>>>,
-        TMemoryView>
-    where TSelf : IMemoryViewManager<TSelf, TKey, TMemoryView>
-    where TMemoryView : IMemoryView<LowLevelKeyValuePair<TKey, LowLevelKeyValuePair<TKey, KeyedMemoryViewProviderHandle<TSelf, TKey>>>>
+public interface IMemoryViewManager<TKey, TReceiver> :
+    IMemoryView<RawKeyValuePair<TKey, DangerousMemoryViewProviderReceiver<TReceiver>>>
 {
+    [UnscopedRef] ref readonly TKey GetIndividualKeyRef(ref TReceiver receiver);
 }
 
 public readonly struct MemoryViewConfig : 
-    IMemoryViewManager<MemoryViewConfig, nint, PackedTableView<nint, LowLevelKeyValuePair<nint, KeyedMemoryViewProviderHandle<MemoryViewConfig, nint>>>>
+    IMemoryViewManager<int, MemoryViewConfig>,
+    IConfig<Box<PackedTable<int, DangerousMemoryViewProviderReceiver<MemoryViewConfig>>.Builder>, int, MemoryViewConfig>
 {
-    private readonly PackedTable<nint, LowLevelKeyValuePair<nint, KeyedMemoryViewProviderHandle<MemoryViewConfig, nint>>>.Builder _builder;
+    public Box<PackedTable<int, DangerousMemoryViewProviderReceiver<MemoryViewConfig>>.Builder> SharedConfig {get;}
+    private readonly int _key;
 
-    public MemoryViewConfig()
+    internal MemoryViewConfig
+    (
+        Box<PackedTable<int, DangerousMemoryViewProviderReceiver<MemoryViewConfig>>.Builder> shardConfig,
+        int key
+    )
     {
-        _builder = PackedTable<nint, LowLevelKeyValuePair<nint, KeyedMemoryViewProviderHandle<MemoryViewConfig, nint>>>.CreateBuilder(4);
+        SharedConfig = shardConfig ?? PackedTable<int, DangerousMemoryViewProviderReceiver<MemoryViewConfig>>.CreateBuilder(0);
+        _key = key;
     }
+
+    public ref readonly int GetIndividualKeyRef(ref MemoryViewConfig receiver) => ref receiver.IndividualConfig;
+
+    public int Length => SharedConfig.GetReference().Length;
+
+    public ref RawKeyValuePair<int, DangerousMemoryViewProviderReceiver<MemoryViewConfig>> this[int index] => ref SharedConfig.GetReference()[index];
+
+    [UnscopedRef]
+    public ref readonly int IndividualConfig => ref _key;
+
+    public MemoryViewConfig WithNewIndividualConfig(in int individual) => new(SharedConfig, individual);
 
     public void Add<T, TMemoryView>(TMemoryView memoryView)
         where TMemoryView : IMemoryView<T>
@@ -27,16 +44,28 @@ public readonly struct MemoryViewConfig :
         where T : allows ref struct
     #endif
     {
-        
-    }
+        static void GetMemoryViewImpl(ref MemoryViewConfig receiver, out TMemoryView memoryView)
+        {
+            receiver[receiver.IndividualConfig].Value.DangerousGetMemoryView<T, TMemoryView>(out memoryView);
+        }
 
-    public void Add(in LowLevelKeyValuePair<nint, LowLevelKeyValuePair<nint, KeyedMemoryViewProviderHandle<MemoryViewConfig, nint>>> source)
-    {
-        throw new NotImplementedException();
-    }
+        ref var builder = ref SharedConfig.GetReference();
+        int nextKey = builder.Length;
 
-    public PackedTableView<nint, LowLevelKeyValuePair<nint, KeyedMemoryViewProviderHandle<MemoryViewConfig, nint>>> Build()
-    {
-        throw new NotImplementedException();
+        unsafe
+        {
+            builder.Add
+            (
+                new
+                (
+                    nextKey, 
+                    DangerousMemoryViewProviderReceiver<MemoryViewConfig>.Create<T, TMemoryView>
+                    (
+                        WithNewIndividualConfig(in nextKey), 
+                        new (&GetMemoryViewImpl)
+                    )
+                )
+            );
+        }
     }
 }

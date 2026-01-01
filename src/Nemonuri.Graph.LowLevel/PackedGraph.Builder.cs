@@ -9,13 +9,13 @@ public readonly partial struct PackedGraph<TNodeKey, TEdgeLabel, TNodeValue, TRe
         in TReceiverRefBox refBox, 
         BuilderHandle<
             TReceiver, 
-            LowLevelKeyValuePair<TNodeKey, AdjacentTableAndValue<TEdgeLabel, TNodeKey, TNodeValue, TReceiver>>,
+            RawKeyValuePair<TNodeKey, AdjacentTableAndValue<TEdgeLabel, TNodeKey, TNodeValue, TReceiver>>,
             PackedGraphView<TNodeKey, TEdgeLabel, TNodeValue, TReceiver>> 
             graphBuilderHandle,
         BuilderHandle<
             TReceiver,
-            LowLevelKeyValuePair<TEdgeLabel, TNodeKey>,
-            MemoryViewReceiver<TReceiver, LowLevelKeyValuePair<TEdgeLabel, TNodeKey>>>
+            RawKeyValuePair<TEdgeLabel, TNodeKey>,
+            MemoryViewReceiver<TReceiver, RawKeyValuePair<TEdgeLabel, TNodeKey>>>
             adjacentTableBuilderHandle,
         int initialCapacity = 4
     ) 
@@ -23,8 +23,8 @@ public readonly partial struct PackedGraph<TNodeKey, TEdgeLabel, TNodeValue, TRe
         => new(in refBox, graphBuilderHandle, adjacentTableBuilderHandle, initialCapacity);
 
     public struct Builder<TReceiverRefBox> :
-        IMemoryView<LowLevelKeyValuePair<TNodeKey, AdjacentTableAndValue<TEdgeLabel, TNodeKey, TNodeValue, TReceiver>>>,
-        IMaybeSupportsRawSpan<LowLevelKeyValuePair<TNodeKey, AdjacentTableAndValue<TEdgeLabel, TNodeKey, TNodeValue, TReceiver>>>
+        IMemoryView<RawKeyValuePair<TNodeKey, AdjacentTableAndValue<TEdgeLabel, TNodeKey, TNodeValue, TReceiver>>>,
+        IMaybeSupportsRawSpan<RawKeyValuePair<TNodeKey, AdjacentTableAndValue<TEdgeLabel, TNodeKey, TNodeValue, TReceiver>>>
         where TReceiverRefBox : IRefBox<TReceiver>
     {
         private readonly TReceiverRefBox _refBox;
@@ -32,15 +32,15 @@ public readonly partial struct PackedGraph<TNodeKey, TEdgeLabel, TNodeValue, TRe
         private readonly 
         BuilderHandle<
             TReceiver, 
-            LowLevelKeyValuePair<TNodeKey, AdjacentTableAndValue<TEdgeLabel, TNodeKey, TNodeValue, TReceiver>>,
+            RawKeyValuePair<TNodeKey, AdjacentTableAndValue<TEdgeLabel, TNodeKey, TNodeValue, TReceiver>>,
             PackedGraphView<TNodeKey, TEdgeLabel, TNodeValue, TReceiver>> 
             _graphBuilderHandle;
 
         private readonly 
         BuilderHandle<
             TReceiver,
-            LowLevelKeyValuePair<TEdgeLabel, TNodeKey>,
-            MemoryViewReceiver<TReceiver, LowLevelKeyValuePair<TEdgeLabel, TNodeKey>>>
+            RawKeyValuePair<TEdgeLabel, TNodeKey>,
+            MemoryViewReceiver<TReceiver, RawKeyValuePair<TEdgeLabel, TNodeKey>>>
             _adjacentTableBuilderHandle;
 
         private readonly PackedTable<TNodeKey, AdjacentTableAndValue<TEdgeLabel, TNodeKey, TNodeValue, TReceiver>>.Builder _builder;
@@ -50,13 +50,13 @@ public readonly partial struct PackedGraph<TNodeKey, TEdgeLabel, TNodeValue, TRe
             in TReceiverRefBox refBox, 
             BuilderHandle<
                 TReceiver, 
-                LowLevelKeyValuePair<TNodeKey, AdjacentTableAndValue<TEdgeLabel, TNodeKey, TNodeValue, TReceiver>>,
+                RawKeyValuePair<TNodeKey, AdjacentTableAndValue<TEdgeLabel, TNodeKey, TNodeValue, TReceiver>>,
                 PackedGraphView<TNodeKey, TEdgeLabel, TNodeValue, TReceiver>> 
                 graphBuilderHandle,
             BuilderHandle<
                 TReceiver,
-                LowLevelKeyValuePair<TEdgeLabel, TNodeKey>,
-                MemoryViewReceiver<TReceiver, LowLevelKeyValuePair<TEdgeLabel, TNodeKey>>>
+                RawKeyValuePair<TEdgeLabel, TNodeKey>,
+                MemoryViewReceiver<TReceiver, RawKeyValuePair<TEdgeLabel, TNodeKey>>>
                 adjacentTableBuilderHandle,
             int initialCapacity = 4
         ) 
@@ -69,11 +69,11 @@ public readonly partial struct PackedGraph<TNodeKey, TEdgeLabel, TNodeValue, TRe
 
         public int Length => _builder.Length;
 
-        public ref LowLevelKeyValuePair<TNodeKey, AdjacentTableAndValue<TEdgeLabel, TNodeKey, TNodeValue, TReceiver>> this[int index] => ref _builder[index];
+        public ref RawKeyValuePair<TNodeKey, AdjacentTableAndValue<TEdgeLabel, TNodeKey, TNodeValue, TReceiver>> this[int index] => ref _builder[index];
 
         public bool SupportsRawSpan => _builder.SupportsRawSpan;
 
-        public Span<LowLevelKeyValuePair<TNodeKey, AdjacentTableAndValue<TEdgeLabel, TNodeKey, TNodeValue, TReceiver>>> AsSpan => _builder.AsSpan;
+        public Span<RawKeyValuePair<TNodeKey, AdjacentTableAndValue<TEdgeLabel, TNodeKey, TNodeValue, TReceiver>>> AsSpan => _builder.AsSpan;
 
         public void AddKey(TNodeKey key)
         {

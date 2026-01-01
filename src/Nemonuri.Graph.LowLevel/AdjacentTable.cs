@@ -2,7 +2,7 @@
 namespace Nemonuri.Graph.LowLevel;
 
 public struct AdjacentTable<TEdgeLabel, TNodeKey, TReceiver> : 
-    ILowLevelTable<TEdgeLabel, TNodeKey, MemoryViewReceiver<TReceiver, LowLevelKeyValuePair<TEdgeLabel, TNodeKey>>>
+    ILowLevelTable<TEdgeLabel, TNodeKey, MemoryViewReceiver<TReceiver, RawKeyValuePair<TEdgeLabel, TNodeKey>>>
     where TNodeKey : IEquatable<TNodeKey>
     where TEdgeLabel : IEquatable<TEdgeLabel>
 {
@@ -13,7 +13,7 @@ public struct AdjacentTable<TEdgeLabel, TNodeKey, TReceiver> :
         _table = table;
     }
 
-    public void GetMemoryView(scoped ref MemoryViewReceiver<TReceiver, LowLevelKeyValuePair<TEdgeLabel, TNodeKey>> memoryView) =>
+    public void GetMemoryView(scoped ref MemoryViewReceiver<TReceiver, RawKeyValuePair<TEdgeLabel, TNodeKey>> memoryView) =>
         _table.GetMemoryView(ref memoryView);
 }
 

@@ -1,12 +1,12 @@
 
 namespace Nemonuri.LowLevel;
 
-public struct LowLevelKeyValuePair<TKey, TValue>
+public struct RawKeyValuePair<TKey, TValue>
 {
     public readonly TKey Key;
     public TValue Value;
 
-    public LowLevelKeyValuePair(TKey key, TValue value)
+    public RawKeyValuePair(TKey key, TValue value)
     {
         Key = key;
         Value = value;
