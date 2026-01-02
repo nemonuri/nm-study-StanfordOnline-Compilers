@@ -16,8 +16,10 @@ public struct UnmanagedValueProvider<T> where T : unmanaged
         _refSelectorHandle = refSelectorHandle;
     }
 
+/*
     public ref T2 DangerousGetValue<T2>() where T2 : unmanaged
     {
         
     }
+*/
 }

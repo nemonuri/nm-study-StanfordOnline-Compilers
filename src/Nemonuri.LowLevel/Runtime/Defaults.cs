@@ -1,5 +1,5 @@
 
-namespace Nemonuri.LowLevel.Internal;
+namespace Nemonuri.LowLevel.Runtime;
 
 internal static class Defaults<T>
 {

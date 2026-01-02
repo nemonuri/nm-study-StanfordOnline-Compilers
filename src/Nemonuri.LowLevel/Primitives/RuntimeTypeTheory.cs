@@ -8,4 +8,15 @@ public static class RuntimeTypeTheory
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool AreEqual<T>(RuntimeTypeHandle typeHandle) => typeHandle.Equals(typeof(T).TypeHandle);
+
+    public static bool IsUnmanaged<T>()
+    {
+        return
+#if NETSTANDARD2_1_OR_GREATER
+            RuntimeHelpers.IsReferenceOrContainsReferences<T>()
+#else
+            Nemonuri.LowLevel.Runtime.TypeInfo<T>.IsReferenceOrContainsReferences
+#endif
+        ;
+    }
 }

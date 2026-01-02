@@ -1,5 +1,5 @@
 
-namespace Nemonuri.LowLevel.Internal;
+namespace Nemonuri.LowLevel.Runtime;
 
 // Copy from: https://github.com/CommunityToolkit/dotnet/blob/main/src/CommunityToolkit.HighPerformance/Helpers/ObjectMarshal.cs
 [StructLayout(LayoutKind.Explicit)]

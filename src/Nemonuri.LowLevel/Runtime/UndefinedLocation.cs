@@ -1,5 +1,5 @@
 
-namespace Nemonuri.LowLevel.Internal;
+namespace Nemonuri.LowLevel.Runtime;
 
 public static class UndefinedLocation
 {

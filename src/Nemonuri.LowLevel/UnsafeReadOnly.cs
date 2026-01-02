@@ -1,4 +1,4 @@
-using Nemonuri.LowLevel.Internal;
+using Nemonuri.LowLevel.Runtime;
 
 namespace Nemonuri.LowLevel;
 

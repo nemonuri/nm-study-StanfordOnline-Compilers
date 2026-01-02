@@ -18,16 +18,16 @@ public struct TypedUnmanagedBox<T> where T : unmanaged
 
     public static TypedUnmanagedBox<T> Box<T2>(in T2 boxing) where T2 : unmanaged
     {
-        Debug.Assert( RuntimeTypeTheory.AreSizeEqual<T, T2>() );
-        T valueBox = UnsafeReadOnly.As<T2, T>(in boxing);
+        ref T valueBox = ref UnmanagedValueTheory.BitCastOrUndefined<T2, T>(ref Unsafe.AsRef<T2>(in boxing));
+        Debug.Assert( !RuntimePointerTheory.IsUndefinedOrNullRef(ref valueBox) );
         return new(typeof(T2).TypeHandle, valueBox);
     }
 
     [UnscopedRef]
     public ref T2 DangerousUnbox<T2>() where T2 : unmanaged
     {
-        Debug.Assert(Unsafe.SizeOf<T>() == Unsafe.SizeOf<T2>());
-        if (!TypeHandle.Equals(typeof(T2).TypeHandle)) { throw new InvalidCastException(); }
-        return ref Unsafe.As<T, T2>(ref _valueBox);
+        ref T2 result = ref UnmanagedValueTheory.BitCastOrUndefined<T, T2>(ref _valueBox);
+        Debug.Assert( !RuntimePointerTheory.IsUndefinedOrNullRef(ref result) );
+        return ref result;
     }
 }
