@@ -1,7 +1,4 @@
 
-using System.Diagnostics;
-using Nemonuri.LowLevel.Primitives;
-
 namespace Nemonuri.LowLevel.Abstractions;
 
 [StructLayout(LayoutKind.Sequential)]
@@ -11,9 +8,18 @@ public unsafe readonly struct MethodHandle
 
     public MethodHandle(delegate*<ObjectOrPointer, ObjectOrPointer, ObjectOrPointer> functionPointer)
     {
-        Debug.Assert( !RuntimePointerTheory.IsUndefinedOrNullPointer(functionPointer) );
         FunctionPointer = functionPointer;
     }
+
+    public bool IsNull 
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => FunctionPointer == null; 
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public ObjectOrPointer InvokeMethod(ObjectOrPointer receiver, ObjectOrPointer source) =>
+        IsNull ? ObjectOrPointer.Null : FunctionPointer(receiver, source);
 }
 
 [StructLayout(LayoutKind.Sequential)]
@@ -37,5 +43,3 @@ public unsafe readonly struct FunctionHandle
     public ObjectOrPointer InvokeFunction(ObjectOrPointer source) =>
         IsNull ? ObjectOrPointer.Null : FunctionPointer(source);
 }
-
-

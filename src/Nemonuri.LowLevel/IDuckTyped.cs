@@ -23,12 +23,12 @@ public static class DuckTypedMethodTheory
     }
 }
 
-public struct DuckTypedMethod<TReceiver, TArgument, TResult> : IDuckTypedMethod<TReceiver, TArgument, TResult>
+public struct DuckTypedMethod<TReceiver, TSource, TResult> : IDuckTypedMethod<TReceiver, TSource, TResult>
 {
     private TReceiver _receiver;
-    private readonly MethodHandle<TReceiver, TArgument, TResult> _methodHandle;
+    private readonly MethodHandle<TReceiver, TSource, TResult> _methodHandle;
 
-    public DuckTypedMethod(TReceiver receiver, MethodHandle<TReceiver, TArgument, TResult> methodHandle)
+    public DuckTypedMethod(TReceiver receiver, MethodHandle<TReceiver, TSource, TResult> methodHandle)
     {
         _receiver = receiver;
         _methodHandle = methodHandle;
@@ -37,7 +37,12 @@ public struct DuckTypedMethod<TReceiver, TArgument, TResult> : IDuckTypedMethod<
     [UnscopedRef]
     public ref TReceiver Receiver => ref _receiver;
 
-    public MethodHandle<TReceiver, TArgument, TResult> MethodHandle => _methodHandle;
+    public readonly MethodHandle<TReceiver, TSource, TResult> MethodHandle => _methodHandle;
+
+    [UnscopedRef]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public ref TResult? InvokeMethod(ref TSource? source) =>
+        ref _methodHandle.InvokeMethod(ref _receiver, ref source);
 }
 
 public interface IDuckTypedProperty<TReceiver, TResult> : IDuckTypeReceiver<TReceiver>
@@ -60,4 +65,9 @@ public struct DuckTypedProperty<TReceiver, TResult> : IDuckTypedProperty<TReceiv
     public ref TReceiver Receiver => ref _receiver;
 
     public FunctionHandle<TReceiver, TResult> PropertyHandle => _propertyHandle;
+
+    [UnscopedRef]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public ref TResult? InvokeProperty() =>
+        ref _propertyHandle.InvokeFunction(ref _receiver!);
 }

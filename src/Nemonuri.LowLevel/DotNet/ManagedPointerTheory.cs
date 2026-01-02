@@ -14,20 +14,20 @@ public static class ManagedPointerTheory
         static ObjectOrPointer SelectorImpl(ObjectOrPointer boxedLocationProvider)
         {
             ref var locProvider = ref boxedLocationProvider.DangerousUnbox<DuckTypedProperty<ObjectOrPointer, T>>();
-            ref var loc = ref locProvider.PropertyHandle.FunctionPointer(ref locProvider.Receiver);
+            ref var loc = ref locProvider.InvokeProperty();
             return locProvider.Receiver.IsFixed ? new(Unsafe.AsPointer(ref Unsafe.As<T?, byte>(ref loc))) : new(loc!);
         }
 
         return new(locationProvider.Receiver, new(&SelectorImpl));
     }
 
-    public static unsafe ObjectOrPointerReference ToObjectOrPointerReference<T>
+    public static ObjectOrPointerReference ToObjectOrPointerReference<T>
     (
         ref T location,
         FunctionHandle<T, DuckTypedProperty<ObjectOrPointer, T>> inverseLocationProvider
     )
     {
-        ref var locationProvider = ref inverseLocationProvider.FunctionPointer(ref location!);
+        ref var locationProvider = ref inverseLocationProvider.InvokeFunction(ref location!);
         return ToObjectOrPointerReference(ref locationProvider);
     }
 
@@ -37,11 +37,7 @@ public static class ManagedPointerTheory
         DuckTypedMethod<ObjectOrPointer, T, DuckTypedProperty<ObjectOrPointer, T>> inverseLocationProvider
     )
     {
-        ref var locationProvider =
-        ref DuckTypedMethodTheory.InvokeMethod
-        <ObjectOrPointer, T, DuckTypedProperty<ObjectOrPointer, T>, DuckTypedMethod<ObjectOrPointer, T, DuckTypedProperty<ObjectOrPointer, T>>>
-        (ref inverseLocationProvider, ref location!);
-        
+        ref var locationProvider = ref inverseLocationProvider.InvokeMethod(ref location!);
         return ToObjectOrPointerReference(ref locationProvider);
     }
 }

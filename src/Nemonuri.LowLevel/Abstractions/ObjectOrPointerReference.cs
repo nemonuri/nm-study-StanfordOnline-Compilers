@@ -3,6 +3,7 @@ using Nemonuri.LowLevel.Primitives;
 
 namespace Nemonuri.LowLevel.Abstractions;
 
+[StructLayout(LayoutKind.Sequential)]
 public readonly struct ObjectOrPointerReference
 {
     public unsafe readonly static FunctionHandle DefaultFunctionHandle = new(&Primitives.PureFunctionTheory.Identity);
@@ -51,6 +52,10 @@ public readonly struct ObjectOrPointerReference
         }
     }
 
-    // Note : 혹시, 'Fixed box' 를 할 수 있을까?
+    // Note
+    // - 혹시, 'Fixed Pointer box' 를 할 수 있을까?
+    // - 그렇다면, IsObjectOrPointerReference 를 어떻게 고쳐야 하지?
+    // - ...아니, 아무리 생각해봐도 답 없어. 결국 '동적으로 증가하는 메모리 공간'이 필요해.
     public ObjectOrPointer ToObjectOrPointer() => new(this);
+
 }
