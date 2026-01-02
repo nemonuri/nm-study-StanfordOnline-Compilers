@@ -46,4 +46,7 @@ public static class RuntimePointerTheory
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public unsafe static bool IsUndefinedOrNullPointer(void* pointer) => IsUndefinedPointer(pointer) || pointer == null;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public unsafe static T DangerousDereference<T>(void* pointer) => Unsafe.As<byte, T>(ref Unsafe.AsRef<byte>(pointer));
 }

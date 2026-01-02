@@ -21,5 +21,27 @@ public static class ManagedPointerTheory
         return new(locationProvider.Receiver, new(&SelectorImpl));
     }
 
-    //public static 
+    public static unsafe ObjectOrPointerReference ToObjectOrPointerReference<T>
+    (
+        ref T location,
+        FunctionHandle<T, DuckTypedProperty<ObjectOrPointer, T>> inverseLocationProvider
+    )
+    {
+        ref var locationProvider = ref inverseLocationProvider.FunctionPointer(ref location!);
+        return ToObjectOrPointerReference(ref locationProvider);
+    }
+
+    public static ObjectOrPointerReference ToObjectOrPointerReference<T>
+    (
+        ref T location,
+        DuckTypedMethod<ObjectOrPointer, T, DuckTypedProperty<ObjectOrPointer, T>> inverseLocationProvider
+    )
+    {
+        ref var locationProvider =
+        ref DuckTypedMethodTheory.InvokeMethod
+        <ObjectOrPointer, T, DuckTypedProperty<ObjectOrPointer, T>, DuckTypedMethod<ObjectOrPointer, T, DuckTypedProperty<ObjectOrPointer, T>>>
+        (ref inverseLocationProvider, ref location!);
+        
+        return ToObjectOrPointerReference(ref locationProvider);
+    }
 }

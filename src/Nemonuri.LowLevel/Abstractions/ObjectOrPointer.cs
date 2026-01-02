@@ -11,6 +11,7 @@ public readonly partial record struct ObjectOrPointer
 
     public bool IsNull => Equals(Null);
 
+    [MemberNotNullWhen(true, [nameof(Object)])]
     public bool IsManaged => Object != default;
 
     public bool IsFixed => Pointer != default;
@@ -33,7 +34,17 @@ public readonly partial record struct ObjectOrPointer
     public static readonly ObjectOrPointer Null = default;
     //---|
 
+    //--- Primitive deconstructor ---
+    public unsafe T DangerousDereference<T>()
+    {
+        if (IsFixed) { return RuntimePointerTheory.DangerousDereference<T>((void*)Pointer); }
+        else if (IsManaged) { return (T)Object; }
+        else { throw new NullReferenceException(); }
+    }
+    //---|
+
     //--- Unsafe deconstructors ---
+    // Note: These methods are not primitive...
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public T? DangerousAs<T>() where T : class
     {
