@@ -35,7 +35,7 @@ public readonly struct ObjectOrPointerReference
         }
 
         SelectorImplSource source = new(baseReference, anotherSelectorHandle);
-        ObjectOrPointer o = ObjectOrPointer.Box(source);
+        ObjectOrPointer o = new(source);
         return new(o,new(&SelectorImpl));
     }
 

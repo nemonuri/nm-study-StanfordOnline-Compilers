@@ -15,11 +15,11 @@ public static class ManagedPointerTheory
         {
             ref var locProvider = ref boxedLocationProvider.DangerousUnbox<DuckTypedProperty<ObjectOrPointer, T>>();
             ref var loc = ref locProvider.PropertyHandle.FunctionPointer(ref locProvider.Receiver);
-            return locProvider.Receiver.IsFixed ? new((nint)Unsafe.AsPointer(ref Unsafe.As<T?, byte>(ref loc))) : new(loc!);
+            return locProvider.Receiver.IsFixed ? new(Unsafe.AsPointer(ref Unsafe.As<T?, byte>(ref loc))) : new(loc!);
         }
 
         return new(locationProvider.Receiver, new(&SelectorImpl));
     }
 
-    public static 
+    //public static 
 }

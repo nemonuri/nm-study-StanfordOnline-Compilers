@@ -24,17 +24,10 @@ public readonly partial record struct ObjectOrPointer
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public ObjectOrPointer(nint pointer)
+    public unsafe ObjectOrPointer(void* pointer)
     {
         Object = default;
-        Pointer = pointer;
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static ObjectOrPointer Box<T>(T value) where T : struct
-    {
-        object box = value;
-        return new(box);
+        Pointer = (nint)pointer;
     }
 
     public static readonly ObjectOrPointer Null = default;
