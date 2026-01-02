@@ -1,4 +1,5 @@
 
+using System.Diagnostics;
 using Nemonuri.LowLevel.Primitives;
 
 namespace Nemonuri.LowLevel.Abstractions;
@@ -15,6 +16,8 @@ public readonly partial record struct ObjectOrPointer
     public bool IsManaged => Object != default;
 
     public bool IsFixed => Pointer != default;
+
+    public bool IsObjectOrPointerReference => Object is ObjectOrPointerReference;
 
     //--- Safe constructors ---
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -35,11 +38,23 @@ public readonly partial record struct ObjectOrPointer
     //---|
 
     //--- Primitive deconstructor ---
-    public unsafe T DangerousDereference<T>()
+    public unsafe T DangerousDereferenceOnce<T>()
     {
         if (IsFixed) { return RuntimePointerTheory.DangerousDereference<T>((void*)Pointer); }
         else if (IsManaged) { return (T)Object; }
         else { throw new NullReferenceException(); }
+    }
+
+    public T DangerousDereference<T>()
+    {
+        Debug.Assert( !typeof(T).TypeHandle.Equals(typeof(ObjectOrPointerReference).TypeHandle) );
+
+        if (!IsObjectOrPointerReference)
+        {
+            return DangerousDereferenceOnce<T>();
+        }
+
+        return DangerousDereferenceOnce<ObjectOrPointerReference>().Dereference().DangerousDereference<T>();
     }
     //---|
 

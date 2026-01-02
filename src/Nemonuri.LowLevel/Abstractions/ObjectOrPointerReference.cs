@@ -50,4 +50,7 @@ public readonly struct ObjectOrPointerReference
             AnotherSelectorHandle = anotherSelectorHandle.IsNull ? DefaultFunctionHandle : anotherSelectorHandle;
         }
     }
+
+    // Note : 혹시, 'Fixed box' 를 할 수 있을까?
+    public ObjectOrPointer ToObjectOrPointer() => new(this);
 }
