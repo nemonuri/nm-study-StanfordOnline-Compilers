@@ -14,8 +14,6 @@ public interface IDuckTypedMethod<TReceiver, TArgument, TResult> : IDuckTypeRece
     MethodHandle<TReceiver, TArgument, TResult> MethodHandle {get;}
 }
 
-
-
 public static class DuckTypedMethodTheory
 {
     extension<TReceiver, TArgument, TResult, TDuckTypedMethod>(ref TDuckTypedMethod method)
@@ -42,3 +40,24 @@ public struct DuckTypedMethod<TReceiver, TArgument, TResult> : IDuckTypedMethod<
     public MethodHandle<TReceiver, TArgument, TResult> MethodHandle => _methodHandle;
 }
 
+public interface IDuckTypedProperty<TReceiver, TResult> : IDuckTypeReceiver<TReceiver>
+{
+    FunctionHandle<TReceiver, TResult> PropertyHandle {get;}
+}
+
+public struct DuckTypedProperty<TReceiver, TResult> : IDuckTypedProperty<TReceiver, TResult>
+{
+    private TReceiver _receiver;
+    private readonly FunctionHandle<TReceiver, TResult> _propertyHandle;
+
+    public DuckTypedProperty(TReceiver receiver, FunctionHandle<TReceiver, TResult> propertyHandle)
+    {
+        _receiver = receiver;
+        _propertyHandle = propertyHandle;
+    }
+
+    [UnscopedRef]
+    public ref TReceiver Receiver => ref _receiver;
+
+    public FunctionHandle<TReceiver, TResult> PropertyHandle => _propertyHandle;
+}

@@ -11,6 +11,10 @@ public readonly partial record struct ObjectOrPointer
 
     public bool IsNull => Equals(Null);
 
+    public bool IsManaged => Object != default;
+
+    public bool IsFixed => Pointer != default;
+
     //--- Safe constructors ---
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public ObjectOrPointer(object @object)
