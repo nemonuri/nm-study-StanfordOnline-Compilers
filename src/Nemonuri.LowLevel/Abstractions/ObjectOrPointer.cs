@@ -17,7 +17,7 @@ public readonly struct ObjectOrPointer : IEquatable<ObjectOrPointer>
 
     public bool IsFixed => Pointer != default;
 
-    public bool IsObjectOrPointerReference => Object is ObjectOrPointerReference;
+    public bool IsReference => Object is Reference;
 
     //--- Safe constructors ---
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -38,31 +38,31 @@ public readonly struct ObjectOrPointer : IEquatable<ObjectOrPointer>
     //---|
 
     //--- Primitive deconstructor ---
-    public unsafe T DangerousDereferenceOnce<T>()
+    public unsafe T DangerousCastOnce<T>()
     {
         if (IsFixed) { return RuntimePointerTheory.DangerousDereference<T>((void*)Pointer); }
         else if (IsManaged) { return (T)Object; }
         else { throw new NullReferenceException(); }
     }
 
-    public T DangerousDereference<T>()
+    public T DangerousCast<T>()
     {
-        Debug.Assert( !typeof(T).TypeHandle.Equals(typeof(ObjectOrPointerReference).TypeHandle) );
+        Debug.Assert( !typeof(T).TypeHandle.Equals(typeof(Reference).TypeHandle) );
 
-        if (!IsObjectOrPointerReference)
+        if (!IsReference)
         {
-            return DangerousDereferenceOnce<T>();
+            return DangerousCastOnce<T>();
         }
 
-        return DangerousDereferenceOnce<ObjectOrPointerReference>().Dereference().DangerousDereference<T>();
+        return DangerousCastOnce<Reference>().Dereference().DangerousCast<T>();
     }
     //---|
 
     //--- compare equality ---
     public ObjectOrPointer GetSelfOrDereferenced()
     {
-        if (!IsObjectOrPointerReference) { return this; }
-        return DangerousDereferenceOnce<ObjectOrPointerReference>().Dereference().GetSelfOrDereferenced();
+        if (!IsReference) { return this; }
+        return DangerousCastOnce<Reference>().Dereference().GetSelfOrDereferenced();
     }
 
     public bool Equals(ObjectOrPointer other)
@@ -112,7 +112,7 @@ public readonly struct ObjectOrPointer : IEquatable<ObjectOrPointer>
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public unsafe ref T DangerousCast<T>()
+    public unsafe ref T DangerousRefCast<T>()
     {
         if (Pointer != default)
         {

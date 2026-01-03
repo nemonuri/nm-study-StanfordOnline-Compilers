@@ -4,7 +4,7 @@ using Nemonuri.LowLevel.Primitives;
 namespace Nemonuri.LowLevel.Abstractions;
 
 [StructLayout(LayoutKind.Sequential)]
-public readonly struct ObjectOrPointerReference
+public readonly struct Reference
 {
     public unsafe readonly static FunctionHandle DefaultFunctionHandle = new(&Primitives.PureFunctionTheory.Identity);
 
@@ -12,7 +12,7 @@ public readonly struct ObjectOrPointerReference
     public readonly FunctionHandle SelectorHandle;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public ObjectOrPointerReference(ObjectOrPointer @base, FunctionHandle selectorHandle)
+    public Reference(ObjectOrPointer @base, FunctionHandle selectorHandle)
     {
         Base = @base;
         SelectorHandle = selectorHandle.IsNull ? DefaultFunctionHandle : selectorHandle;
@@ -21,10 +21,12 @@ public readonly struct ObjectOrPointerReference
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public ObjectOrPointer Dereference() => SelectorHandle.InvokeFunction(Base);
 
-    public ObjectOrPointerReference ComposeAnotherSelectorHandle(FunctionHandle anotherSelectorHandle) => ComposeAnotherSelectorHandleCore(this, anotherSelectorHandle);
+    public T DangerousCast<T>() => Dereference().DangerousCast<T>();
+
+    public Reference ComposeAnotherSelectorHandle(FunctionHandle anotherSelectorHandle) => ComposeAnotherSelectorHandleCore(this, anotherSelectorHandle);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private unsafe static ObjectOrPointerReference ComposeAnotherSelectorHandleCore(ObjectOrPointerReference baseReference, FunctionHandle anotherSelectorHandle)
+    private unsafe static Reference ComposeAnotherSelectorHandleCore(Reference baseReference, FunctionHandle anotherSelectorHandle)
     {
         // 다음 식이 참이 되도록, result 를 만들어야 한다.
         // anotherSelectorHandle.InvokeFunction(baseReference.Dereference()) == result.Dereference()
@@ -42,10 +44,10 @@ public readonly struct ObjectOrPointerReference
 
     private readonly struct SelectorImplSource
     {
-        public readonly ObjectOrPointerReference BaseReference;
+        public readonly Reference BaseReference;
         public readonly FunctionHandle AnotherSelectorHandle;
 
-        public SelectorImplSource(ObjectOrPointerReference baseReference, FunctionHandle anotherSelectorHandle)
+        public SelectorImplSource(Reference baseReference, FunctionHandle anotherSelectorHandle)
         {
             BaseReference = baseReference;
             AnotherSelectorHandle = anotherSelectorHandle.IsNull ? DefaultFunctionHandle : anotherSelectorHandle;

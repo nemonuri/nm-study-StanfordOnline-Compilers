@@ -9,7 +9,7 @@ namespace Nemonuri.LowLevel.DotNet;
 
 public static class ManagedPointerTheory
 {
-    public static unsafe ObjectOrPointerReference ToObjectOrPointerReference<T>(ref DuckTypedProperty<ObjectOrPointer, T> locationProvider)
+    public static unsafe Reference ToObjectOrPointerReference<T>(ref DuckTypedProperty<ObjectOrPointer, T> locationProvider)
     {
         static ObjectOrPointer SelectorImpl(ObjectOrPointer boxedLocationProvider)
         {
@@ -21,7 +21,7 @@ public static class ManagedPointerTheory
         return new(locationProvider.Receiver, new(&SelectorImpl));
     }
 
-    public static ObjectOrPointerReference ToObjectOrPointerReference<T>
+    public static Reference ToObjectOrPointerReference<T>
     (
         ref T location,
         FunctionHandle<T, DuckTypedProperty<ObjectOrPointer, T>> inverseLocationProvider
@@ -31,7 +31,7 @@ public static class ManagedPointerTheory
         return ToObjectOrPointerReference(ref locationProvider);
     }
 
-    public static ObjectOrPointerReference ToObjectOrPointerReference<T>
+    public static Reference ToObjectOrPointerReference<T>
     (
         ref T location,
         DuckTypedMethod<ObjectOrPointer, T, DuckTypedProperty<ObjectOrPointer, T>> inverseLocationProvider

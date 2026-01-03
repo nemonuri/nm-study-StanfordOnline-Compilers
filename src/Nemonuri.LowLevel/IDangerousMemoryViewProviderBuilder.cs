@@ -12,12 +12,12 @@ public interface IDangerousMemoryViewProviderBuilder<TKey, TProvider, TReceiverC
     IMemoryView<LowLevelKeyValuePair<TKey, TProvider>>
     where TProvider : IDangerousMemoryViewProvider
 {
-    public TKey AddReceiverComponent(TReceiverComponent receiverComponent);
-    public TKey AddArgumentComponent(TArgumentComponent argumentComponent);
-    public TKey AddHandleComponent<T, TMemoryView>(MethodHandle<TReceiverComponent, TArgumentComponent, TMemoryView> handleComponent)
+    public TKey GetOrAddReceiverComponent(TReceiverComponent receiverComponent, out bool fresh);
+    public TKey GetOrAddArgumentComponent(TArgumentComponent argumentComponent, out bool fresh);
+    public TKey GetOrAddHandleComponent<T, TMemoryView>(MethodHandle<TReceiverComponent, TArgumentComponent, TMemoryView> handleComponent, out bool fresh)
         where TMemoryView : IMemoryView<T>;
 
-    public LowLevelKeyValuePair<TKey, TProvider> BuildProvider(TKey receiver, TKey argument, TKey handle);
+    public LowLevelKeyValuePair<TKey, TProvider> GetOrBuildProvider(TKey receiver, TKey argument, TKey handle, out bool fresh);
 }
 
 public static class DangerousMemoryViewProviderBuilderTheory
@@ -35,11 +35,11 @@ public static class DangerousMemoryViewProviderBuilderTheory
         )
             where TMemoryView : IMemoryView<T>
         {
-            var rk = self.AddReceiverComponent(receiverComponent);
-            var ak = self.AddArgumentComponent(argumentComponent);
-            var hk = self.AddHandleComponent<T, TMemoryView>(handleComponent);
+            var rk = self.GetOrAddReceiverComponent(receiverComponent, out _);
+            var ak = self.GetOrAddArgumentComponent(argumentComponent, out _);
+            var hk = self.GetOrAddHandleComponent<T, TMemoryView>(handleComponent, out _);
 
-            return self.BuildProvider(rk, ak, hk);
+            return self.GetOrBuildProvider(rk, ak, hk, out _);
         }
     }
 }

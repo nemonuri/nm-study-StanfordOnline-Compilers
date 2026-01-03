@@ -1,5 +1,6 @@
 
 using Nemonuri.LowLevel.Abstractions;
+using Nemonuri.LowLevel.DuckTyping;
 
 namespace Nemonuri.Graph.LowLevel;
 
@@ -9,13 +10,22 @@ public readonly partial struct PackedGraph<TNodeKey, TEdgeLabel, TNodeValue, TRe
 {
     public struct Builder
     {
-        //private readonly DangerousMemoryViewProviderBuilder<ObjectOrPointer,  _dangerousMemoryViewProviderBuilder;
-    }
-}
+        private readonly DangerousMemoryViewProviderBuilder<ObjectOrPointer, PackedGraphMemoryKey<TNodeKey, TEdgeLabel>> _builder;
 
-public readonly record struct PackedGraphMemoryKey<TNodeKey, TEdgeLabel>
-    where TNodeKey : IEquatable<TNodeKey>
-    where TEdgeLabel : IEquatable<TEdgeLabel>
-{
-    //private readonly LowLevelChoice<
+        internal Builder
+        (
+            DuckTypedProvider<TReceiver, DangerousMemoryViewProviderBuilder<ObjectOrPointer, PackedGraphMemoryKey<TNodeKey, TEdgeLabel>>> builderProviderHandle
+        )
+        {
+            var b = builderProviderHandle.InvokeProvider();
+            Guard.IsNotNull(b, "builderProviderHandle.InvokeProvider()");
+            _builder = b;
+        }
+
+        public int GetOrAddNodeKey(TNodeKey nodeKey, out bool fresh)
+        {
+            PackedGraphMemoryKey<TNodeKey, TEdgeLabel> mk = new(nodeKey);
+            return _builder.GetOrAddArgumentComponent(mk, out fresh);
+        }
+    }
 }

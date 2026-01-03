@@ -22,21 +22,21 @@ public partial class DangerousMemoryViewProviderBuilder<TReceiverComponent, TArg
     public ref LowLevelKeyValuePair<int, Provider> this[int index] => ref _sharedState.ProviderProviders[index];
 
 
-    public int AddReceiverComponent(TReceiverComponent receiverComponent)
+    public int GetOrAddReceiverComponent(TReceiverComponent receiverComponent, out bool fresh)
     {
         TypeHint<(TReceiverComponent, ArrayViewBuilder<TReceiverComponent>)> th = default;
-        _sharedState.Providers.TryAddAndGetIndex(in receiverComponent, out var key ,th);
+        fresh = _sharedState.Providers.TryAddAndGetIndex(in receiverComponent, out var key ,th);
         return key;
     }
 
-    public int AddArgumentComponent(TArgumentComponent argumentComponent)
+    public int GetOrAddArgumentComponent(TArgumentComponent argumentComponent, out bool fresh)
     {
         TypeHint<(TArgumentComponent, ArrayViewBuilder<TArgumentComponent>)> th = default;
-        _sharedState.Arguments.TryAddAndGetIndex(in argumentComponent, out var key ,th);
+        fresh = _sharedState.Arguments.TryAddAndGetIndex(in argumentComponent, out var key ,th);
         return key;
     }
 
-    public unsafe int AddHandleComponent<T, TMemoryView>(MethodHandle<TReceiverComponent, TArgumentComponent, TMemoryView> handleComponent) where TMemoryView : IMemoryView<T>
+    public unsafe int GetOrAddHandleComponent<T, TMemoryView>(MethodHandle<TReceiverComponent, TArgumentComponent, TMemoryView> handleComponent, out bool fresh) where TMemoryView : IMemoryView<T>
     {
         TypedUnmanagedBox<nint> addingHandle = TypedUnmanagedBox<nint>.Box(in handleComponent);
 
@@ -44,11 +44,11 @@ public partial class DangerousMemoryViewProviderBuilder<TReceiverComponent, TArg
 
         TypeHint<(TypedUnmanagedBox<nint>, ArrayViewBuilder<TypedUnmanagedBox<nint>>)> th = default;
 
-        _sharedState.GetMemoryViewHandles.TryAddAndGetIndex(in addingHandle, new(&EqImpl), out var key, th);
+        fresh = _sharedState.GetMemoryViewHandles.TryAddAndGetIndex(in addingHandle, new(&EqImpl), out var key, th);
         return key;
     }
 
-    public unsafe LowLevelKeyValuePair<int, Provider> BuildProvider(int receiver, int argument, int handle)
+    public unsafe LowLevelKeyValuePair<int, Provider> GetOrBuildProvider(int receiver, int argument, int handle, out bool fresh)
     {
         TypeHint<(LowLevelKeyValuePair<int, Provider>,PackedTable<int, Provider>.Builder)> th = default;
 
@@ -61,9 +61,11 @@ public partial class DangerousMemoryViewProviderBuilder<TReceiverComponent, TArg
         bool found = _sharedState.ProviderProviders.TryAddAndGetIndex(new(0,new(default!,receiver,argument,handle)),new(&EqImpl),out var key,th);
         if (found)
         {
+            fresh = false;
             return _sharedState.ProviderProviders[key];
         }
 
+        fresh = true;
         int nextKey = _sharedState.ProviderProviders.Length;
         LowLevelKeyValuePair<int, Provider> newEntry = new(nextKey, new(this, receiver, argument, handle));
         return newEntry;
