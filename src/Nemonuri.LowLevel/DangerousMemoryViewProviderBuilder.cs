@@ -1,8 +1,10 @@
 
+using Nemonuri.LowLevel.DuckTyping;
+
 namespace Nemonuri.LowLevel;
 
-public partial class MemoryViewManager<TReceiverComponent, TArgumentComponent> : 
-    IDangerousMemoryViewProviderBuilder<int, MemoryViewManager<TReceiverComponent, TArgumentComponent>.Provider, TReceiverComponent, TArgumentComponent>
+public partial class DangerousMemoryViewProviderBuilder<TReceiverComponent, TArgumentComponent> : 
+    IDangerousMemoryViewProviderBuilder<int, DangerousMemoryViewProviderBuilder<TReceiverComponent, TArgumentComponent>.Provider, TReceiverComponent, TArgumentComponent>
     where TReceiverComponent : IEquatable<TReceiverComponent>
     where TArgumentComponent : IEquatable<TArgumentComponent>
 {
@@ -10,7 +12,7 @@ public partial class MemoryViewManager<TReceiverComponent, TArgumentComponent> :
     private readonly Shared _sharedState;
     public ref readonly Shared SharedState => ref _sharedState;
 
-    public MemoryViewManager()
+    public DangerousMemoryViewProviderBuilder()
     {
         _sharedState = new Shared(new(4),new(4),new(4),new(4));
     }

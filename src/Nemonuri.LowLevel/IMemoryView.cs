@@ -1,3 +1,6 @@
+
+using Nemonuri.LowLevel.DuckTyping;
+
 namespace Nemonuri.LowLevel;
 
 public interface IMemoryView<T>
@@ -32,7 +35,7 @@ public unsafe readonly struct MemoryViewHandle<TReceiver, T>
     public ref T GetItem(ref TReceiver handler, int index) => ref _itemGetter(ref handler, index);
 }
 
-public partial struct MemoryViewReceiver<TReceiver, T> : IMemoryView<T>, IMaybeSupportsRawSpan<T>
+public partial struct MemoryViewReceiver<TReceiver, T> : IMemoryView<T>, IMaybeSupportsRawSpan<T>, IDuckTypeReceiver<TReceiver>
 {
     private TReceiver _receiver;
     private readonly MemoryViewHandle<TReceiver, T> _memoryViewhandle;
@@ -57,6 +60,8 @@ public partial struct MemoryViewReceiver<TReceiver, T> : IMemoryView<T>, IMaybeS
     public readonly bool SupportsRawSpan => _rawSpanHandle.SupportsRawSpan;
 
     [UnscopedRef] public Span<T> AsSpan => _rawSpanHandle.AsSpan(ref _receiver);
+
+    [UnscopedRef] public ref readonly TReceiver Receiver => ref _receiver;
 }
 
 #if NET9_0_OR_GREATER

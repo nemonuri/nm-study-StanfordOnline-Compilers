@@ -1,4 +1,6 @@
 ﻿
+using Rt = Nemonuri.LowLevel.Primitives.RuntimePointerTheory;
+
 namespace Nemonuri.LowLevel;
 
 [StructLayout(LayoutKind.Sequential)]
@@ -16,7 +18,7 @@ public readonly struct LowLevelChoice<T1> : IEquatable<LowLevelChoice<T1>>
         Choice1 = choice1;
     }
 
-    public static implicit operator LowLevelChoice<T1>(Nil nil) => new(0, in UnsafeReadOnly.GetDefaultRef<Choice1Tagged<T1>>());
+    public static implicit operator LowLevelChoice<T1>(Nil nil) => new(0, in Rt.UndefinedRef<Choice1Tagged<T1>>());
     public static implicit operator LowLevelChoice<T1>(in Choice1Tagged<T1> choice1) => new(1, in choice1);
     //---|
 
@@ -70,9 +72,9 @@ public readonly struct LowLevelChoice<T1, T2> : IEquatable<LowLevelChoice<T1, T2
         Choice2 = choice2;
     }
 
-    public static implicit operator LowLevelChoice<T1, T2>(Nil nil) => new(0, in UnsafeReadOnly.GetDefaultRef<Choice1Tagged<T1>>(), in UnsafeReadOnly.GetDefaultRef<Choice2Tagged<T2>>());
-    public static implicit operator LowLevelChoice<T1, T2>(Choice1Tagged<T1> choice1) => new(1, in choice1, in UnsafeReadOnly.GetDefaultRef<Choice2Tagged<T2>>());
-    public static implicit operator LowLevelChoice<T1, T2>(Choice2Tagged<T2> choice2) => new(2, in UnsafeReadOnly.GetDefaultRef<Choice1Tagged<T1>>(), in choice2);
+    public static implicit operator LowLevelChoice<T1, T2>(Nil nil) => new(0, in Rt.UndefinedRef<Choice1Tagged<T1>>(), in Rt.UndefinedRef<Choice2Tagged<T2>>());
+    public static implicit operator LowLevelChoice<T1, T2>(Choice1Tagged<T1> choice1) => new(1, in choice1, in Rt.UndefinedRef<Choice2Tagged<T2>>());
+    public static implicit operator LowLevelChoice<T1, T2>(Choice2Tagged<T2> choice2) => new(2, in Rt.UndefinedRef<Choice1Tagged<T1>>(), in choice2);
     //---|
 
     //--- Validators ---

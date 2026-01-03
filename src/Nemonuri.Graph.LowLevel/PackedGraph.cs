@@ -29,20 +29,26 @@ public readonly partial struct PackedGraph<TNodeKey, TEdgeLabel, TNodeValue, TRe
     where TNodeKey : IEquatable<TNodeKey>
     where TEdgeLabel : IEquatable<TEdgeLabel>
 {
-    private readonly PackedTable<TNodeKey, AdjacentTableAndValue<TEdgeLabel, TNodeKey, TNodeValue, TReceiver>> _packedTable;
+    private readonly PackedGraphView<TNodeKey, TEdgeLabel, TNodeValue, TReceiver> _packedGraphView;
 
-    public PackedGraph(LowLevelKeyValuePair<TNodeKey, AdjacentTableAndValue<TEdgeLabel, TNodeKey, TNodeValue, TReceiver>>[] memory)
+    public PackedGraph(PackedGraphView<TNodeKey, TEdgeLabel, TNodeValue, TReceiver> packedGraphView)
     {
-        _packedTable = new(memory);
+        _packedGraphView = packedGraphView;
     }
 
-    public LowLevelKeyValuePair<TNodeKey, AdjacentTableAndValue<TEdgeLabel, TNodeKey, TNodeValue, TReceiver>>[] Memory => _packedTable.Memory;
+    public PackedGraph(LowLevelKeyValuePair<TNodeKey, AdjacentTableAndValue<TEdgeLabel, TNodeKey, TNodeValue, TReceiver>>[] memory) :
+    this
+    (
+        new PackedGraphView<TNodeKey, TEdgeLabel, TNodeValue, TReceiver>
+        (
+            new PackedTableView<TNodeKey, AdjacentTableAndValue<TEdgeLabel, TNodeKey, TNodeValue, TReceiver>>
+            (
+                new ArrayView<LowLevelKeyValuePair<TNodeKey, AdjacentTableAndValue<TEdgeLabel, TNodeKey, TNodeValue, TReceiver>>>(memory)
+            )
+        )
+    )
+    { }
 
-    public void GetMemoryView(scoped ref PackedGraphView<TNodeKey, TEdgeLabel, TNodeValue, TReceiver> memoryView)
-    {
-        PackedTableView<TNodeKey, AdjacentTableAndValue<TEdgeLabel, TNodeKey, TNodeValue, TReceiver>> innerMemoryView = default;
-        _packedTable.GetMemoryView(ref innerMemoryView);
-        memoryView = new(innerMemoryView);
-    }
+    [UnscopedRef]
+    public ref readonly PackedGraphView<TNodeKey, TEdgeLabel, TNodeValue, TReceiver> InvokeProvider() => ref _packedGraphView;
 }
-

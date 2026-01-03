@@ -26,19 +26,20 @@ public readonly partial struct PackedTable<TKey, TValue> :
     ILowLevelTable<TKey, TValue, PackedTableView<TKey, TValue>>
     where TKey : IEquatable<TKey>
 {
-    public PackedTable(LowLevelKeyValuePair<TKey, TValue>[] memory)
+    private readonly PackedTableView<TKey, TValue> _packedTableView;
+
+    public PackedTable(PackedTableView<TKey, TValue> packedTableView)
     {
-        Memory = memory;
+        _packedTableView = packedTableView;
     }
 
-    public LowLevelKeyValuePair<TKey, TValue>[] Memory {get;}
+    public PackedTable(LowLevelKeyValuePair<TKey, TValue>[] memory) : this
+    (
+        new PackedTableView<TKey, TValue>(new ArrayView<LowLevelKeyValuePair<TKey, TValue>>(memory))
+    )
+    {}
 
-    public void GetMemoryView(scoped ref PackedTableView<TKey, TValue> memoryView)
-    {
-        unsafe
-        {
-            memoryView = new(new(Memory));
-        }
-    }
+    [UnscopedRef]
+    public ref readonly PackedTableView<TKey, TValue> InvokeProvider() => ref _packedTableView;
 }
 

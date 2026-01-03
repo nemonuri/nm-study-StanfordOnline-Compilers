@@ -13,8 +13,8 @@ public struct AdjacentTable<TEdgeLabel, TNodeKey, TReceiver> :
         _table = table;
     }
 
-    public void GetMemoryView(scoped ref MemoryViewReceiver<TReceiver, LowLevelKeyValuePair<TEdgeLabel, TNodeKey>> memoryView) =>
-        _table.GetMemoryView(ref memoryView);
+    [UnscopedRef]
+    public ref readonly MemoryViewReceiver<TReceiver, LowLevelKeyValuePair<TEdgeLabel, TNodeKey>> InvokeProvider() => ref _table.InvokeProvider();
 }
 
 

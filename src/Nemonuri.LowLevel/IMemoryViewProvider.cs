@@ -1,4 +1,6 @@
 
+using Nemonuri.LowLevel.DuckTyping;
+
 namespace Nemonuri.LowLevel;
 
 public interface IMemoryViewProvider<T, TMemoryView> : IProviderInvokable<TMemoryView>

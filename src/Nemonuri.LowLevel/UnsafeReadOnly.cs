@@ -31,6 +31,4 @@ public static class UnsafeReadOnly
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool AreNotNullRefAndSame<T>(ref readonly T left, ref readonly T right) =>
         AreNotNullRef(in left, in right) && AreSameRef(in left, in right);
-    
-    public static ref readonly T? GetDefaultRef<T>() => ref Defaults<T>.Default;
 }

@@ -2,7 +2,7 @@
 using System.Diagnostics;
 using Nemonuri.LowLevel.Primitives;
 
-namespace Nemonuri.LowLevel;
+namespace Nemonuri.LowLevel.DuckTyping;
 
 [StructLayout(LayoutKind.Sequential)]
 public unsafe readonly struct MethodHandle<TReceiver, TSource, TResult>

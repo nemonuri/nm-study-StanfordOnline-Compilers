@@ -1,18 +1,19 @@
 
 using Nemonuri.LowLevel.Primitives;
+using Nemonuri.LowLevel.DuckTyping;
 
 namespace Nemonuri.LowLevel;
 
-public partial class MemoryViewManager<TReceiverComponent, TArgumentComponent>
+public partial class DangerousMemoryViewProviderBuilder<TReceiverComponent, TArgumentComponent>
 {
     public readonly struct Provider : IDangerousMemoryViewProvider
     {
-        public readonly MemoryViewManager<TReceiverComponent, TArgumentComponent> MemoryViewManager;
+        public readonly DangerousMemoryViewProviderBuilder<TReceiverComponent, TArgumentComponent> MemoryViewManager;
         public readonly int ProviderIndex;
         public readonly int ArgumentIndex;
         public readonly int MethodHandleIndex;
 
-        public Provider(MemoryViewManager<TReceiverComponent, TArgumentComponent> memoryViewManager, int providerIndex, int argumentIndex, int methodHandleIndex)
+        public Provider(DangerousMemoryViewProviderBuilder<TReceiverComponent, TArgumentComponent> memoryViewManager, int providerIndex, int argumentIndex, int methodHandleIndex)
         {
             MemoryViewManager = memoryViewManager;
             ProviderIndex = providerIndex;
