@@ -4,10 +4,9 @@ namespace Nemonuri.LowLevel;
 public struct TheoryDomain<TDom>{}
 
 [StructLayout(LayoutKind.Sequential)]
-public readonly ref struct TheoryBox<TDom, TSource>
+public readonly struct TheoryBox<TDom, TSource>
 #if NET9_0_OR_GREATER
     where TDom : allows ref struct
-    where TSource : allows ref struct
 #endif
 {
     public readonly TSource Self;

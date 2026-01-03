@@ -40,4 +40,16 @@ public static class ManagedPointerTheory
         ref var locationProvider = ref inverseLocationProvider.InvokeMethod(ref location!);
         return ToObjectOrPointerReference(ref locationProvider);
     }
+
+    public static bool AreEquivalent<T>(in T? left, in T? right)
+        where T : IEquatable<T>
+    {
+        if (!UnsafeReadOnly.AreNotNullRef(in left, in right)) {return false;}
+        if (UnsafeReadOnly.AreSameRef(in left, in right)) {return true;}
+
+        return left?.Equals(right) ?? false;
+    }
+
+    public static bool MutableAreEquivalent<T>(ref T? left, ref T? right) where T : IEquatable<T> 
+        => AreEquivalent(in left, in right);
 }

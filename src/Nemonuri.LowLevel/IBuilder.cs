@@ -1,8 +1,7 @@
 namespace Nemonuri.LowLevel;
 
-public interface IBuilder<TSource, TResult>
+public interface IBuilder<TSource, TResult> : IAddable<TSource>
 {
-    void Add(in TSource source);
     TResult Build();
 }
 

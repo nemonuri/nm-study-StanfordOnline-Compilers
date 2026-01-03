@@ -5,7 +5,7 @@ using Nemonuri.LowLevel.Primitives;
 namespace Nemonuri.LowLevel.Abstractions;
 
 [StructLayout(LayoutKind.Sequential)]
-public readonly partial record struct ObjectOrPointer
+public readonly struct ObjectOrPointer : IEquatable<ObjectOrPointer>
 {
     public readonly object? Object;
     public readonly nint Pointer;
@@ -58,6 +58,39 @@ public readonly partial record struct ObjectOrPointer
     }
     //---|
 
+    //--- compare equality ---
+    public ObjectOrPointer GetSelfOrDereferenced()
+    {
+        if (!IsObjectOrPointerReference) { return this; }
+        return DangerousDereferenceOnce<ObjectOrPointerReference>().Dereference().GetSelfOrDereferenced();
+    }
+
+    public bool Equals(ObjectOrPointer other)
+    {
+        ObjectOrPointer ensuredThis = GetSelfOrDereferenced();
+        ObjectOrPointer ensuredOther = GetSelfOrDereferenced();
+
+        if (ensuredThis.IsNull || ensuredOther.IsNull) { return false; }
+
+        return (ensuredThis.IsManaged, ensuredOther.IsManaged) switch
+        {
+            (true, true) => Equals(ensuredThis.Object, ensuredOther.Object),
+            (false, false) => ensuredThis.Pointer == ensuredOther.Pointer,
+            _ => false
+        };
+    }
+
+    public override bool Equals(object? obj) => obj is ObjectOrPointer v && Equals(v);
+    
+    public override int GetHashCode()
+    {
+        var ensuredThis = GetSelfOrDereferenced();
+        if (ensuredThis.IsManaged) { return ensuredThis.Object.GetHashCode(); }
+        else if (ensuredThis.IsFixed) { return ensuredThis.Pointer.GetHashCode(); }
+        else { return 0; }
+    }
+    //---|
+
     //--- Unsafe deconstructors ---
     // Note: These methods are not primitive...
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -103,5 +136,5 @@ public readonly partial record struct ObjectOrPointer
         }
     }
     //---|
-    
+
 }

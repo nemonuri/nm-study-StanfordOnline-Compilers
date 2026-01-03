@@ -1,26 +1,12 @@
 
 using CommunityToolkit.HighPerformance;
-using RawValue =
-        Nemonuri.LowLevel.SequentialLayoutValueTuple<
-            Nemonuri.LowLevel.DangerousMemoryViewProviderReceiver<Nemonuri.LowLevel.MemoryViewConfig>, 
-            Nemonuri.LowLevel.DangerousMemoryViewProviderHandle,
-            Nemonuri.LowLevel.DangerousMemoryViewProviderReceiver<Nemonuri.LowLevel.LowLevelChoice<object, nint>>
-        >;
-using RawEntry = 
-    Nemonuri.LowLevel.LowLevelKeyValuePair<
-        int, 
-        Nemonuri.LowLevel.SequentialLayoutValueTuple<
-            Nemonuri.LowLevel.DangerousMemoryViewProviderReceiver<Nemonuri.LowLevel.MemoryViewConfig>, 
-            Nemonuri.LowLevel.DangerousMemoryViewProviderHandle,
-            Nemonuri.LowLevel.DangerousMemoryViewProviderReceiver<Nemonuri.LowLevel.LowLevelChoice<object, nint>>
-        >
-    >;
 using Nemonuri.LowLevel.Abstractions;
+using Nemonuri.LowLevel.Primitives;
 
 namespace Nemonuri.LowLevel;
 
-public readonly struct MemoryViewConfig : 
-    IMemoryViewManager<MemoryViewConfig.Individual, MemoryViewConfig.Provider>,
+public readonly partial struct MemoryViewConfig : 
+    IMemoryViewManager<MemoryViewConfig.Individual, MemoryViewConfig.ProviderProvider>,
     IConfig<Box<MemoryViewConfig.Shared>, MemoryViewConfig.Individual, MemoryViewConfig>
 {
     private readonly Individual _individualConfig;
@@ -32,70 +18,38 @@ public readonly struct MemoryViewConfig :
         _individualConfig = individual;
     }
 
-    public int Length => SharedConfig.GetReference().MemoryViewManager.Length;
+    public int Length => SharedConfig.GetReference().ProviderProviders.Length;
 
-    public ref LowLevelKeyValuePair<Individual, DuckTypedProperty<Provider, TypedUnmanagedBox<nint>>> this[int index] => ref SharedConfig.GetReference().MemoryViewManager[index];
+    public ref LowLevelKeyValuePair<Individual, DuckTypedProperty<ProviderProvider, TypedUnmanagedBox<nint>>> this[int index] => ref SharedConfig.GetReference().ProviderProviders[index];
 
     [UnscopedRef]
     public ref readonly Individual IndividualConfig => ref _individualConfig;
 
     public MemoryViewConfig WithNewIndividualConfig(in Individual individual) => new(SharedConfig, individual);
 
-
-
     public static MemoryViewConfig CreateNew()
     {
-        Individual individual = new(0, 0, 0)
+        return new (new Shared(new(4),new(4),new(4),new(4)), new(-1));
     }
 
-
-    public readonly record struct Individual
+    public bool Add<T, TMemoryView>
+    (
+        ObjectOrPointer memoryViewProvider, 
+        ObjectOrPointer memoryViewArgument, 
+        MethodHandle<ObjectOrPointer, ObjectOrPointer, TMemoryView> getMemoryViewHandle
+    )
+        where TMemoryView : IMemoryView<T>
     {
-        public int MemoryViewProviderKey {get;}
+        ref var shared = ref SharedConfig.GetReference();
 
-        internal Individual(int memoryViewProviderKey)
-        {
-            MemoryViewProviderKey = memoryViewProviderKey;
-        }
+        // Note
+        // - MemoryViewConfig.Provider 는, memoryViewProviderProvider 가 되는 것인가...;;
+        // - 뭔가 구현하려다 보면, ReferenceReference 나, ProviderProvider 같은 게 꼭 생긴 단 말이지;;
+        // - ...그래. 그냥 MemoryViewConfig.ProviderProvider 라고, 대놓고 지르자!
+
+
     }
 
-    public readonly struct Provider
-    {
-        public readonly MemoryViewConfig MemoryViewConfig;
-
-        internal Provider(MemoryViewConfig memoryViewConfig)
-        {
-            MemoryViewConfig = memoryViewConfig;
-            ReceiverIndex = ArgumentIndex = MethodHandleIndex = -1;
-        }
-
-        public int ReceiverIndex {get;internal init;}
-        public int ArgumentIndex {get;internal init;}
-        public int MethodHandleIndex {get;internal init;}
-    }
-
-    public readonly struct Shared
-    {
-        public readonly ArrayViewBuilder<ObjectOrPointer> Receivers;
-        public readonly ArrayViewBuilder<ObjectOrPointer> Arguments;
-        public readonly ArrayViewBuilder<TypedUnmanagedBox<nint>> MethodHandles; // MethodHandle<ObjectOrPointer, ObjectOrPointer, TMemoryView>
-
-        public readonly PackedTable<Individual, DuckTypedProperty<Provider, TypedUnmanagedBox<nint>>>.Builder MemoryViewManager;
-
-        internal Shared
-        (
-            ArrayViewBuilder<ObjectOrPointer> receivers, 
-            ArrayViewBuilder<ObjectOrPointer> arguments, 
-            ArrayViewBuilder<TypedUnmanagedBox<nint>> methodHandles,
-            PackedTable<Individual, DuckTypedProperty<Provider, TypedUnmanagedBox<nint>>>.Builder memoryViewManager
-        )
-        {
-            Receivers = receivers;
-            Arguments = arguments;
-            MethodHandles = methodHandles;
-            MemoryViewManager = memoryViewManager;
-        }
-    }
 
 
 }
