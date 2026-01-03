@@ -1,7 +1,7 @@
 
 namespace Nemonuri.LowLevel;
 
-public struct TheoryDomain<TDom>{}
+public struct TypeHint<T>{}
 
 [StructLayout(LayoutKind.Sequential)]
 public readonly struct TheoryBox<TDom, TSource>
@@ -27,7 +27,7 @@ public static class TheoryBox
         ref UnsafeReadOnly.As<TheoryBox<TDomFrom, TSource>, TheoryBox<TDomTo, TSource>>(in boxedSource);
     
     public static ref readonly TheoryBox<(TDom, TPush), TSource> Push<TDom, TSource, TPush>
-        (this ref readonly TheoryBox<TDom, TSource> boxedSource, TheoryDomain<TPush> push = default)
+        (this ref readonly TheoryBox<TDom, TSource> boxedSource, TypeHint<TPush> push = default)
     {
         return ref ReadOnlyRebox<TDom, (TDom, TPush), TSource>(in boxedSource);
     }

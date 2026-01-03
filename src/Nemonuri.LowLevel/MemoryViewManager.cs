@@ -2,7 +2,7 @@
 namespace Nemonuri.LowLevel;
 
 public partial class MemoryViewManager<TBuilderReceiver, TBuilderArgument> : 
-    IMemoryViewManager<int, MemoryViewManager<TBuilderReceiver, TBuilderArgument>.Provider, TBuilderReceiver, TBuilderArgument>
+    IAddableDangerousMemoryViewProviderTable<int, MemoryViewManager<TBuilderReceiver, TBuilderArgument>.Provider, TBuilderReceiver, TBuilderArgument>
     where TBuilderReceiver : IEquatable<TBuilderReceiver>
     where TBuilderArgument : IEquatable<TBuilderArgument>
 {
