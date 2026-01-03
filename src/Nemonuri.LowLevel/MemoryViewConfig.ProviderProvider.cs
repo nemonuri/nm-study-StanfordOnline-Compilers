@@ -7,28 +7,26 @@ namespace Nemonuri.LowLevel;
 
 public readonly partial struct MemoryViewConfig
 {
-    public readonly struct ProviderProvider : IDangerousProviderArity2
+    public readonly struct ProviderProvider : IDangerousMemoryViewProvider
     {
         public readonly MemoryViewConfig MemoryViewConfig;
+        public readonly int ProviderIndex;
+        public readonly int ArgumentIndex;
+        public readonly int MethodHandleIndex;
 
-        internal ProviderProvider(MemoryViewConfig memoryViewConfig)
+        public ProviderProvider(MemoryViewConfig memoryViewConfig, int providerIndex, int argumentIndex, int methodHandleIndex)
         {
             MemoryViewConfig = memoryViewConfig;
-            ProviderIndex = ArgumentIndex = MethodHandleIndex = -1;
+            ProviderIndex = providerIndex;
+            ArgumentIndex = argumentIndex;
+            MethodHandleIndex = methodHandleIndex;
         }
 
-        public int ProviderIndex {get;internal init;}
-        public int ArgumentIndex {get;internal init;}
-        public int MethodHandleIndex {get;internal init;}
+        [UnscopedRef]
+        public ref TMemoryView DangerousGetMemoryView<T, TMemoryView>() where TMemoryView : IMemoryView<T> 
+            => ref DangerousGetMemoryView<T, TMemoryView>(in this);
 
-        public ref TMemoryView DangerousGet<T, TMemoryView>()
-            where TMemoryView : IMemoryView<T>
-        {
-            throw new NotImplementedException();
-        }
-
-
-        private static ref TMemoryView DangerousGetMemoryView<T, TMemoryView>(ref ProviderProvider pp)
+        private static ref TMemoryView DangerousGetMemoryView<T, TMemoryView>(in ProviderProvider pp)
             where TMemoryView : IMemoryView<T>
         {
             ref var shared = ref pp.MemoryViewConfig.SharedConfig.GetReference();
@@ -61,14 +59,14 @@ public readonly partial struct MemoryViewConfig
         public readonly ArrayViewBuilder<ObjectOrPointer> Arguments;
         public readonly ArrayViewBuilder<TypedUnmanagedBox<nint>> GetMemoryViewHandles; // MethodHandle<ObjectOrPointer, ObjectOrPointer, TMemoryView>
 
-        public readonly PackedTable<Individual, DuckTypedProperty<ProviderProvider, TypedUnmanagedBox<nint>>>.Builder ProviderProviders;
+        public readonly PackedTable<Individual, ProviderProvider>.Builder ProviderProviders;
 
         internal Shared
         (
             ArrayViewBuilder<ObjectOrPointer> providers, 
             ArrayViewBuilder<ObjectOrPointer> arguments, 
             ArrayViewBuilder<TypedUnmanagedBox<nint>> getMemoryViewHandles,
-            PackedTable<Individual, DuckTypedProperty<ProviderProvider, TypedUnmanagedBox<nint>>>.Builder providerProviders
+            PackedTable<Individual, ProviderProvider>.Builder providerProviders
         )
         {
             Providers = providers;

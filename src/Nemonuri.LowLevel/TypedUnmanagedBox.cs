@@ -30,4 +30,7 @@ public struct TypedUnmanagedBox<T> where T : unmanaged
         Debug.Assert( !RuntimePointerTheory.IsUndefinedOrNullRef(ref result) );
         return ref result;
     }
+
+    [UnscopedRef]
+    public ref readonly T BoxedValue => ref _valueBox;
 }
