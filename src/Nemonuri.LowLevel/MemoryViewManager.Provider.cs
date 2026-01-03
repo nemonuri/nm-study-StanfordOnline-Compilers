@@ -3,16 +3,16 @@ using Nemonuri.LowLevel.Primitives;
 
 namespace Nemonuri.LowLevel;
 
-public partial class MemoryViewManager<TBuilderReceiver, TBuilderArgument>
+public partial class MemoryViewManager<TReceiverComponent, TArgumentComponent>
 {
     public readonly struct Provider : IDangerousMemoryViewProvider
     {
-        public readonly MemoryViewManager<TBuilderReceiver, TBuilderArgument> MemoryViewManager;
+        public readonly MemoryViewManager<TReceiverComponent, TArgumentComponent> MemoryViewManager;
         public readonly int ProviderIndex;
         public readonly int ArgumentIndex;
         public readonly int MethodHandleIndex;
 
-        public Provider(MemoryViewManager<TBuilderReceiver, TBuilderArgument> memoryViewManager, int providerIndex, int argumentIndex, int methodHandleIndex)
+        public Provider(MemoryViewManager<TReceiverComponent, TArgumentComponent> memoryViewManager, int providerIndex, int argumentIndex, int methodHandleIndex)
         {
             MemoryViewManager = memoryViewManager;
             ProviderIndex = providerIndex;
@@ -31,7 +31,7 @@ public partial class MemoryViewManager<TBuilderReceiver, TBuilderArgument>
             ref var provider = ref shared.Providers[pp.ProviderIndex];
             ref var argument = ref shared.Arguments[pp.ArgumentIndex];
             ref var boxedMethodHandle = ref shared.GetMemoryViewHandles[pp.MethodHandleIndex];
-            ref var methodHandle = ref boxedMethodHandle.DangerousUnbox<MethodHandle<TBuilderReceiver, TBuilderArgument, TMemoryView>>();
+            ref var methodHandle = ref boxedMethodHandle.DangerousUnbox<MethodHandle<TReceiverComponent, TArgumentComponent, TMemoryView>>();
             if (RuntimePointerTheory.IsUndefinedOrNullRef(ref methodHandle))
             {
                 throw new InvalidCastException();
@@ -43,16 +43,16 @@ public partial class MemoryViewManager<TBuilderReceiver, TBuilderArgument>
 
     public readonly struct Shared
     {
-        public readonly ArrayViewBuilder<TBuilderReceiver> Providers;
-        public readonly ArrayViewBuilder<TBuilderArgument> Arguments;
+        public readonly ArrayViewBuilder<TReceiverComponent> Providers;
+        public readonly ArrayViewBuilder<TArgumentComponent> Arguments;
         public readonly ArrayViewBuilder<TypedUnmanagedBox<nint>> GetMemoryViewHandles; // MethodHandle<TAbstractProvider, TAbstractArgument, TMemoryView>
 
         public readonly PackedTable<int, Provider>.Builder ProviderProviders;
 
         internal Shared
         (
-            ArrayViewBuilder<TBuilderReceiver> providers, 
-            ArrayViewBuilder<TBuilderArgument> arguments, 
+            ArrayViewBuilder<TReceiverComponent> providers, 
+            ArrayViewBuilder<TArgumentComponent> arguments, 
             ArrayViewBuilder<TypedUnmanagedBox<nint>> getMemoryViewHandles,
             PackedTable<int, Provider>.Builder providerProviders
         )

@@ -1,14 +1,11 @@
 
 namespace Nemonuri.LowLevel;
 
-public partial class MemoryViewManager<TBuilderReceiver, TBuilderArgument> : 
-    IAddableDangerousMemoryViewProviderTable<int, MemoryViewManager<TBuilderReceiver, TBuilderArgument>.Provider, TBuilderReceiver, TBuilderArgument>
-    where TBuilderReceiver : IEquatable<TBuilderReceiver>
-    where TBuilderArgument : IEquatable<TBuilderArgument>
+public partial class MemoryViewManager<TReceiverComponent, TArgumentComponent> : 
+    IDangerousMemoryViewProviderBuilder<int, MemoryViewManager<TReceiverComponent, TArgumentComponent>.Provider, TReceiverComponent, TArgumentComponent>
+    where TReceiverComponent : IEquatable<TReceiverComponent>
+    where TArgumentComponent : IEquatable<TArgumentComponent>
 {
-    // Note: 사실상 유일한 Field 가 Box<Shared> 뿐이니, 그냥 MemoryViewManager 를 Class 로 만들어도 되는 것 아닌가?
-    // public Box<Shared> SharedConfig {get;}
-
     // Note: 자동 구현 속성은, 참조로 반환 불가...아쉽네.
     private readonly Shared _sharedState;
     public ref readonly Shared SharedState => ref _sharedState;
@@ -23,29 +20,50 @@ public partial class MemoryViewManager<TBuilderReceiver, TBuilderArgument> :
     public ref LowLevelKeyValuePair<int, Provider> this[int index] => ref _sharedState.ProviderProviders[index];
 
 
-    public unsafe void Add<T, TMemoryView>
-    (
-        TBuilderReceiver memoryViewProvider, 
-        TBuilderArgument memoryViewArgument, 
-        MethodHandle<TBuilderReceiver, TBuilderArgument, TMemoryView> getMemoryViewHandle
-    )
-        where TMemoryView : IMemoryView<T>
+    public int AddReceiverComponent(TReceiverComponent receiverComponent)
     {
-        ref readonly var shared = ref _sharedState;
+        TypeHint<(TReceiverComponent, ArrayViewBuilder<TReceiverComponent>)> th = default;
+        _sharedState.Providers.TryAddAndGetIndex(in receiverComponent, out var key ,th);
+        return key;
+    }
 
-        // Note
-        // - MemoryViewConfig.Provider 는, memoryViewProviderProvider 가 되는 것인가...;;
-        // - 뭔가 구현하려다 보면, ReferenceReference 나, ProviderProvider 같은 게 꼭 생긴 단 말이지;;
-        // - ...그래. 그냥 MemoryViewConfig.ProviderProvider 라고, 대놓고 지르자!
+    public int AddArgumentComponent(TArgumentComponent argumentComponent)
+    {
+        TypeHint<(TArgumentComponent, ArrayViewBuilder<TArgumentComponent>)> th = default;
+        _sharedState.Arguments.TryAddAndGetIndex(in argumentComponent, out var key ,th);
+        return key;
+    }
 
-        AddableMemoryViewTheory.Theorize<TBuilderReceiver, ArrayViewBuilder<TBuilderReceiver>>(in shared.Providers).TryAddAndGetIndex(in memoryViewProvider, out var providerIndex);
-        AddableMemoryViewTheory.Theorize<TBuilderArgument, ArrayViewBuilder<TBuilderArgument>>(in shared.Arguments).TryAddAndGetIndex(in memoryViewArgument, out var argumentIndex);
+    public unsafe int AddHandleComponent<T, TMemoryView>(MethodHandle<TReceiverComponent, TArgumentComponent, TMemoryView> handleComponent) where TMemoryView : IMemoryView<T>
+    {
+        TypedUnmanagedBox<nint> addingHandle = TypedUnmanagedBox<nint>.Box(in handleComponent);
 
-        TypedUnmanagedBox<nint> addingHandle = TypedUnmanagedBox<nint>.Box(in getMemoryViewHandle);
         static bool EqImpl(in TypedUnmanagedBox<nint> l, in TypedUnmanagedBox<nint> r) => l.BoxedValue == r.BoxedValue;
-        AddableMemoryViewTheory.Theorize<TypedUnmanagedBox<nint>, ArrayViewBuilder<TypedUnmanagedBox<nint>>>(in shared.GetMemoryViewHandles).TryAddAndGetIndex(in addingHandle, new(&EqImpl), out var methodHandleIndex);
 
-        int nextKey = shared.ProviderProviders.Length;
-        shared.ProviderProviders.Add(new(nextKey, new(this, providerIndex, argumentIndex, methodHandleIndex)));
+        TypeHint<(TypedUnmanagedBox<nint>, ArrayViewBuilder<TypedUnmanagedBox<nint>>)> th = default;
+
+        _sharedState.GetMemoryViewHandles.TryAddAndGetIndex(in addingHandle, new(&EqImpl), out var key, th);
+        return key;
+    }
+
+    public unsafe LowLevelKeyValuePair<int, Provider> BuildProvider(int receiver, int argument, int handle)
+    {
+        TypeHint<(LowLevelKeyValuePair<int, Provider>,PackedTable<int, Provider>.Builder)> th = default;
+
+        static bool EqImpl(in LowLevelKeyValuePair<int, Provider> l, in LowLevelKeyValuePair<int, Provider> r) =>
+               l.Value.ArgumentIndex == r.Value.ArgumentIndex
+            && l.Value.MethodHandleIndex == r.Value.MethodHandleIndex
+            && l.Value.ProviderIndex == r.Value.ProviderIndex
+            ;
+
+        bool found = _sharedState.ProviderProviders.TryAddAndGetIndex(new(0,new(default!,receiver,argument,handle)),new(&EqImpl),out var key,th);
+        if (found)
+        {
+            return _sharedState.ProviderProviders[key];
+        }
+
+        int nextKey = _sharedState.ProviderProviders.Length;
+        LowLevelKeyValuePair<int, Provider> newEntry = new(nextKey, new(this, receiver, argument, handle));
+        return newEntry;
     }
 }
