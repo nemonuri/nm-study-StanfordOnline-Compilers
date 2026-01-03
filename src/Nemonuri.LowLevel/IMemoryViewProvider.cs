@@ -1,19 +1,17 @@
 
 namespace Nemonuri.LowLevel;
 
-public interface IMemoryViewProvider<T, TMemoryView>
+public interface IMemoryViewProvider<T, TMemoryView> : IProviderInvokable<TMemoryView>
     where TMemoryView : IMemoryView<T>
 #if NET9_0_OR_GREATER
     ,allows ref struct
     where T : allows ref struct
 #endif
 {
-    [UnscopedRef]
-    void GetMemoryView(out TMemoryView memoryView);
 }
 
 [StructLayout(LayoutKind.Sequential)]
-public unsafe readonly struct MemoryViewProviderHandle<TReceiver, T, TMemoryView>
+public readonly struct MemoryViewProviderHandle<TReceiver, T, TMemoryView>
     where TMemoryView : IMemoryView<T>
 #if NET9_0_OR_GREATER
     ,allows ref struct
@@ -21,16 +19,14 @@ public unsafe readonly struct MemoryViewProviderHandle<TReceiver, T, TMemoryView
     where TReceiver : allows ref struct
 #endif
 {
-    private readonly delegate*<ref TReceiver, out TMemoryView, void> _getMemoryViewImpl; // unique field
+    private readonly ProviderHandle<TReceiver, TMemoryView> _providerHandle;
 
-    public MemoryViewProviderHandle(delegate*<ref TReceiver, out TMemoryView, void> getMemoryViewImpl)
+    public MemoryViewProviderHandle(ProviderHandle<TReceiver, TMemoryView> providerHandle)
     {
-        LowLevelGuard.IsNotNull(getMemoryViewImpl);
-        _getMemoryViewImpl = getMemoryViewImpl;
+        _providerHandle = providerHandle;
     }
 
-    public void GetMemoryView(ref TReceiver receiver, out TMemoryView memoryView) => 
-        _getMemoryViewImpl(ref receiver, out memoryView);
+    public ref readonly TMemoryView InvokeProvider(in TReceiver receiver) => ref _providerHandle.InvokeProvider(in receiver)!;
 }
 
 [StructLayout(LayoutKind.Sequential)]
@@ -60,7 +56,7 @@ public readonly struct DangerousMemoryViewProviderHandle
 }
 
 [StructLayout(LayoutKind.Sequential)]
-public struct MemoryViewProviderReceiver<TReceiver, T, TMemoryView> :
+public readonly struct MemoryViewProviderReceiver<TReceiver, T, TMemoryView> :
     IMemoryViewProvider<T, TMemoryView>
     where TMemoryView : IMemoryView<T>
 #if NET9_0_OR_GREATER
@@ -68,7 +64,7 @@ public struct MemoryViewProviderReceiver<TReceiver, T, TMemoryView> :
     where T : allows ref struct
 #endif
 {
-    private TReceiver _receiver;
+    private readonly TReceiver _receiver;
     private readonly MemoryViewProviderHandle<TReceiver, T, TMemoryView> _handle;
 
     public MemoryViewProviderReceiver(TReceiver receiver, MemoryViewProviderHandle<TReceiver, T, TMemoryView> handle)
@@ -78,10 +74,7 @@ public struct MemoryViewProviderReceiver<TReceiver, T, TMemoryView> :
     }
 
     [UnscopedRef]
-    public void GetMemoryView(out TMemoryView memoryView) => _handle.GetMemoryView(ref _receiver, out memoryView);
-
-    [UnscopedRef] ref readonly TReceiver Receiver => ref _receiver;
-    public readonly MemoryViewProviderHandle<TReceiver, T, TMemoryView> Handle => _handle;
+    public ref readonly TMemoryView? InvokeProvider() => ref _handle.InvokeProvider(in _receiver)!;
 }
 
 public struct MemoryViewProviderReceiver<TReceiver, T> :
@@ -95,7 +88,8 @@ public struct MemoryViewProviderReceiver<TReceiver, T> :
         _receiver = receiver; _handle = handle;
     }
 
-    public void GetMemoryView(out MemoryViewReceiver<TReceiver, T> memoryView) => _handle.GetMemoryView(ref _receiver, out memoryView);
+    [UnscopedRef]
+    public ref readonly MemoryViewReceiver<TReceiver, T> InvokeProvider() => ref _handle.InvokeProvider(in _receiver);
 }
 
 public unsafe struct DangerousMemoryViewProviderReceiver<TReceiver>
@@ -124,7 +118,7 @@ public unsafe struct DangerousMemoryViewProviderReceiver<TReceiver>
     }
 
     [UnscopedRef]
-    public void DangerousGetMemoryView<T, TMemoryView>(out TMemoryView memoryView)
+    public ref readonly TMemoryView DangerousGetMemoryView<T, TMemoryView>()
         where TMemoryView : IMemoryView<T>
 #if NET9_0_OR_GREATER
         ,allows ref struct
@@ -137,11 +131,11 @@ public unsafe struct DangerousMemoryViewProviderReceiver<TReceiver>
         }
 
         DangerousMemoryViewProviderHandle handle = _handleSelector(in _receiver);
-        UnsafeReadOnly.As<DangerousMemoryViewProviderHandle, MemoryViewProviderHandle<TReceiver, T, TMemoryView>>(in handle).GetMemoryView(ref _receiver, out memoryView);
+        return ref UnsafeReadOnly.As<DangerousMemoryViewProviderHandle, MemoryViewProviderHandle<TReceiver, T, TMemoryView>>(in handle).InvokeProvider(in _receiver);
     }
 }
 
-#if NET9_0_OR_GREATER
+#if NET9_0_OR_GREATER && false
 public ref struct SpanViewProviderReceiver<TReceiver, T> :
     IMemoryViewProvider<T, SpanViewReceiver<TReceiver, T>>
     where TReceiver : allows ref struct

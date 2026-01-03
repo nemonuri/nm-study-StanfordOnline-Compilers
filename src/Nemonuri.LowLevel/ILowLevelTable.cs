@@ -11,16 +11,17 @@ public interface ILowLevelTable<TKey, TValue, TMemoryView> :
 {
 }
 
-public struct LowLevelTableReceiver<TReceiver, TKey, TValue> :
+public readonly struct LowLevelTableReceiver<TReceiver, TKey, TValue> :
     ILowLevelTable<TKey, TValue, MemoryViewReceiver<TReceiver, LowLevelKeyValuePair<TKey, TValue>>>
     where TKey : IEquatable<TKey>
 {
-    private MemoryViewProviderReceiver<TReceiver, LowLevelKeyValuePair<TKey, TValue>, MemoryViewReceiver<TReceiver, LowLevelKeyValuePair<TKey, TValue>>> _provider;
+    private readonly MemoryViewProviderReceiver<TReceiver, LowLevelKeyValuePair<TKey, TValue>, MemoryViewReceiver<TReceiver, LowLevelKeyValuePair<TKey, TValue>>> _provider;
 
     public LowLevelTableReceiver(MemoryViewProviderReceiver<TReceiver, LowLevelKeyValuePair<TKey, TValue>, MemoryViewReceiver<TReceiver, LowLevelKeyValuePair<TKey, TValue>>> provider)
     {
         _provider = provider;
     }
 
-    public void GetMemoryView(scoped ref MemoryViewReceiver<TReceiver, LowLevelKeyValuePair<TKey, TValue>> memoryView) => _provider.GetMemoryView(ref memoryView);
+    [UnscopedRef]
+    public ref readonly MemoryViewReceiver<TReceiver, LowLevelKeyValuePair<TKey, TValue>> InvokeProvider() => ref _provider.InvokeProvider();
 }

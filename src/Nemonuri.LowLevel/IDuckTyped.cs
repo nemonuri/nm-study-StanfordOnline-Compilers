@@ -6,21 +6,12 @@ namespace Nemonuri.LowLevel;
 
 public interface IDuckTypeReceiver<TReceiver>
 {
-    [UnscopedRef] ref TReceiver Receiver {get;}
+    [UnscopedRef] ref readonly TReceiver Receiver {get;}
 }
 
 public interface IDuckTypedMethod<TReceiver, TArgument, TResult> : IDuckTypeReceiver<TReceiver>
 {
     MethodHandle<TReceiver, TArgument, TResult> MethodHandle {get;}
-}
-
-public static class DuckTypedMethodTheory
-{
-    extension<TReceiver, TArgument, TResult, TDuckTypedMethod>(ref TDuckTypedMethod method)
-        where TDuckTypedMethod : struct, IDuckTypedMethod<TReceiver, TArgument, TResult>
-    {
-        public unsafe ref TResult? InvokeMethod(ref TArgument? argument) => ref method.MethodHandle.FunctionPointer(ref method.Receiver, ref argument);
-    }
 }
 
 public struct DuckTypedMethod<TReceiver, TSource, TResult> : IDuckTypedMethod<TReceiver, TSource, TResult>
@@ -35,7 +26,7 @@ public struct DuckTypedMethod<TReceiver, TSource, TResult> : IDuckTypedMethod<TR
     }
 
     [UnscopedRef]
-    public ref TReceiver Receiver => ref _receiver;
+    public ref readonly TReceiver Receiver => ref _receiver;
 
     public readonly MethodHandle<TReceiver, TSource, TResult> MethodHandle => _methodHandle;
 
@@ -62,7 +53,7 @@ public struct DuckTypedProperty<TReceiver, TResult> : IDuckTypedProperty<TReceiv
     }
 
     [UnscopedRef]
-    public ref TReceiver Receiver => ref _receiver;
+    public ref readonly TReceiver Receiver => ref _receiver;
 
     public FunctionHandle<TReceiver, TResult> PropertyHandle => _propertyHandle;
 
@@ -70,4 +61,29 @@ public struct DuckTypedProperty<TReceiver, TResult> : IDuckTypedProperty<TReceiv
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public ref TResult? InvokeProperty() =>
         ref _propertyHandle.InvokeFunction(ref _receiver!);
+}
+
+public interface IDuckTypedProvider<TReceiver, TItem> : IDuckTypeReceiver<TReceiver>
+{
+    ProviderHandle<TReceiver, TItem> ProviderHandle {get;}
+}
+
+public readonly struct DuckTypedProvider<TReceiver, TItem> : IDuckTypedProvider<TReceiver, TItem>, IProviderInvokable<TItem>
+{
+    private readonly TReceiver _receiver;
+    private readonly ProviderHandle<TReceiver, TItem> _providerHandle;
+
+    public DuckTypedProvider(TReceiver receiver, ProviderHandle<TReceiver, TItem> providerHandle)
+    {
+        _receiver = receiver;
+        _providerHandle = providerHandle;
+    }
+
+    public ProviderHandle<TReceiver, TItem> ProviderHandle => _providerHandle;
+
+    [UnscopedRef]
+    public ref readonly TReceiver Receiver => ref _receiver;
+
+    [UnscopedRef]
+    public ref readonly TItem? InvokeProvider() => ref _providerHandle.InvokeProvider(in _receiver);
 }

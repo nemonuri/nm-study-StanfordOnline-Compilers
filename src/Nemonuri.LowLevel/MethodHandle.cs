@@ -67,3 +67,24 @@ public unsafe readonly struct RelationHandle<TLeft, TRight>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool InvokeRelation(in TLeft? left, in TRight? right) => FunctionPointer(in left, in right);
 }
+
+[StructLayout(LayoutKind.Sequential)]
+public unsafe readonly struct ProviderHandle<TProvider, TItem>
+{
+    public readonly delegate*<in TProvider?, ref readonly TItem?> FunctionPointer;
+
+    public ProviderHandle(delegate*<in TProvider?, ref readonly TItem?> functionPointer)
+    {
+        Debug.Assert( !RuntimePointerTheory.IsUndefinedOrNullPointer(functionPointer) );
+        FunctionPointer = functionPointer;
+    }
+
+    public bool IsNull 
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => FunctionPointer == null; 
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public ref readonly TItem? InvokeProvider(in TProvider? source) => ref FunctionPointer(in source);
+}
