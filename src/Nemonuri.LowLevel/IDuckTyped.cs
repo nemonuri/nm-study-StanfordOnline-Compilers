@@ -50,7 +50,7 @@ public interface IDuckTypedProperty<TReceiver, TResult> : IDuckTypeReceiver<TRec
     FunctionHandle<TReceiver, TResult> PropertyHandle {get;}
 }
 
-public struct DuckTypedProperty<TReceiver, TResult> : IDuckTypedProperty<TReceiver, TResult>
+public struct DuckTypedProperty<TReceiver, TResult> : IDuckTypedProperty<TReceiver, TResult>, IPropertyInvokable<TResult>
 {
     private TReceiver _receiver;
     private readonly FunctionHandle<TReceiver, TResult> _propertyHandle;

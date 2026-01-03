@@ -105,7 +105,7 @@ public static class MemoryViewTheory
                 in LowLevelKeyValuePair<TKey, TValue> rightPair
             )
             {
-                return Internal.StaticMethods.AreEquivalent(in leftKey, in rightPair.Key);
+                return DotNet.ManagedPointerTheory.AreEquivalent(in leftKey, in rightPair.Key);
             }
 
             return theory.TryGet(in key, new(&AreKeyEqual), out resultEntry, out resultIndex);
