@@ -1,4 +1,6 @@
 
+using Nemonuri.LowLevel.DuckTyping;
+
 namespace Nemonuri.LowLevel;
 
 public static class AddableMemoryViewTheory

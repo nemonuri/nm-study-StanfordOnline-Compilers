@@ -21,6 +21,8 @@ public partial class DangerousMemoryViewProviderBuilder<TReceiverComponent, TArg
             MethodHandleIndex = methodHandleIndex;
         }
 
+        public bool IsNull => MemoryViewManager == null;
+
         [UnscopedRef]
         public ref TMemoryView DangerousGetMemoryView<T, TMemoryView>() where TMemoryView : IMemoryView<T> 
             => ref DangerousGetMemoryView<T, TMemoryView>(in this);

@@ -36,6 +36,17 @@ public partial class DangerousMemoryViewProviderBuilder<TReceiverComponent, TArg
         return key;
     }
 
+    public int GetOrAddHandleComponent(TypedUnmanagedBox<nint> handleComponent, out bool fresh)
+    {
+        static bool EqImpl(in TypedUnmanagedBox<nint> l, in TypedUnmanagedBox<nint> r) => l.BoxedValue == r.BoxedValue;
+
+        TypeHint<(TypedUnmanagedBox<nint>, ArrayViewBuilder<TypedUnmanagedBox<nint>>)> th = default;
+
+        fresh = _sharedState.GetMemoryViewHandles.TryAddAndGetIndex(in handleComponent, new(&EqImpl), out var key, th);
+        return key;
+    }
+
+/*
     public unsafe int GetOrAddHandleComponent<T, TMemoryView>(MethodHandle<TReceiverComponent, TArgumentComponent, TMemoryView> handleComponent, out bool fresh) where TMemoryView : IMemoryView<T>
     {
         TypedUnmanagedBox<nint> addingHandle = TypedUnmanagedBox<nint>.Box(in handleComponent);
@@ -47,6 +58,7 @@ public partial class DangerousMemoryViewProviderBuilder<TReceiverComponent, TArg
         fresh = _sharedState.GetMemoryViewHandles.TryAddAndGetIndex(in addingHandle, new(&EqImpl), out var key, th);
         return key;
     }
+*/
 
     public unsafe LowLevelKeyValuePair<int, Provider> GetOrBuildProvider(int receiver, int argument, int handle, out bool fresh)
     {
@@ -70,4 +82,6 @@ public partial class DangerousMemoryViewProviderBuilder<TReceiverComponent, TArg
         LowLevelKeyValuePair<int, Provider> newEntry = new(nextKey, new(this, receiver, argument, handle));
         return newEntry;
     }
+
+
 }

@@ -5,7 +5,7 @@ public struct MemoryViewDuckTypedProvider<T, TMemoryView, TReceiver, TArgument> 
     IMemoryViewProvider<T, TMemoryView>
     where TMemoryView : IMemoryView<T>
 {
-    private TReceiver _receiver;
+    internal TReceiver _receiver;
     private TArgument? _argument;
     public readonly MethodHandle<TReceiver, TArgument, TMemoryView> MethodHandle;
 

@@ -3,37 +3,25 @@ using Lt = Nemonuri.LowLevel.LowLevelChoiceTagger;
 
 namespace Nemonuri.Graph.LowLevel;
 
-public readonly record struct PackedGraphMemoryKey<TNodeKey, TEdgeLabel>
+public readonly record struct PackedGraphMemoryKey<TNodeKey>
     where TNodeKey : IEquatable<TNodeKey>
-    where TEdgeLabel : IEquatable<TEdgeLabel>
 {
-    private readonly TNodeKey _nodeKey;
-    private readonly LowLevelChoice<TEdgeLabel> _edgeLabel;
+    private readonly LowLevelChoice<TNodeKey> _nodeKey;
 
     public PackedGraphMemoryKey(TNodeKey nodekey)
     {
-        _nodeKey = nodekey;
-        _edgeLabel = Lt.None;
+        _nodeKey = Lt.Choice1(nodekey);
     }
 
-    public PackedGraphMemoryKey(TNodeKey nodekey, TEdgeLabel edgeLabel)
-    {
-        _nodeKey = nodekey;
-        _edgeLabel = Lt.Choice1(edgeLabel);
-    }
-
-    public bool HasEdgeLabel => _edgeLabel.IsChoice1;
+    public bool HasNodeKey => _nodeKey.IsChoice1;
 
     [UnscopedRef]
-    public ref readonly TNodeKey NodeKey => ref _nodeKey;
-
-    [UnscopedRef]
-    public ref readonly TEdgeLabel EdgeLabel
+    public ref readonly TNodeKey NodeKey
     {
         get
         {
-            Guard.IsTrue(HasEdgeLabel);
-            return ref _edgeLabel.Choice1.Value;
+            Guard.IsTrue(HasNodeKey);
+            return ref _nodeKey.Choice1.Value;
         }
     }
 }

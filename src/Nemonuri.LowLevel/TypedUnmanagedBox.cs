@@ -10,7 +10,7 @@ public struct TypedUnmanagedBox<T> where T : unmanaged
     public readonly RuntimeTypeHandle TypeHandle;
     private T _valueBox;
 
-    internal TypedUnmanagedBox(RuntimeTypeHandle typeHandle, T valueBox)
+    public TypedUnmanagedBox(RuntimeTypeHandle typeHandle, T valueBox)
     {
         TypeHandle = typeHandle;
         _valueBox = valueBox;

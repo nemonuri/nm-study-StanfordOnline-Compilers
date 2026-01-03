@@ -1,23 +1,24 @@
 
 namespace Nemonuri.LowLevel.DuckTyping;
 
-public struct DuckTypedDynamicMemoryView<TReceiver, T, TArgument> :
+public struct DuckTypedDynamicMemoryView<TReceiver, T, TInternalMemoryView, TArgument> :
     IMemoryView<T>, 
     IMaybeSupportsRawSpan<T>, 
     IDuckTypeReceiver<TReceiver>,
-    IMemoryViewProviderFactory<T, DuckTypedMemoryView<TReceiver, T>, TReceiver, TArgument>,
+    IMemoryViewProviderFactory<T, TInternalMemoryView, TReceiver, TArgument>,
     IAddable<T>
+    where TInternalMemoryView : IMemoryView<T>, IMaybeSupportsRawSpan<T>
 {
-    private MemoryViewDuckTypedProvider<T, DuckTypedMemoryView<TReceiver, T>, TReceiver, TArgument> _provider;
+    internal MemoryViewDuckTypedProvider<T, TInternalMemoryView, TReceiver, TArgument> _provider;
     private int _length;
-    public readonly ActionHandle<MemoryViewDuckTypedProvider<T, DuckTypedMemoryView<TReceiver, T>, TReceiver, TArgument>, int> Resizer;
-    private DuckTypedMemoryView<TReceiver, T> _currentMemoryView;
+    public readonly ActionHandle<MemoryViewDuckTypedProvider<T, TInternalMemoryView, TReceiver, TArgument>, int> Resizer;
+    internal TInternalMemoryView _currentMemoryView;
 
     public DuckTypedDynamicMemoryView
     (
-        MemoryViewDuckTypedProvider<T, DuckTypedMemoryView<TReceiver, T>, TReceiver, TArgument> initialProvider, 
+        MemoryViewDuckTypedProvider<T, TInternalMemoryView, TReceiver, TArgument> initialProvider, 
         int initialLength,
-        ActionHandle<MemoryViewDuckTypedProvider<T, DuckTypedMemoryView<TReceiver, T>, TReceiver, TArgument>, int> resizer
+        ActionHandle<MemoryViewDuckTypedProvider<T, TInternalMemoryView, TReceiver, TArgument>, int> resizer
     )
     {
         _provider = initialProvider;
@@ -47,9 +48,10 @@ public struct DuckTypedDynamicMemoryView<TReceiver, T, TArgument> :
         UpdateCurrentMemoryView(in _provider);
     }
 
-    private void UpdateCurrentMemoryView(in MemoryViewDuckTypedProvider<T, DuckTypedMemoryView<TReceiver, T>, TReceiver, TArgument> provider)
+    [MemberNotNull([nameof(_currentMemoryView)])]
+    private void UpdateCurrentMemoryView(in MemoryViewDuckTypedProvider<T, TInternalMemoryView, TReceiver, TArgument> provider)
     {
-        _currentMemoryView = provider.InvokeProvider();
+        _currentMemoryView = provider.InvokeProvider() ?? throw new ArgumentNullException();
     }
 
     public readonly int Length => _length;
@@ -62,7 +64,7 @@ public struct DuckTypedDynamicMemoryView<TReceiver, T, TArgument> :
 
     [UnscopedRef] public ref readonly TReceiver Receiver => ref _provider.Receiver;
 
-    public readonly MemoryViewDuckTypedProvider<T, DuckTypedMemoryView<TReceiver, T>, TReceiver, TArgument> ToProvider() => _provider;
+    public readonly MemoryViewDuckTypedProvider<T, TInternalMemoryView, TReceiver, TArgument> ToProvider() => _provider;
 
     public void Add(in T item)
     {

@@ -4,7 +4,7 @@ using Nemonuri.LowLevel.Primitives;
 namespace Nemonuri.LowLevel.Abstractions;
 
 [StructLayout(LayoutKind.Sequential)]
-public readonly struct Reference
+public readonly struct Reference : IEquatable<Reference>
 {
     public unsafe readonly static FunctionHandle DefaultFunctionHandle = new(&Primitives.PureFunctionTheory.Identity);
 
@@ -24,6 +24,8 @@ public readonly struct Reference
     public T DangerousCast<T>() => Dereference().DangerousCast<T>();
 
     public Reference ComposeAnotherSelectorHandle(FunctionHandle anotherSelectorHandle) => ComposeAnotherSelectorHandleCore(this, anotherSelectorHandle);
+
+    public Reference WithSelectorHandle(FunctionHandle selectorHandle) => new(Base, selectorHandle);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private unsafe static Reference ComposeAnotherSelectorHandleCore(Reference baseReference, FunctionHandle anotherSelectorHandle)
@@ -60,4 +62,11 @@ public readonly struct Reference
     // - ...아니, 아무리 생각해봐도 답 없어. 결국 '동적으로 증가하는 메모리 공간'이 필요해.
     public ObjectOrPointer ToObjectOrPointer() => new(this);
 
+    //---- 'reference' equal ---
+    public bool Equals(Reference other) => Base.Equals(other.Base);
+
+    public override bool Equals([NotNullWhen(true)] object? obj) => obj is Reference v && Equals(v);
+
+    public override int GetHashCode() => Base.GetHashCode();
+    //---|
 }
