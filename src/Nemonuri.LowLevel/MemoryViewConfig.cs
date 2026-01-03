@@ -7,7 +7,7 @@ using RawValue =
             Nemonuri.LowLevel.DangerousMemoryViewProviderReceiver<Nemonuri.LowLevel.LowLevelChoice<object, nint>>
         >;
 using RawEntry = 
-    Nemonuri.LowLevel.RawKeyValuePair<
+    Nemonuri.LowLevel.LowLevelKeyValuePair<
         int, 
         Nemonuri.LowLevel.SequentialLayoutValueTuple<
             Nemonuri.LowLevel.DangerousMemoryViewProviderReceiver<Nemonuri.LowLevel.MemoryViewConfig>, 
@@ -15,83 +15,87 @@ using RawEntry =
             Nemonuri.LowLevel.DangerousMemoryViewProviderReceiver<Nemonuri.LowLevel.LowLevelChoice<object, nint>>
         >
     >;
+using Nemonuri.LowLevel.Abstractions;
 
 namespace Nemonuri.LowLevel;
 
 public readonly struct MemoryViewConfig : 
-    IMemoryViewManager<int, MemoryViewConfig>,
-    IConfig<Box<PackedTable<int, RawValue>.Builder>, int, MemoryViewConfig>
+    IMemoryViewManager<MemoryViewConfig.Individual, MemoryViewConfig.Provider>,
+    IConfig<Box<MemoryViewConfig.Shared>, MemoryViewConfig.Individual, MemoryViewConfig>
 {
-    public Box<PackedTable<int, RawValue>.Builder> SharedConfig {get;}
-    private readonly int _key;
+    private readonly Individual _individualConfig;
+    public Box<Shared> SharedConfig {get;}
 
-    internal MemoryViewConfig
-    (
-        Box<PackedTable<int, RawValue>.Builder> shardConfig,
-        int key
-    )
+    internal MemoryViewConfig(Box<Shared> shared, Individual individual)
     {
-        SharedConfig = shardConfig ?? PackedTable<int, RawValue>.CreateBuilder(0);
-        _key = key;
+        SharedConfig = shared;
+        _individualConfig = individual;
     }
 
-    public ref readonly int GetIndividualKeyRef(ref MemoryViewConfig receiver) => ref receiver.IndividualConfig;
+    public int Length => SharedConfig.GetReference().MemoryViewManager.Length;
 
-    public int Length => SharedConfig.GetReference().Length;
-
-    public ref RawKeyValuePair<int, DangerousMemoryViewProviderReceiver<MemoryViewConfig>> this[int index] => 
-        ref Unsafe.As<RawEntry, RawKeyValuePair<int, DangerousMemoryViewProviderReceiver<MemoryViewConfig>>>(ref SharedConfig.GetReference()[index]);
+    public ref LowLevelKeyValuePair<Individual, DuckTypedProperty<Provider, TypedUnmanagedBox<nint>>> this[int index] => ref SharedConfig.GetReference().MemoryViewManager[index];
 
     [UnscopedRef]
-    public ref readonly int IndividualConfig => ref _key;
+    public ref readonly Individual IndividualConfig => ref _individualConfig;
 
-    public MemoryViewConfig WithNewIndividualConfig(in int individual) => new(SharedConfig, individual);
+    public MemoryViewConfig WithNewIndividualConfig(in Individual individual) => new(SharedConfig, individual);
 
-    private static DangerousMemoryViewProviderHandle HandleSelectorImpl(in MemoryViewConfig receiver)
+
+
+    public static MemoryViewConfig CreateNew()
     {
-        return receiver.SharedConfig.GetReference()[receiver.IndividualConfig].Value.Item2;
+        Individual individual = new(0, 0, 0)
     }
 
-    public unsafe void Add<T, TMemoryView>(LowLevelChoice<object, nint> memorySource, MemoryViewProviderHandle<LowLevelChoice<object, nint>, T, TMemoryView> handle)
-        where TMemoryView : IMemoryView<T>
-    #if NET9_0_OR_GREATER
-        ,allows ref struct
-        where T : allows ref struct
-    #endif
+
+    public readonly record struct Individual
     {
-        static void GetAbstractMemoryViewImpl(ref LowLevelChoice<object, nint> receiver, out TMemoryView memoryView)
+        public int MemoryViewProviderKey {get;}
+
+        internal Individual(int memoryViewProviderKey)
         {
-            receiver[receiver.IndividualConfig].Value.DangerousGetMemoryView<T, TMemoryView>(out memoryView);
+            MemoryViewProviderKey = memoryViewProviderKey;
         }
-        static void GetMemoryViewImpl(ref MemoryViewConfig receiver, out TMemoryView memoryView)
+    }
+
+    public readonly struct Provider
+    {
+        public readonly MemoryViewConfig MemoryViewConfig;
+
+        internal Provider(MemoryViewConfig memoryViewConfig)
         {
-            receiver[receiver.IndividualConfig].Value.DangerousGetMemoryView<T, TMemoryView>(out memoryView);
+            MemoryViewConfig = memoryViewConfig;
+            ReceiverIndex = ArgumentIndex = MethodHandleIndex = -1;
         }
 
-        ref var builder = ref SharedConfig.GetReference();
-        int nextKey = builder.Length;
-        MemoryViewConfig nextConfig = WithNewIndividualConfig(in nextKey);
-        var abstractProvider = DangerousMemoryViewProviderReceiver<LowLevelChoice<object, nint>>.Create(in memorySource, )
-        RawValue nextValue = new
+        public int ReceiverIndex {get;internal init;}
+        public int ArgumentIndex {get;internal init;}
+        public int MethodHandleIndex {get;internal init;}
+    }
+
+    public readonly struct Shared
+    {
+        public readonly ArrayViewBuilder<ObjectOrPointer> Receivers;
+        public readonly ArrayViewBuilder<ObjectOrPointer> Arguments;
+        public readonly ArrayViewBuilder<TypedUnmanagedBox<nint>> MethodHandles; // MethodHandle<ObjectOrPointer, ObjectOrPointer, TMemoryView>
+
+        public readonly PackedTable<Individual, DuckTypedProperty<Provider, TypedUnmanagedBox<nint>>>.Builder MemoryViewManager;
+
+        internal Shared
         (
-            DangerousMemoryViewProviderReceiver<MemoryViewConfig>.Create<T, TMemoryView>(in nextConfig, &HandleSelectorImpl),
-            DangerousMemoryViewProviderHandle.Wrap
+            ArrayViewBuilder<ObjectOrPointer> receivers, 
+            ArrayViewBuilder<ObjectOrPointer> arguments, 
+            ArrayViewBuilder<TypedUnmanagedBox<nint>> methodHandles,
+            PackedTable<Individual, DuckTypedProperty<Provider, TypedUnmanagedBox<nint>>>.Builder memoryViewManager
         )
-
-        unsafe
         {
-            builder.Add
-            (
-                new
-                (
-                    nextKey, 
-                    DangerousMemoryViewProviderReceiver<MemoryViewConfig>.Create<T, TMemoryView>
-                    (
-                        WithNewIndividualConfig(in nextKey), 
-                        new (&GetMemoryViewImpl)
-                    )
-                )
-            );
+            Receivers = receivers;
+            Arguments = arguments;
+            MethodHandles = methodHandles;
+            MemoryViewManager = memoryViewManager;
         }
     }
+
+
 }

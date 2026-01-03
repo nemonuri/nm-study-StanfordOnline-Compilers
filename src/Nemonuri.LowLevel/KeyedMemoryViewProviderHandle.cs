@@ -65,7 +65,7 @@ public static class KeyedMemoryViewProviderHandle
         }
     }
 
-    extension<TReceiver, TKey>(in RawKeyValuePair<TKey, KeyedMemoryViewProviderHandle<TReceiver, TKey>> pair)
+    extension<TReceiver, TKey>(in LowLevelKeyValuePair<TKey, KeyedMemoryViewProviderHandle<TReceiver, TKey>> pair)
     {
         public bool TryGetMemoryView<T, TMemoryView>(ref TReceiver receiver, [NotNullWhen(true)] out TMemoryView? memoryView)
             where TMemoryView : IMemoryView<T>

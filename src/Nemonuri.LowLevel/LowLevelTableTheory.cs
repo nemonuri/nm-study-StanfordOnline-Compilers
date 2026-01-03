@@ -9,7 +9,7 @@ public static class LowLevelTableTheory
         <(TKey, TValue, TMemoryView), TTable> 
         theory)
         where TKey : IEquatable<TKey>
-        where TMemoryView : IMemoryView<RawKeyValuePair<TKey, TValue>>
+        where TMemoryView : IMemoryView<LowLevelKeyValuePair<TKey, TValue>>
         where TTable : ILowLevelTable<TKey, TValue, TMemoryView>
     {
         public static
@@ -36,7 +36,7 @@ public static class LowLevelTableTheory
 
         public bool TryGetValue(in TKey key, out TValue? resultValue)
         {
-            var boxedMemoryView = MemoryViewTheory.Theorize<RawKeyValuePair<TKey, TValue>, TMemoryView>(theory.MemoryView);
+            var boxedMemoryView = MemoryViewTheory.Theorize<LowLevelKeyValuePair<TKey, TValue>, TMemoryView>(theory.MemoryView);
             if (!boxedMemoryView.TryGetEntry(in key, out var resultEntry, out _)) 
             {
                 resultValue = default;

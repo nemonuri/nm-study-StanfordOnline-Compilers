@@ -1,10 +1,8 @@
 
-using CommunityToolkit.HighPerformance;
-
 namespace Nemonuri.LowLevel;
 
-public interface IMemoryViewManager<TKey, TReceiver> :
-    IMemoryView<RawKeyValuePair<TKey, DangerousMemoryViewProviderReceiver<TReceiver>>>
+public interface IMemoryViewManager<TKey, TProvider> :
+    IMemoryView<LowLevelKeyValuePair<TKey, DuckTypedProperty<TProvider, TypedUnmanagedBox<nint>>>>
 {
-    [UnscopedRef] ref readonly TKey GetIndividualKeyRef(ref TReceiver receiver);
+    //[UnscopedRef] ref readonly TKey GetIndividualKeyRef(ref TReceiver receiver);
 }

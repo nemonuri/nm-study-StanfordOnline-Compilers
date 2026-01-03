@@ -16,14 +16,14 @@ public static class SpanExtensions
         }
     }
 
-    extension<TKey, TValue>(Span<RawKeyValuePair<TKey, TValue>> self)
+    extension<TKey, TValue>(Span<LowLevelKeyValuePair<TKey, TValue>> self)
         where TKey : IEquatable<TKey>
     {
         public unsafe bool TryGetEntry<TContext>
         (
             in TContext? context, 
             delegate*<in TContext?, in TKey, bool> predicate,
-            out RawKeyValuePair<TKey, TValue> resultEntry,
+            out LowLevelKeyValuePair<TKey, TValue> resultEntry,
             out int resultIndex
         )
         {
@@ -48,7 +48,7 @@ public static class SpanExtensions
         public unsafe bool TryGetEntry
         (
             in TKey key,
-            out RawKeyValuePair<TKey, TValue> resultEntry,
+            out LowLevelKeyValuePair<TKey, TValue> resultEntry,
             out int resultIndex
         )
         {

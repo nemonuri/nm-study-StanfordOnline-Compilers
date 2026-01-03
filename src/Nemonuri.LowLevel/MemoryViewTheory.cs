@@ -85,8 +85,8 @@ public static class MemoryViewTheory
 
     extension
     <TKey, TValue, TMemoryView>
-    (scoped in TheoryBox<RawKeyValuePair<TKey, TValue>, TMemoryView> theory)
-        where TMemoryView : IMemoryView<RawKeyValuePair<TKey, TValue>>
+    (scoped in TheoryBox<LowLevelKeyValuePair<TKey, TValue>, TMemoryView> theory)
+        where TMemoryView : IMemoryView<LowLevelKeyValuePair<TKey, TValue>>
 #if NET9_0_OR_GREATER
         , allows ref struct
 #endif    
@@ -95,14 +95,14 @@ public static class MemoryViewTheory
         public unsafe bool TryGetEntry
         (
             in TKey key,
-            out RawKeyValuePair<TKey, TValue> resultEntry,
+            out LowLevelKeyValuePair<TKey, TValue> resultEntry,
             out int resultIndex
         )
         {
             static bool AreKeyEqual
             (
                 in TKey? leftKey,
-                in RawKeyValuePair<TKey, TValue> rightPair
+                in LowLevelKeyValuePair<TKey, TValue> rightPair
             )
             {
                 return Internal.StaticMethods.AreEquivalent(in leftKey, in rightPair.Key);
