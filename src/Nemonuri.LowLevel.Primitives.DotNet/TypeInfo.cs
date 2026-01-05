@@ -39,7 +39,7 @@ public class TypeInfo
 
         if (!dti.IsValueType) {return false;}
 
-        Type underlyingNullable = Nullable.GetUnderlyingType(dti);
+        Type? underlyingNullable = Nullable.GetUnderlyingType(dti);
         if (underlyingNullable != null)
         {
             return RuntimeTypeTheory.IsUnmanaged(underlyingNullable.TypeHandle);
