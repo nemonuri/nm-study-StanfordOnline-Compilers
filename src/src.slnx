@@ -5,5 +5,6 @@
   <Project Path="DscTool/DscTool.csproj" />
   <Project Path="Nemonuri.Graph.LowLevel/Nemonuri.Graph.LowLevel.csproj" />
   <Project Path="Nemonuri.Json.LowLevel/Nemonuri.Json.LowLevel.csproj" />
+  <Project Path="Nemonuri.LowLevel.Primitives.DotNet/Nemonuri.LowLevel.Primitives.DotNet.csproj" />
   <Project Path="Nemonuri.LowLevel/Nemonuri.LowLevel.csproj" />
 </Solution>
