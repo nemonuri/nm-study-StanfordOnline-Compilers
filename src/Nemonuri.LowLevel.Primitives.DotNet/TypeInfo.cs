@@ -16,6 +16,8 @@ public class TypeInfo
 
     public System.Reflection.TypeInfo DotNetTypeInfo => field ??= Type.GetTypeFromHandle(RuntimeTypeHandle).GetTypeInfo();
 
+
+
     private bool? _isUnmanaged;
     public bool IsUnmanaged
     {
@@ -25,7 +27,7 @@ public class TypeInfo
             {
                 _isUnmanaged = CalculateIsUnmanaged();
             }
-
+            
             return _isUnmanaged.Value;
         }
     }
@@ -55,7 +57,9 @@ public class TypeInfo
 
         return true;
     }
-    
+
+
+
 }
 
 internal static class TypeInfo<T>

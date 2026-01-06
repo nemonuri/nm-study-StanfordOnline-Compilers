@@ -14,8 +14,13 @@ public static class RuntimeTypeTheory
         return Store.GetOrAdd(key: typeHandle, valueFactory: static rth => new(rth));
     }
 
-    public static bool IsUnmanaged<T>() => TypeInfo<T>.Instance.IsUnmanaged;
-
+    public static bool IsUnmanaged<T>() => 
+#if NETSTANDARD2_1_OR_GREATER
+        !RuntimeHelpers.IsReferenceOrContainsReferences<T>();
+#else
+        TypeInfo<T>.Instance.IsUnmanaged;
+#endif
+    
     public static bool IsUnmanaged(RuntimeTypeHandle typeHandle) => GetTypeInfo(typeHandle).IsUnmanaged;
 }
 
