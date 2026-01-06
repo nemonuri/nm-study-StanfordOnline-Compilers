@@ -40,7 +40,13 @@ public static class RuntimeTypeTheory
 
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static bool IsUnmanaged<T>() => DotNet.RuntimeTypeTheory.IsUnmanaged<T>();
+    public static bool IsUnmanaged<T>() => 
+#if NETSTANDARD2_1_OR_GREATER
+        !RuntimeHelpers.IsReferenceOrContainsReferences<T>();
+#else
+        DotNet.RuntimeTypeTheory.IsUnmanaged<T>();
+#endif
+    
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool IsUnmanaged(RuntimeTypeHandle typeHandle) => DotNet.RuntimeTypeTheory.IsUnmanaged(typeHandle);
 
