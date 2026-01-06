@@ -105,6 +105,8 @@ public class TypeInfo
             if (field != null) {return field;}
             if (!IsValueType) { return field = []; }
 
+            Debug.WriteLine($"{nameof(ValueTypeFieldOffsetsCore)}: Type={DotNetTypeInfo.AssemblyQualifiedName}");
+
             var fis = InstanceFieldInfos;
             int length = fis.Length;
             field = new nint[fis.Length];
@@ -113,6 +115,7 @@ public class TypeInfo
             {
                 // Why 'EditorBrowsableState.Never'?
                 field[i] = Marshal.OffsetOf(DotNetTypeInfo, fis[i].Name);
+                Debug.WriteLine($"Index={i}, FieldName={fis[i].Name}, FieldType={fis[i].FieldType.FullName}, Offset={field[i]}");
             }
 
             return field;
