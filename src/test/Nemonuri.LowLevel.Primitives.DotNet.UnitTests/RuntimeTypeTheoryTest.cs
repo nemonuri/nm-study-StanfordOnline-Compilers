@@ -16,7 +16,7 @@ public class RuntimeTypeTheoryTest
         _out = @out;
     }
 
-#if false
+
     [Theory]
     [MemberData(nameof(Datas1))]
     public void TestSizeOf(string typeName, int expectedSize)
@@ -47,8 +47,9 @@ public class RuntimeTypeTheoryTest
         }
         .Select(static a => (a.TypeObject.FullName!, a.Size))
     );
-#endif
 
+
+#if false
     [Theory]
     [InlineType<int>] [InlineType<System.IntPtr>] [InlineType<StrongBox<string>>]
     [InlineType<System.Index>] [InlineType<System.Range>] [InlineType<CancellationToken>]
@@ -69,7 +70,7 @@ public class RuntimeTypeTheoryTest
         // Assert
         Assert.Equal(expectedSize, actualSize);
     }
-
+#endif
 
 
     private struct NoMember {}
