@@ -1,9 +1,7 @@
-﻿using System.Collections.Specialized;
+﻿
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
-using System.Reflection.Emit;
-using Polyfills;
 
 namespace Nemonuri.LowLevel.Primitives.DotNet;
 
@@ -111,20 +109,16 @@ public class TypeInfo
             int length = fis.Length;
             field = new nint[fis.Length];
 
-            // Activator.CreateInstance
-            // - 'type' argument should have public parameterless constructor.
-            //   - Fortunately, all value type has public parameterless constructor.
-            // - If 'type' is Nullable<T>, it returns `null`.
-            object sampleInstance = Activator.CreateInstance(DotNetTypeInfo)
             for (int i = 0; i < length; i++)
             {
-                var tr = TypedReference.MakeTypedReference(sampleInstance, [fis[i]]);
-                tr.
-                //ref object sdfsf = ref __refvalue(tr);
+                // Why 'EditorBrowsableState.Never'?
+                field[i] = Marshal.OffsetOf(DotNetTypeInfo, fis[i].Name);
             }
+
+            return field;
         }
-        
     }
+    public ReadOnlySpan<nint> ValueTypeFieldOffsets => ValueTypeFieldOffsetsCore;
 
 
     private bool? _isUnmanaged;
@@ -214,18 +208,42 @@ public class TypeInfo
 
         //---|
 
-        foreach (FieldInfo fi in InstanceFieldInfos)
+        ReadOnlySpan<FieldInfo> fieldInfos = InstanceFieldInfos;
+        if (fieldInfos.IsEmpty)
         {
-            
+            // Size shall larger than zero.
+            return 1;
+        }
+        ReadOnlySpan<nint> fieldOffsets = ValueTypeFieldOffsets;
+
+        if (layoutKind == LayoutKind.Sequential)
+        {
+            // If layoutkind is sequential, just check last element.
+            int fiIndex = fieldInfos.Length - 1;
+            FieldInfo fi = fieldInfos[fiIndex];
+            nint fiOffset = fieldOffsets[fiIndex];
+            int fiSize = RuntimeTypeTheory.SizeOf(fi.FieldType.TypeHandle);
+
+            int defaultSize = (int)fiOffset + fiSize;
+            return Math.Max(defaultSize, desiredSize);
+        }
+        else
+        {
+            // else, check all elements.
+            int defaultSizeCandidate = 1;
+
+            for (int fiIndex = 0; fiIndex < fieldInfos.Length; fiIndex++)
+            {
+                FieldInfo fi = fieldInfos[fiIndex];
+                nint fiOffset = fieldOffsets[fiIndex];
+                int fiSize = RuntimeTypeTheory.SizeOf(fi.FieldType.TypeHandle);
+
+                defaultSizeCandidate = Math.Max(defaultSizeCandidate, (int)fiOffset + fiSize);
+            }
+
+            return Math.Max(defaultSizeCandidate, desiredSize);
         }
     }
-
-    public struct ASDF
-    {
-        private ASDF() {}
-    }
-
-
 }
 
 internal static class TypeInfo<T>

@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/test/">
+    <Project Path="test/Nemonuri.LowLevel.Primitives.DotNet.UnitTests/Nemonuri.LowLevel.Primitives.DotNet.UnitTests.csproj" />
     <Project Path="test/Nemonuri.LowLevel.UnitTests/Nemonuri.LowLevel.UnitTests.csproj" />
   </Folder>
   <Project Path="DscTool/DscTool.csproj" />

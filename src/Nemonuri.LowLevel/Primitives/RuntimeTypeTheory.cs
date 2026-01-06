@@ -50,8 +50,11 @@ public static class RuntimeTypeTheory
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool IsUnmanaged(RuntimeTypeHandle typeHandle) => DotNet.RuntimeTypeTheory.IsUnmanaged(typeHandle);
 
-
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static int SizeOf<T>() => Unsafe.SizeOf<T>();
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static int SizeOf(RuntimeTypeHandle typeHandle) => DotNet.RuntimeTypeTheory.SizeOf(typeHandle);
 
 
     //--- null ---
