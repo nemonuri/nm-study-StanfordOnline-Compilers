@@ -1,5 +1,8 @@
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using Xunit.Sdk;
+using Xunit.v3;
 using static Nemonuri.LowLevel.Primitives.DotNet.UnitTests.TestTypeInfo;
 
 namespace Nemonuri.LowLevel.Primitives.DotNet.UnitTests;
@@ -13,6 +16,7 @@ public class RuntimeTypeTheoryTest
         _out = @out;
     }
 
+#if false
     [Theory]
     [MemberData(nameof(Datas1))]
     public void TestSizeOf(string typeName, int expectedSize)
@@ -41,8 +45,32 @@ public class RuntimeTypeTheoryTest
             Create<NoMember>(), Create<DesiredSize64>(), Create<ByteEnum>(),
             Create<DesiredSizeTooSmall>(), Create<WithPointer>(), Create<WithObject>()
         }
-        .Select(static a => (a.TypeObject.FullName, a.Size))
+        .Select(static a => (a.TypeObject.FullName!, a.Size))
     );
+#endif
+
+    [Theory]
+    [InlineType<int>] [InlineType<System.IntPtr>] [InlineType<StrongBox<string>>]
+    [InlineType<System.Index>] [InlineType<System.Range>] [InlineType<CancellationToken>]
+    [InlineType<int?>] [InlineType<char?>]
+    [InlineType<NoMember>] [InlineType<DesiredSize64>] [InlineType<ByteEnum>]
+    [InlineType<DesiredSizeTooSmall>] [InlineType<WithPointer>] [InlineType<WithObject>]
+    public unsafe void TestSize_Generic<T>(T _)
+    {
+        // Arrange
+        Type typ = typeof(T);
+        _out.WriteLine($"Type: {typ.AssemblyQualifiedName}");
+        int expectedSize = Unsafe.SizeOf<T>();
+        _out.WriteLine($"Unsafe.SizeOf: {expectedSize}");
+        
+        // Act
+        int actualSize = RuntimeTypeTheory.SizeOf(typ.TypeHandle);
+        
+        // Assert
+        Assert.Equal(expectedSize, actualSize);
+    }
+
+
 
     private struct NoMember {}
 
@@ -73,4 +101,6 @@ public class RuntimeTypeTheoryTest
         public byte b2;
     }
     
+    
+
 }

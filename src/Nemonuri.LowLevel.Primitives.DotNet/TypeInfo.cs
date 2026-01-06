@@ -212,7 +212,8 @@ public class TypeInfo
         if (fieldInfos.IsEmpty)
         {
             // Size shall larger than zero.
-            return 1;
+            int defaultSize = 1;
+            return Math.Max(defaultSize, desiredSize);
         }
         ReadOnlySpan<nint> fieldOffsets = ValueTypeFieldOffsets;
 
