@@ -6,6 +6,8 @@ namespace Nemonuri.LowLevel.Primitives.DotNet;
 [StructLayout(LayoutKind.Sequential)]
 public struct FieldInfo
 {
+    public readonly int Size = Unsafe.SizeOf<FieldInfo>();
+
     public const int PreviousFieldAddressNone = -1;
     public const int ExplicitFieldOffsetNone = -1;
 
@@ -17,7 +19,7 @@ public struct FieldInfo
         _flags = 0;
     }
 
-    //--- fields ---
+    #region Fields
 
     public readonly int Address;
 
@@ -37,7 +39,7 @@ public struct FieldInfo
 
     private int _explicitFieldOffsetOrNone;
 
-    //---|
+    #endregion Fields
 
     public readonly RuntimeFieldHandle RuntimeFieldHandle => RuntimeFieldAndTypeHandle.RuntimeFieldHandle;
 

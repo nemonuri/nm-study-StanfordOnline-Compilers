@@ -8,6 +8,8 @@ namespace Nemonuri.LowLevel.Primitives.DotNet;
 /// </summary>
 public class TypeInfo
 {
+    public const int AddressNone = -1;
+
     internal TypeInfo(int address, RuntimeTypeHandle runtimeTypeHandle)
     {
         Address = address;
@@ -15,14 +17,42 @@ public class TypeInfo
         _flags = 0;
     }
 
-    public int Address {get;}
+    #region Fields
 
-    public RuntimeTypeHandle RuntimeTypeHandle {get;}
+    public readonly int Address;
+
+    public readonly RuntimeTypeHandle RuntimeTypeHandle;
+
+    private uint _flags;
+
+    private bool _isPrimitive;
+
+    private bool _isValueType;
+
+    private TypeAttributes _typeAttributes;
+
+    private int _enumUnderlyingTypeAddressOrNone;
+
+    private int _nullableUnderlyingTypeAddressOrNone;
+
+    private int _isUnmanaged0;
+
+    private int _instanceFieldListAddressOffset;
+
+    private int _instanceFieldListCount;
+
+    private int _sizeOrZero;
+
+    #endregion Fields
+
+
+
+
 
     [field: AllowNull, MaybeNull]
     public System.Reflection.TypeInfo DotNetTypeInfo => field ??= Type.GetTypeFromHandle(RuntimeTypeHandle)!.GetTypeInfo();
 
-    private uint _flags;
+    
 
     //--- Well-Known properties ---
     private const uint WellKnownPropertiesAssignedMask = 1 << 0;
@@ -268,9 +298,7 @@ public class TypeInfo
         }
     }
 
-    private int _instanceFieldListAddressOffset;
 
-    private int _instanceFieldListCount;
 }
 
 internal static class TypeInfo<T>

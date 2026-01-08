@@ -23,6 +23,8 @@ public static class PrimitiveValueTypeTheory
         .Select(static (s, i) => (s, i))
         .ToDictionary(keySelector: static pair => pair.s.TypeHandleValue, elementSelector: static pair => pair.i);
 
+    public static bool IsPrimitive(RuntimeTypeHandle typeHandle) => _typeInfoMap.ContainsKey(typeHandle.Value);
+
     public static ref readonly UnmanagedTypeInfo GetInfo(RuntimeTypeHandle typeHandle)
     {
         try
