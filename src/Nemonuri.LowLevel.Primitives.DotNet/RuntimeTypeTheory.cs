@@ -1,32 +1,41 @@
-using System.Collections.Concurrent;
-using System.Diagnostics.CodeAnalysis;
 
 namespace Nemonuri.LowLevel.Primitives.DotNet;
 
 public static class RuntimeTypeTheory
 {
-    private static ConcurrentDictionary<RuntimeTypeHandle, TypeInfo>? _store;
+    private static GrowableArray<TypeInfo> s_typeInfos = new(4);
 
-    private static ConcurrentDictionary<RuntimeTypeHandle, TypeInfo> Store =>
-        _store ??= Interlocked.CompareExchange(ref _store, new(new RuntimeTypeHandleEqualityComparer()), null) ?? _store;
+    public static ReadOnlySpan<TypeInfo> TypeInfos => s_typeInfos.AsSpan;
+
+    [field: AllowNull, MaybeNull]
+    private static ConcurrentDictionary<RuntimeTypeHandle, int> TypeInfoStore =>
+        field ??= Interlocked.CompareExchange(ref field, new(RuntimeTypeHandleEqualityComparer.Instance), null) ?? field;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static TypeInfo GetTypeInfo(RuntimeTypeHandle typeHandle)
+    public static int GetTypeInfoAddress(RuntimeTypeHandle typeHandle)
     {
-        return Store.GetOrAdd(key: typeHandle, valueFactory: CreateTypeInfoFromTypeHandle);
+        return TypeInfoStore.GetOrAdd(key: typeHandle, valueFactory: CreateTypeInfoFromTypeHandle);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static ref readonly TypeInfo GetTypeInfo(RuntimeTypeHandle typeHandle)
+    {
+        int typeInfoAddress = GetTypeInfoAddress(typeHandle);
+        ref readonly TypeInfo ti = ref TypeInfos[typeInfoAddress];
+        Debug.Assert( ti.Address == typeInfoAddress );
+        return ref ti;
     }
 
     public static bool CanGetTypeInfo(RuntimeTypeHandle typeHandle, bool throwIfNot = false)
     {
         // Reference: https://github.com/dotnet/runtime/blob/main/src/mono/System.Private.CoreLib/src/System/Runtime/CompilerServices/RuntimeHelpers.Mono.cs
 
-        if (typeHandle.Equals((RuntimeTypeHandle)default))
+        if (typeHandle.Equals((RuntimeTypeHandle)default) || Type.GetTypeFromHandle(typeHandle) is not { } t)
         {
             return throwIfNot ?
                 throw new ArgumentNullException($"{nameof(typeHandle)} is null. Value = {typeHandle.Value}") : false;
         }
 
-        Type t = Type.GetTypeFromHandle(typeHandle);
         if (t.ContainsGenericParameters || t.IsGenericParameter || t == typeof(void))
         {
             return throwIfNot ?
@@ -36,10 +45,13 @@ public static class RuntimeTypeTheory
         return true;
     }
 
-    private static TypeInfo CreateTypeInfoFromTypeHandle(RuntimeTypeHandle typeHandle)
+    private static int CreateTypeInfoFromTypeHandle(RuntimeTypeHandle typeHandle)
     {
         CanGetTypeInfo(typeHandle, throwIfNot: true);
-        return new (typeHandle);
+
+        int nextAddress = s_typeInfos.Length;
+        s_typeInfos.Add(new (nextAddress, typeHandle));
+        return nextAddress;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -63,11 +75,4 @@ public static class RuntimeTypeTheory
             GetTypeInfo(typeHandle).Size;
 #endif
     }
-}
-
-internal class RuntimeTypeHandleEqualityComparer : IEqualityComparer<RuntimeTypeHandle>
-{
-    public bool Equals(RuntimeTypeHandle x, RuntimeTypeHandle y) => x.Equals(y);
-
-    public int GetHashCode(RuntimeTypeHandle obj) => obj.GetHashCode();
 }

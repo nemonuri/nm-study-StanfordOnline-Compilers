@@ -1,6 +1,4 @@
 ﻿
-using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 
 namespace Nemonuri.LowLevel.Primitives.DotNet;
@@ -10,15 +8,19 @@ namespace Nemonuri.LowLevel.Primitives.DotNet;
 /// </summary>
 public class TypeInfo
 {
-    internal TypeInfo(RuntimeTypeHandle runtimeTypeHandle)
+    internal TypeInfo(int address, RuntimeTypeHandle runtimeTypeHandle)
     {
+        Address = address;
         RuntimeTypeHandle = runtimeTypeHandle;
         _flags = 0;
     }
 
+    public int Address {get;}
+
     public RuntimeTypeHandle RuntimeTypeHandle {get;}
 
-    public System.Reflection.TypeInfo DotNetTypeInfo => field ??= Type.GetTypeFromHandle(RuntimeTypeHandle).GetTypeInfo();
+    [field: AllowNull, MaybeNull]
+    public System.Reflection.TypeInfo DotNetTypeInfo => field ??= Type.GetTypeFromHandle(RuntimeTypeHandle)!.GetTypeInfo();
 
     private uint _flags;
 
@@ -44,6 +46,12 @@ public class TypeInfo
         private set;
     }
 
+    public TypeAttributes TypeAttributes
+    {
+        get { AssignWellKnownPropertiesIfNeeded(); return field; }
+        private set;
+    }
+
     private void AssignWellKnownPropertiesIfNeeded()
     {
         if ((_flags & WellKnownPropertiesAssignedMask) != 0) {return;}
@@ -52,10 +60,21 @@ public class TypeInfo
         IsPrimitive = dti.IsPrimitive;
         IsValueType = dti.IsValueType;
         IsEnum = dti.IsEnum;
+        TypeAttributes = dti.Attributes;
 
         _flags |= WellKnownPropertiesAssignedMask;
     }
     //---|
+
+    public LayoutKind LayoutKind
+    {
+        get
+        {
+            if ((TypeAttributes | TypeAttributes.SequentialLayout) != 0) { return LayoutKind.Sequential; }
+            else if ((TypeAttributes | TypeAttributes.ExplicitLayout) != 0) { return LayoutKind.Explicit; }
+            else { return LayoutKind.Auto; }
+        }
+    }
 
     public Type? EnumUnderlyingType => IsEnum ? (field ??= DotNetTypeInfo.GetEnumUnderlyingType()) : null;
 
@@ -95,8 +114,9 @@ public class TypeInfo
     public bool IsNullableValueType => NullableUnderlyingType is not null;
 
 
-    private FieldInfo[] InstanceFieldInfosCore => field ??= DotNetTypeInfo.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-    public ReadOnlySpan<FieldInfo> InstanceFieldInfos => InstanceFieldInfosCore;
+    [field: AllowNull, MaybeNull]
+    private System.Reflection.FieldInfo[] InstanceFieldInfosCore => field ??= DotNetTypeInfo.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+    public ReadOnlySpan<System.Reflection.FieldInfo> InstanceFieldInfos => InstanceFieldInfosCore;
 
     private nint[] ValueTypeFieldOffsetsCore
     {
@@ -155,7 +175,7 @@ public class TypeInfo
 
         if (dti.IsEnum) {return true;}
 
-        foreach (FieldInfo fi in InstanceFieldInfos)
+        foreach (System.Reflection.FieldInfo fi in InstanceFieldInfos)
         {
             Debug.Assert( !fi.IsStatic );
             if (!RuntimeTypeTheory.IsUnmanaged(fi.FieldType.TypeHandle)) { return false; }
@@ -180,7 +200,6 @@ public class TypeInfo
 
     private int CalculateSize()
     {
-        var dti = DotNetTypeInfo;
         if (!IsValueType) { return PrimitiveValueTypeTheory.IntPtrInfo.Size; }
 
         if (IsPrimitive)
@@ -211,7 +230,7 @@ public class TypeInfo
 
         //---|
 
-        ReadOnlySpan<FieldInfo> fieldInfos = InstanceFieldInfos;
+        ReadOnlySpan<System.Reflection.FieldInfo> fieldInfos = InstanceFieldInfos;
         if (fieldInfos.IsEmpty)
         {
             // Size shall larger than zero.
@@ -224,7 +243,7 @@ public class TypeInfo
         {
             // If layoutkind is sequential, just check last element.
             int fiIndex = fieldInfos.Length - 1;
-            FieldInfo fi = fieldInfos[fiIndex];
+            System.Reflection.FieldInfo fi = fieldInfos[fiIndex];
             nint fiOffset = fieldOffsets[fiIndex];
             int fiSize = RuntimeTypeTheory.SizeOf(fi.FieldType.TypeHandle);
 
@@ -238,7 +257,7 @@ public class TypeInfo
 
             for (int fiIndex = 0; fiIndex < fieldInfos.Length; fiIndex++)
             {
-                FieldInfo fi = fieldInfos[fiIndex];
+                System.Reflection.FieldInfo fi = fieldInfos[fiIndex];
                 nint fiOffset = fieldOffsets[fiIndex];
                 int fiSize = RuntimeTypeTheory.SizeOf(fi.FieldType.TypeHandle);
 
@@ -248,6 +267,10 @@ public class TypeInfo
             return Math.Max(defaultSizeCandidate, desiredSize);
         }
     }
+
+    private int _instanceFieldListAddressOffset;
+
+    private int _instanceFieldListCount;
 }
 
 internal static class TypeInfo<T>

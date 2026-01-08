@@ -102,6 +102,13 @@ public class RuntimeTypeTheoryTest
         public byte b2;
     }
     
-    
+    public unsafe void SADF()
+    {
+        int vv1 = 1234;
+        ref int v1 = ref vv1;
+        TypedReference pV1 = __makeref(v1);
+        ref byte sdf = ref __refvalue(pV1, byte);
+        Console.WriteLine(Unsafe.As<byte, int>(ref sdf));
+    }
 
 }
