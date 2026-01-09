@@ -11,7 +11,7 @@
 
   <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0' or '$(TargetFramework)' == 'netstandard2.1'">
     <PackageReference Include="PolyfillLib" />
-    <!-- <PackageReference Include="System.Collections.Immutable" />  -->
+    <PackageReference Include="System.Collections.Immutable" />
   </ItemGroup>
                         
 </Project>
