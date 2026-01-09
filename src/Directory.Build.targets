@@ -1,0 +1,7 @@
+<Project>
+  <!-- Refernece: https://github.com/CommunityToolkit/dotnet/blob/main/src/Directory.Build.targets -->
+  <!-- Define NETSTANDARD2_1_OR_GREATER for .NET Standard 2.1 targets and above -->
+  <PropertyGroup Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'netstandard2.1'))">
+    <DefineConstants>$(DefineConstants);NETSTANDARD2_1_OR_GREATER</DefineConstants>
+  </PropertyGroup>
+</Project>
