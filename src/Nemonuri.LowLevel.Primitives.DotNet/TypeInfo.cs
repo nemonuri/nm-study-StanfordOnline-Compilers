@@ -25,11 +25,15 @@ public class TypeInfo
 
     private uint _flags;
 
-    private bool _isPrimitive;
+    //private bool _isPrimitive;
 
+    //--- Well-known properties ---|
     private bool _isValueType;
 
     private TypeAttributes _typeAttributes;
+    //---|
+
+    private bool _isLayoutStableValueType;
 
     private int _enumUnderlyingTypeAddressOrNone;
 
@@ -41,7 +45,7 @@ public class TypeInfo
 
     private int _instanceFieldListCount;
 
-    private int _sizeOrZero;
+    private int _stableSizeOrZero;
 
     #endregion Fields
 
@@ -299,9 +303,4 @@ public class TypeInfo
     }
 
 
-}
-
-internal static class TypeInfo<T>
-{
-    public static TypeInfo Instance {get;} = RuntimeTypeTheory.GetTypeInfo(typeof(T).TypeHandle);
 }

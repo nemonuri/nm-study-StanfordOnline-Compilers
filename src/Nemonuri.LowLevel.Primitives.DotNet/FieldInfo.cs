@@ -55,8 +55,8 @@ public struct FieldInfo
 
         System.Reflection.FieldInfo fieldInfo = RuntimeFieldAndTypeHandle.DotNetFieldInfo;
         RuntimeTypeHandle fieldTypeHandle = fieldInfo.FieldType.TypeHandle;
-        _fieldTypeAddress = RuntimeTypeTheory.GetTypeInfoAddress(fieldTypeHandle);
-        _declaringTypeAddress = RuntimeTypeTheory.GetTypeInfoAddress(DeclaringTypeHandle);
+        _fieldTypeAddress = RuntimeTypeTheory.GetOrAddAddress(fieldTypeHandle);
+        _declaringTypeAddress = RuntimeTypeTheory.GetOrAddAddress(DeclaringTypeHandle);
         _fieldAttributes = fieldInfo.Attributes;
 
         _flags |= WellKnownPropertiesAssignedMask;

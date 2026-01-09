@@ -7,28 +7,27 @@ public static class RuntimeTypeTheory
 
     public static ReadOnlySpan<TypeInfo> TypeInfos => s_typeInfos.AsSpan;
 
-
     private static volatile ConcurrentDictionary<RuntimeTypeHandle, int>? s_typeInfoStore;
 
     private static ConcurrentDictionary<RuntimeTypeHandle, int> TypeInfoStore =>
         s_typeInfoStore ??= Interlocked.CompareExchange(ref s_typeInfoStore, new(RuntimeTypeHandleEqualityComparer.Instance), null) ?? s_typeInfoStore;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static int GetTypeInfoAddress(RuntimeTypeHandle typeHandle)
+    public static int GetOrAddAddress(RuntimeTypeHandle typeHandle)
     {
         return TypeInfoStore.GetOrAdd(key: typeHandle, valueFactory: CreateTypeInfoFromTypeHandle);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static ref readonly TypeInfo GetTypeInfo(RuntimeTypeHandle typeHandle)
+    public static ref readonly TypeInfo GetOrAdd(RuntimeTypeHandle typeHandle)
     {
-        int typeInfoAddress = GetTypeInfoAddress(typeHandle);
+        int typeInfoAddress = GetOrAddAddress(typeHandle);
         ref readonly TypeInfo ti = ref TypeInfos[typeInfoAddress];
         Debug.Assert( ti.Address == typeInfoAddress );
         return ref ti;
     }
 
-    public static bool CanGetTypeInfo(RuntimeTypeHandle typeHandle, bool throwIfNot = false)
+    public static bool CanGetOrAdd(RuntimeTypeHandle typeHandle, bool throwIfNot = false)
     {
         // Reference: https://github.com/dotnet/runtime/blob/main/src/mono/System.Private.CoreLib/src/System/Runtime/CompilerServices/RuntimeHelpers.Mono.cs
 
@@ -49,23 +48,31 @@ public static class RuntimeTypeTheory
 
     private static int CreateTypeInfoFromTypeHandle(RuntimeTypeHandle typeHandle)
     {
-        CanGetTypeInfo(typeHandle, throwIfNot: true);
+        CanGetOrAdd(typeHandle, throwIfNot: true);
 
         int nextAddress = s_typeInfos.Length;
         s_typeInfos.Add(new (nextAddress, typeHandle));
         return nextAddress;
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static bool IsUnmanaged<T>() => 
-#if NETSTANDARD2_1_OR_GREATER
-        !RuntimeHelpers.IsReferenceOrContainsReferences<T>();
-#else
-        TypeInfo<T>.Instance.IsUnmanaged;
-#endif
     
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static bool IsUnmanaged(RuntimeTypeHandle typeHandle) => PrimitiveValueTypeTheory.IsPrimitiveValueType(typeHandle) || GetTypeInfo(typeHandle).IsUnmanaged;
+    public static bool IsPrimitive(RuntimeTypeHandle rth) => PrimitiveValueTypeTheory.IsPrimitiveValueType(rth);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool IsUnmanaged(RuntimeTypeHandle rth) => IsPrimitive(rth) || GetOrAdd(rth).IsUnmanaged;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool IsUnmanaged<T>()
+    {
+#if NETSTANDARD2_1_OR_GREATER
+        return !RuntimeHelpers.IsReferenceOrContainsReferences<T>();
+#else
+        if (typeof(T).IsPrimitive) {return true;}
+        if (!TypeInfoAddressCache<T>.TryGetAddress(out int address)) {return false;}
+        return TypeInfos[address].IsUnmanaged;
+#endif
+    }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool IsValueType(RuntimeTypeHandle rth, [NotNullWhen(true)] out Type? dotnetType) => 
@@ -100,7 +107,7 @@ public static class RuntimeTypeTheory
 #else
            int sizeCandidate = PrimitiveValueTypeTheory.GetSizeOrZero(rth);
            if (sizeCandidate > 0) {return sizeCandidate;}
-           return GetTypeInfo(rth).Size;
+           return GetOrAdd(rth).Size;
 #endif
     }
 }
