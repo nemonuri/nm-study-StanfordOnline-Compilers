@@ -58,7 +58,7 @@ public static class RuntimeTypeTheory
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool IsUnmanaged<T>() => 
-#if NET || NETSTANDARD2_1_OR_GREATER
+#if NETSTANDARD2_1_OR_GREATER
         !RuntimeHelpers.IsReferenceOrContainsReferences<T>();
 #else
         TypeInfo<T>.Instance.IsUnmanaged;
@@ -67,19 +67,40 @@ public static class RuntimeTypeTheory
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool IsUnmanaged(RuntimeTypeHandle typeHandle) => PrimitiveValueTypeTheory.IsPrimitiveValueType(typeHandle) || GetTypeInfo(typeHandle).IsUnmanaged;
 
-    
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool IsValueType(RuntimeTypeHandle rth, [NotNullWhen(true)] out Type? dotnetType) => 
+        (dotnetType = Type.GetTypeFromHandle(rth)) is { } typ && typ.IsValueType;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static int GetSizeOrZero(RuntimeTypeHandle typeHandle)
-    {  
-        int sizeCandidate = PrimitiveValueTypeTheory.GetSizeOrZero(typeHandle);
+    public static bool IsLayoutStableValueType(RuntimeTypeHandle rth, out bool isValueType, [NotNullWhen(true)] out Type? dotnetType)
+    {
+        if (!IsValueType(rth, out dotnetType)) {isValueType = false; return false;}
+        isValueType = true;
 
-        return
+        if (VoidTypeTheory.IsVoid(rth)) {return false;}
+        if (dotnetType.IsAutoLayout) {return false;}
+
+        throw new NotImplementedException();
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static int GetStableSizeOrZero(RuntimeTypeHandle rth)
+    {  
+        if (!IsLayoutStableValueType(rth, out bool isValueType, out var dotnetType))
+        {
+            if (dotnetType is not { } dt) {return 0;}
+            if (!isValueType) {return PrimitiveValueTypeTheory.IntPtrSize;}
+
+            // Maybe System.Void
+            return 0;
+        }
+
 #if NET9_0_OR_GREATER
-            RuntimeHelpers.SizeOf(typeHandle);
+           return RuntimeHelpers.SizeOf(rth);
 #else
-            
-            GetTypeInfo(typeHandle).Size;
+           int sizeCandidate = PrimitiveValueTypeTheory.GetSizeOrZero(rth);
+           if (sizeCandidate > 0) {return sizeCandidate;}
+           return GetTypeInfo(rth).Size;
 #endif
     }
 }

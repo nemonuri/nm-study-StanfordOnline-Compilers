@@ -1,6 +1,7 @@
 // Original source: https://github.com/dotnet/runtime/blob/main/src/libraries/System.Private.CoreLib/src/System/Runtime/CompilerServices/SwitchExpressionException.cs
 
 #if !NETSTANDARD2_1_OR_GREATER
+#pragma warning disable CS0809
 
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
@@ -45,7 +46,7 @@ namespace System.Runtime.CompilerServices
             UnmatchedValue = unmatchedValue;
         }
 
-        [Obsolete(Obsoletions.LegacyFormatterImplMessage, DiagnosticId = Obsoletions.LegacyFormatterImplDiagId, UrlFormat = Obsoletions.SharedUrlFormat)]
+        [Obsolete(Obsoletions.LegacyFormatterImplMessage)]
         private SwitchExpressionException(SerializationInfo info, StreamingContext context)
             : base(info, context)
         {
@@ -59,7 +60,7 @@ namespace System.Runtime.CompilerServices
 
         public object? UnmatchedValue { get; }
 
-        [Obsolete(Obsoletions.LegacyFormatterImplMessage, DiagnosticId = Obsoletions.LegacyFormatterImplDiagId, UrlFormat = Obsoletions.SharedUrlFormat)]
+        [Obsolete(Obsoletions.LegacyFormatterImplMessage)]
         [EditorBrowsable(EditorBrowsableState.Never)]
         public override void GetObjectData(SerializationInfo info, StreamingContext context)
         {

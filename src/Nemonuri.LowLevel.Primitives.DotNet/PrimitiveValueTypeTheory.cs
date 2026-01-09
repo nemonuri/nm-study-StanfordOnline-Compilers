@@ -118,6 +118,4 @@ public static partial class PrimitiveValueTypeTheory
         Debug.Assert( size > 0 );
         return size;
     }
-
-
 }

@@ -7,9 +7,10 @@ internal static class RuntimeFieldTheory
 
     public static ReadOnlySpan<FieldInfo> FieldInfos => s_fieldInfos.AsSpan;
 
-    [field: AllowNull, MaybeNull]
+    private volatile static ConcurrentDictionary<RuntimeFieldAndTypeHandle, int>? s_fieldInfoStore;
+
     private static ConcurrentDictionary<RuntimeFieldAndTypeHandle, int> FieldInfoStore =>
-      field ??= Interlocked.CompareExchange(ref field, new(), null) ?? field;
+      s_fieldInfoStore ??= Interlocked.CompareExchange(ref s_fieldInfoStore, new(), null) ?? s_fieldInfoStore;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static int GetOrAddFieldInfoAddress(RuntimeFieldAndTypeHandle handle, int previousFieldAddressOrNone)
