@@ -14,7 +14,7 @@ internal static class RuntimeFieldTheory
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static int GetOrAddFieldInfoAddress(RuntimeFieldAndTypeHandle handle, int previousFieldAddressOrNone)
     {
-#if NETSTANDARD2_1_OR_GREATER
+#if NET || NETSTANDARD2_1_OR_GREATER
         return FieldInfoStore.GetOrAdd<int>(key: handle, valueFactory: CreateAndAddFieldInfo, factoryArgument: previousFieldAddressOrNone);
 #else
         return Polyfills.Polyfill.GetOrAdd<RuntimeFieldAndTypeHandle, int, int>(FieldInfoStore, key: handle, valueFactory: CreateAndAddFieldInfo, factoryArgument: previousFieldAddressOrNone);

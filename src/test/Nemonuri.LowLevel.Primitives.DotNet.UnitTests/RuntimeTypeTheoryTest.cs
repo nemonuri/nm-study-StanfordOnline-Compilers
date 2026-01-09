@@ -29,7 +29,7 @@ public class RuntimeTypeTheoryTest
         _out.WriteLine(foundAssembly.GetName().ToString());
         
         // Act
-        int actualSize = RuntimeTypeTheory.SizeOf(foundType!.TypeHandle);
+        int actualSize = RuntimeTypeTheory.GetSizeOrZero(foundType!.TypeHandle);
         
         // Assert
         Assert.Equal(expectedSize, actualSize);

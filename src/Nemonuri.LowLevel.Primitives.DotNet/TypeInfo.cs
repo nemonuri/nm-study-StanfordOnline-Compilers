@@ -275,7 +275,7 @@ public class TypeInfo
             int fiIndex = fieldInfos.Length - 1;
             System.Reflection.FieldInfo fi = fieldInfos[fiIndex];
             nint fiOffset = fieldOffsets[fiIndex];
-            int fiSize = RuntimeTypeTheory.SizeOf(fi.FieldType.TypeHandle);
+            int fiSize = RuntimeTypeTheory.GetSizeOrZero(fi.FieldType.TypeHandle);
 
             int defaultSize = (int)fiOffset + fiSize;
             return Math.Max(defaultSize, desiredSize);
@@ -289,7 +289,7 @@ public class TypeInfo
             {
                 System.Reflection.FieldInfo fi = fieldInfos[fiIndex];
                 nint fiOffset = fieldOffsets[fiIndex];
-                int fiSize = RuntimeTypeTheory.SizeOf(fi.FieldType.TypeHandle);
+                int fiSize = RuntimeTypeTheory.GetSizeOrZero(fi.FieldType.TypeHandle);
 
                 defaultSizeCandidate = Math.Max(defaultSizeCandidate, (int)fiOffset + fiSize);
             }
