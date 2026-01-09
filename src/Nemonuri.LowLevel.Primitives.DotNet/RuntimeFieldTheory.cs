@@ -5,7 +5,7 @@ internal static class RuntimeFieldTheory
 {
     private static GrowableArray<FieldInfo> s_fieldInfos = new(4);
 
-    public static ReadOnlySpan<FieldInfo> FieldInfos => s_fieldInfos.AsSpan;
+    internal static Span<FieldInfo> FieldInfos => s_fieldInfos.AsSpan;
 
     private volatile static ConcurrentDictionary<RuntimeFieldAndTypeHandle, int>? s_fieldInfoStore;
 
@@ -13,7 +13,7 @@ internal static class RuntimeFieldTheory
       s_fieldInfoStore ??= Interlocked.CompareExchange(ref s_fieldInfoStore, new(), null) ?? s_fieldInfoStore;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static int GetOrAddFieldInfoAddress(RuntimeFieldAndTypeHandle handle, int previousFieldAddressOrNone)
+    internal static int GetOrAddAddress(RuntimeFieldAndTypeHandle handle, int previousFieldAddressOrNone)
     {
 #if NETSTANDARD2_1_OR_GREATER
         return FieldInfoStore.GetOrAdd<int>(key: handle, valueFactory: CreateAndAddFieldInfo, factoryArgument: previousFieldAddressOrNone);
@@ -27,6 +27,21 @@ internal static class RuntimeFieldTheory
         int nextAddress = s_fieldInfos.Length;
         s_fieldInfos.Add(new(nextAddress, handle, previousFieldAddressOrNone));
         return nextAddress;
+    }
+
+    internal static int AddFields(RuntimeTypeHandle typeHandle, ReadOnlySpan<RuntimeFieldHandle> fieldHandles)
+    {
+        int fieldHandlesLength = fieldHandles.Length;
+        int fieldInfosLength = s_fieldInfos.AddDefaultsAndGetLength(fieldHandlesLength);
+        int startAddress = fieldInfosLength - fieldHandlesLength;
+
+        for (int i = 0; i < fieldHandlesLength; i++)
+        {
+            RuntimeFieldAndTypeHandle rfth = new(fieldHandles[i], typeHandle);
+            FieldInfoStore.TryAdd(rfth, startAddress+i);
+        }
+
+        return startAddress;
     }
 
 }

@@ -37,7 +37,7 @@ public readonly struct RuntimeFieldAndTypeHandle : IEquatable<RuntimeFieldAndTyp
         RuntimeFieldHandleEqualityComparer.Instance.Equals(RuntimeFieldHandle, other.RuntimeFieldHandle) &&
         RuntimeTypeHandleEqualityComparer.Instance.Equals(DeclaringTypeHandle, other.DeclaringTypeHandle);
     
-    public override bool Equals(object obj) => obj is RuntimeFieldAndTypeHandle v && Equals(v);
+    public override bool Equals(object? obj) => obj is RuntimeFieldAndTypeHandle v && Equals(v);
     
     public override int GetHashCode()
     {

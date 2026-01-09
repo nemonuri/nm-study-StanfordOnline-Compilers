@@ -4,7 +4,7 @@ using System.Reflection;
 namespace Nemonuri.LowLevel.Primitives.DotNet;
 
 [StructLayout(LayoutKind.Sequential)]
-public struct FieldInfo
+internal struct FieldInfo
 {
     public readonly int Size = Unsafe.SizeOf<FieldInfo>();
 
@@ -78,7 +78,7 @@ public struct FieldInfo
         if ((_flags & ExplicitFieldOffsetOrNoneAssignedMask) == 0)
         {
             _explicitFieldOffsetOrNone = ExplicitFieldOffsetNone;
-            if (RuntimeTypeTheory.TypeInfos[FieldTypeAddress].LayoutKind != LayoutKind.Explicit) { goto FlagAndExit; }
+            if (!RuntimeTypeTheory.TypeInfos[FieldTypeAddress].IsExplicitLayout) { goto FlagAndExit; }
             if (RuntimeFieldAndTypeHandle.DotNetFieldInfo.GetCustomAttribute<FieldOffsetAttribute>() is not { } fieldOffset) { goto FlagAndExit; }
 
             _explicitFieldOffsetOrNone = fieldOffset.Value;

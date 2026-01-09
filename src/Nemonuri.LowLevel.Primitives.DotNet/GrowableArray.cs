@@ -18,7 +18,7 @@ public struct GrowableArray<T>
         if (Length == 0) { return []; }
 
         T[] newArray = new T[Length];
-        Array.Copy(_array, newArray, Length);
+        Array.Copy(_array!, newArray, Length);
 
         return newArray;
     }
@@ -30,8 +30,18 @@ public struct GrowableArray<T>
         _length += 1;
     }
 
+    public int AddDefaultsAndGetLength(int count)
+    {
+        if (!(count >= 0)) {throw new ArgumentOutOfRangeException(nameof(count), count, "Should greater than or equal to 0."); }
+        if (count == 0) {return _length;}
+
+        EnsureCapacity(Length+count);
+        _length += count;
+        return _length;
+    }
+
     [MemberNotNull([nameof(_array)])]
-    public void EnsureCapacity(int requestedCapacity)
+    private void EnsureCapacity(int requestedCapacity)
     {
         Debug.Assert( requestedCapacity > 0 );
 

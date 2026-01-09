@@ -106,8 +106,10 @@ public static partial class PrimitiveValueTypeTheory
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool IsPrimitiveValueType(nint rid) => IndexOf(rid) >= 0;
     
+    
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static int GetSizeOrZero(RuntimeTypeHandle rth) => GetSizeOrZero(rth.Value);
+
     public static int GetSizeOrZero(nint rid)
     {
         int index = IndexOf(rid);

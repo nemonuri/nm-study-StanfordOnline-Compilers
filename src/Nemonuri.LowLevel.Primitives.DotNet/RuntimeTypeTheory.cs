@@ -5,7 +5,7 @@ public static class RuntimeTypeTheory
 {
     private static GrowableArray<TypeInfo> s_typeInfos = new(4);
 
-    public static ReadOnlySpan<TypeInfo> TypeInfos => s_typeInfos.AsSpan;
+    internal static ReadOnlySpan<TypeInfo> TypeInfos => s_typeInfos.AsSpan;
 
     private static volatile ConcurrentDictionary<RuntimeTypeHandle, int>? s_typeInfoStore;
 
@@ -13,13 +13,13 @@ public static class RuntimeTypeTheory
         s_typeInfoStore ??= Interlocked.CompareExchange(ref s_typeInfoStore, new(RuntimeTypeHandleEqualityComparer.Instance), null) ?? s_typeInfoStore;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static int GetOrAddAddress(RuntimeTypeHandle typeHandle)
+    internal static int GetOrAddAddress(RuntimeTypeHandle typeHandle)
     {
         return TypeInfoStore.GetOrAdd(key: typeHandle, valueFactory: CreateTypeInfoFromTypeHandle);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static ref readonly TypeInfo GetOrAdd(RuntimeTypeHandle typeHandle)
+    internal static ref readonly TypeInfo GetOrAdd(RuntimeTypeHandle typeHandle)
     {
         int typeInfoAddress = GetOrAddAddress(typeHandle);
         ref readonly TypeInfo ti = ref TypeInfos[typeInfoAddress];
@@ -27,7 +27,7 @@ public static class RuntimeTypeTheory
         return ref ti;
     }
 
-    public static bool CanGetOrAdd(RuntimeTypeHandle typeHandle, bool throwIfNot = false)
+    internal static bool CanGetOrAdd(RuntimeTypeHandle typeHandle, bool throwIfNot = false)
     {
         // Reference: https://github.com/dotnet/runtime/blob/main/src/mono/System.Private.CoreLib/src/System/Runtime/CompilerServices/RuntimeHelpers.Mono.cs
 

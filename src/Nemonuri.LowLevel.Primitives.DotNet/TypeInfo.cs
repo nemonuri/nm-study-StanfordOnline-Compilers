@@ -1,20 +1,21 @@
 ﻿
 using System.Reflection;
+using static Nemonuri.LowLevel.Primitives.DotNet.Extensions.RuntimeTypeHandleExtensions;
 
 namespace Nemonuri.LowLevel.Primitives.DotNet;
 
 /// <summary>
 /// Lazy-initializing CLR Type info
 /// </summary>
-public class TypeInfo
+internal partial struct TypeInfo
 {
-    public const int AddressNone = -1;
+    private const int None = -1;
 
     internal TypeInfo(int address, RuntimeTypeHandle runtimeTypeHandle)
     {
         Address = address;
         RuntimeTypeHandle = runtimeTypeHandle;
-        _flags = 0;
+        _flags = default;
     }
 
     #region Fields
@@ -23,134 +24,183 @@ public class TypeInfo
 
     public readonly RuntimeTypeHandle RuntimeTypeHandle;
 
-    private uint _flags;
+    private ThreadSafeFlags _flags;
 
-    //private bool _isPrimitive;
-
-    //--- Well-known properties ---|
+    //--- Well-known properties ---
     private bool _isValueType;
 
     private TypeAttributes _typeAttributes;
     //---|
 
-    private bool _isLayoutStableValueType;
+    //--- Enum properties ---
+    private RuntimeTypeHandle _enumUnderlyingRuntimeTypeHandleOrNull;
+    //---|
 
-    private int _enumUnderlyingTypeAddressOrNone;
+    //--- Nullable properties ---
+    private RuntimeTypeHandle _nullableUnderlyingRuntimeTypeHandleOrNull;
+    //---|
 
-    private int _nullableUnderlyingTypeAddressOrNone;
+    //--- Class layout properties ---
+    private int _classLayoutPack;
 
-    private int _isUnmanaged0;
+    private int _classLayoutSize;
+    //---|
 
-    private int _instanceFieldListAddressOffset;
+    //--- Instance fields properties ---
+    private int _instanceFieldListStartAddress;
 
     private int _instanceFieldListCount;
+    //---|
+
+    private int _isUnmanaged;
+
+    private bool _isLayoutStableValueType;
 
     private int _stableSizeOrZero;
 
     #endregion Fields
 
-
-
-
-
-    [field: AllowNull, MaybeNull]
-    public System.Reflection.TypeInfo DotNetTypeInfo => field ??= Type.GetTypeFromHandle(RuntimeTypeHandle)!.GetTypeInfo();
-
-    
+    public readonly Type DotNetType => this.RuntimeTypeHandle.GetDotNetType();
 
     //--- Well-Known properties ---
-    private const uint WellKnownPropertiesAssignedMask = 1 << 0;
+    public bool IsValueType { get { AssignWellKnownPropertiesIfNeeded(); return _isValueType; } }
 
-    public bool IsPrimitive
-    {
-        get { AssignWellKnownPropertiesIfNeeded(); return field; }
-        private set;
-    }
-
-    public bool IsValueType
-    {
-        get { AssignWellKnownPropertiesIfNeeded(); return field; }
-        private set;
-    }
-
-    [MemberNotNullWhen(true, [nameof(EnumUnderlyingType)])]
-    public bool IsEnum
-    {
-        get { AssignWellKnownPropertiesIfNeeded(); return field; }
-        private set;
-    }
-
-    public TypeAttributes TypeAttributes
-    {
-        get { AssignWellKnownPropertiesIfNeeded(); return field; }
-        private set;
-    }
+    public TypeAttributes TypeAttributes { get { AssignWellKnownPropertiesIfNeeded(); return _typeAttributes; } }
 
     private void AssignWellKnownPropertiesIfNeeded()
     {
-        if ((_flags & WellKnownPropertiesAssignedMask) != 0) {return;}
+        if (_flags.HasFlags(Flags.WellKnownPropertiesAssigned)) {return;}
 
-        var dti = DotNetTypeInfo;
-        IsPrimitive = dti.IsPrimitive;
-        IsValueType = dti.IsValueType;
-        IsEnum = dti.IsEnum;
-        TypeAttributes = dti.Attributes;
+        var dt = DotNetType;
+        _isValueType = dt.IsValueType;
+        _typeAttributes = dt.Attributes;
 
-        _flags |= WellKnownPropertiesAssignedMask;
+        _flags.AddFlags(Flags.WellKnownPropertiesAssigned);
     }
     //---|
 
-    public LayoutKind LayoutKind
+    //--- Enum properties ---
+    public RuntimeTypeHandle EnumUnderlyingRuntimeTypeHandleOrNull
     {
         get
         {
-            if ((TypeAttributes | TypeAttributes.SequentialLayout) != 0) { return LayoutKind.Sequential; }
-            else if ((TypeAttributes | TypeAttributes.ExplicitLayout) != 0) { return LayoutKind.Explicit; }
-            else { return LayoutKind.Auto; }
+            if (!_flags.HasFlags(Flags.EnumPropertiesAssigned))
+            {
+                var dt = DotNetType;
+                if (dt.IsEnum)
+                {
+                    _enumUnderlyingRuntimeTypeHandleOrNull = dt.GetEnumUnderlyingType().TypeHandle;
+                }
+                else
+                {
+                    _enumUnderlyingRuntimeTypeHandleOrNull = default;
+                }
+
+                _flags.AddFlags(Flags.EnumPropertiesAssigned);
+            }
+
+            return _enumUnderlyingRuntimeTypeHandleOrNull;
         }
     }
 
-    public Type? EnumUnderlyingType => IsEnum ? (field ??= DotNetTypeInfo.GetEnumUnderlyingType()) : null;
+    public bool IsEnum => !EnumUnderlyingRuntimeTypeHandleOrNull.IsNull;
+    //---|
 
-    private const uint StructLayoutAttributeAssignedMask = 1 << 1;
-    public StructLayoutAttribute? StructLayoutAttribute
+    //--- Nullable properties ---
+    public RuntimeTypeHandle NullableUnderlyingRuntimeTypeHandleOrNull
     {
         get
         {
-            if ((_flags & StructLayoutAttributeAssignedMask) != 0) {return field;}
+            if (!_flags.HasFlags(Flags.NullablePropertiesAssigned))
+            {
+                Type? ut = Nullable.GetUnderlyingType(DotNetType);
+                _nullableUnderlyingRuntimeTypeHandleOrNull = ut?.TypeHandle ?? default;
 
-            if (!IsValueType) { goto FlagAndReturn; }
-            field = DotNetTypeInfo.StructLayoutAttribute;
+                _flags.AddFlags(Flags.NullablePropertiesAssigned);
+            }
 
-        FlagAndReturn:
-            _flags |= StructLayoutAttributeAssignedMask;
-            return field;
+            return _nullableUnderlyingRuntimeTypeHandleOrNull;
         }
     }
 
-    private const uint NullableUnderlyingTypeAssignedMask = 1 << 2;
-    public Type? NullableUnderlyingType
+    public bool IsNullableValueType => !NullableUnderlyingRuntimeTypeHandleOrNull.IsNull;
+    //---|
+
+    //--- Class layout properties ---
+    private void AssignClassLayoutPropertiesIfNeeded()
+    {
+        if (_flags.HasFlags(Flags.ClassLayoutPropertiesAssigned)) {return;}
+
+        var dt = DotNetType;
+        if (dt.StructLayoutAttribute is { Value: LayoutKind.Sequential or LayoutKind.Explicit } sl)
+        {
+            _classLayoutPack = sl.Pack;
+            _classLayoutSize = sl.Size;
+        }
+        else
+        {
+            _classLayoutPack = 0;
+            _classLayoutSize = 0;
+        }
+
+        _flags.AddFlags(Flags.ClassLayoutPropertiesAssigned);
+    }
+
+    public int ClassLayoutPack { get { AssignClassLayoutPropertiesIfNeeded(); return _classLayoutPack; } }
+
+    public int ClassLayoutSize { get { AssignClassLayoutPropertiesIfNeeded(); return _classLayoutSize; } }
+
+    public bool IsAutoLayout => (TypeAttributes | TypeAttributes.LayoutMask) == TypeAttributes.AutoLayout;
+
+    public bool IsSequentialLayout => (TypeAttributes | TypeAttributes.LayoutMask) == TypeAttributes.SequentialLayout;
+
+    public bool IsExplicitLayout => (TypeAttributes | TypeAttributes.LayoutMask) == TypeAttributes.ExplicitLayout;
+
+    public bool IsSequentialOrExplicitLayout => (TypeAttributes | TypeAttributes.LayoutMask) != TypeAttributes.AutoLayout;
+    //---|
+
+    //--- Instance fields properties ---
+    private void AssignInstanceFieldsPropertiesIfNeeded()
+    {
+        if (_flags.HasFlags(Flags.InstanceFieldsPropertiesAssigned)) {return;}
+
+        var dt = DotNetType;
+        System.Reflection.FieldInfo[] fis = dt.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+        if (fis.Length == 0) { goto AddFlagsAndExit; }
+
+        Span<RuntimeFieldHandle> rfhs = stackalloc RuntimeFieldHandle[fis.Length];
+        for (int i = 0; i < rfhs.Length; i++)
+        {
+            rfhs[i] = fis[i].FieldHandle;
+        }
+
+        _instanceFieldListStartAddress = RuntimeFieldTheory.AddFields(RuntimeTypeHandle, rfhs);
+        _instanceFieldListCount = rfhs.Length;
+
+        Span<FieldInfo> slicedFieldInfos = RuntimeFieldTheory.FieldInfos.Slice(_instanceFieldListStartAddress, _instanceFieldListCount);
+        for (int i = 0; i < slicedFieldInfos.Length; i++)
+        {
+            int curAddress = _instanceFieldListStartAddress + i;
+            int prevAddressOrNone = (i == 0) ? FieldInfo.PreviousFieldAddressNone : (curAddress - 1);
+            slicedFieldInfos[i] = new(curAddress, new(rfhs[i], RuntimeTypeHandle), prevAddressOrNone);
+        }
+
+    AddFlagsAndExit:
+        _flags.AddFlags(Flags.InstanceFieldsPropertiesAssigned);
+    }
+
+    public ReadOnlySpan<FieldInfo> InstanceFieldInfos
     {
         get
         {
-            if ((_flags & NullableUnderlyingTypeAssignedMask) != 0) {return field;}
-
-            if (!IsValueType) { goto FlagAndReturn; }
-            field = Nullable.GetUnderlyingType(DotNetTypeInfo);
-
-        FlagAndReturn:
-            _flags |= NullableUnderlyingTypeAssignedMask;
-            return field;
+            AssignInstanceFieldsPropertiesIfNeeded();
+            return RuntimeFieldTheory.FieldInfos.Slice(_instanceFieldListStartAddress, _instanceFieldListCount);
         }
     }
-
-    [MemberNotNullWhen(true, [nameof(NullableUnderlyingType)])]
-    public bool IsNullableValueType => NullableUnderlyingType is not null;
+    //---|
 
 
-    [field: AllowNull, MaybeNull]
-    private System.Reflection.FieldInfo[] InstanceFieldInfosCore => field ??= DotNetTypeInfo.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-    public ReadOnlySpan<System.Reflection.FieldInfo> InstanceFieldInfos => InstanceFieldInfosCore;
+
 
     private nint[] ValueTypeFieldOffsetsCore
     {
