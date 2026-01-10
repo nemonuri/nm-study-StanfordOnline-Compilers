@@ -52,11 +52,21 @@ internal partial struct TypeInfo
     private int _instanceFieldListCount;
     //---|
 
+    //--- Stable layout properties ---
+    private bool _hasStableLayoutAsContainer;
+    //---|
+
+    //--- Size properties ---
+    private int _stableContainerSizeOrZero;
+    
+    private int _stableLeafSizeOrZero;
+    //---|
+
     private int _isUnmanaged;
 
     private bool _isLayoutStableValueType;
 
-    private int _stableSizeOrZero;
+    
 
     #endregion Fields
 
@@ -181,7 +191,7 @@ internal partial struct TypeInfo
         for (int i = 0; i < slicedFieldInfos.Length; i++)
         {
             int curAddress = _instanceFieldListStartAddress + i;
-            int prevAddressOrNone = (i == 0) ? FieldInfo.PreviousFieldAddressNone : (curAddress - 1);
+            int prevAddressOrNone = (i == 0) ? Int32AddressTheory.None : (curAddress - 1);
             slicedFieldInfos[i] = new(curAddress, new(rfhs[i], RuntimeTypeHandle), prevAddressOrNone);
         }
 
@@ -199,6 +209,55 @@ internal partial struct TypeInfo
     }
     //---|
 
+    //--- Stable layout properties ---
+    public bool HasStableLayoutAsContainer
+    {
+        get
+        {
+            if (!_flags.HasFlags(Flags.StableLayoutPropertiesAssigned))
+            {
+                if (IsAutoLayout) {return false;}
+                foreach (FieldInfo fi in InstanceFieldInfos)
+                {
+                    if (!fi.HasStableLayoutAsLeaf) 
+                    { 
+                        _hasStableLayoutAsContainer = false;
+                        goto AddFlagsAndExit; 
+                    }
+                }
+                _hasStableLayoutAsContainer = true;
+            
+            AddFlagsAndExit:
+                _flags.AddFlags(Flags.StableLayoutPropertiesAssigned);
+            }
+
+            return _hasStableLayoutAsContainer;
+        }
+    }
+    //---|
+
+    //--- Size properties ---
+    public void AssignStablePropertiesIfNeeded()
+    {
+        if (!_flags.HasFlags(Flags.SizePropertiesAssigned)) {return;}
+
+        if (HasStableLayoutAsContainer)
+        {
+            throw new NotImplementedException();
+        }
+        else
+        {
+            _stableContainerSizeOrZero = 0;
+            _stableLeafSizeOrZero = IsValueType ? 0 : PrimitiveValueTypeTheory.IntPtrSize;
+        }
+
+        _flags.AddFlags(Flags.SizePropertiesAssigned);
+    }
+
+    public int StableContainerSizeOrZero { get { AssignStablePropertiesIfNeeded(); return _stableContainerSizeOrZero; } }
+
+    public int StableLeafSizeOrZero { get { AssignStablePropertiesIfNeeded(); return _stableLeafSizeOrZero; } }
+    //---|
 
 
 

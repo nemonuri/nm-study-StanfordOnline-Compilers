@@ -4,19 +4,18 @@ using System.Reflection;
 namespace Nemonuri.LowLevel.Primitives.DotNet;
 
 [StructLayout(LayoutKind.Sequential)]
-internal struct FieldInfo
+internal partial struct FieldInfo
 {
+
     public readonly int Size = Unsafe.SizeOf<FieldInfo>();
 
-    public const int PreviousFieldAddressNone = -1;
-    public const int ExplicitFieldOffsetNone = -1;
 
-    public FieldInfo(int address, RuntimeFieldAndTypeHandle runtimeFieldHandle, int previousFieldAddress = PreviousFieldAddressNone)
+    public FieldInfo(int address, RuntimeFieldAndTypeHandle runtimeFieldHandle, int previousFieldAddress = Int32AddressTheory.None)
     {
         Address = address;
         RuntimeFieldAndTypeHandle = runtimeFieldHandle;
         PreviousFieldAddressOrNone = previousFieldAddress;
-        _flags = 0;
+        _flags = default;
     }
 
     #region Fields
@@ -27,9 +26,13 @@ internal struct FieldInfo
 
     public readonly int PreviousFieldAddressOrNone;
 
-    private uint _flags;
+    private ThreadSafeFlags _flags;
 
     //--- well-known properties ---
+    private bool _isFieldTypePrimitive;
+
+    // If field type is primitive, this field is address of primitive type.
+    // Else, this field is address of runtime type.
     private int _fieldTypeAddress;
 
     private int _declaringTypeAddress;
@@ -37,7 +40,14 @@ internal struct FieldInfo
     private FieldAttributes _fieldAttributes;
     //---|  
 
-    private int _explicitFieldOffsetOrNone;
+    //--- ordinal properties ---
+    private int _ordinal;
+    //---|
+
+    //--- offset properties ---
+    private int _offsetOrNone;
+
+    //---|
 
     #endregion Fields
 
@@ -45,49 +55,171 @@ internal struct FieldInfo
 
     public readonly RuntimeTypeHandle DeclaringTypeHandle => RuntimeFieldAndTypeHandle.DeclaringTypeHandle;
 
-    public readonly bool TryGetPreviousFieldAddress(out int address) => (address = PreviousFieldAddressOrNone) is not PreviousFieldAddressNone;
+    public readonly bool TryGetPreviousFieldAddress(out int address) => (address = PreviousFieldAddressOrNone) is not Int32AddressTheory.None;
 
-    private const uint WellKnownPropertiesAssignedMask = 1 << 0;
+    //--- well-known properties ---
 
     private void AssignWellKnownPropertiesIfNeeded()
     {
-        if ((_flags & WellKnownPropertiesAssignedMask) != 0) {return;}
+        if (_flags.HasFlags(Flags.WellKnownPropertiesAssigned)) {return;}
 
         System.Reflection.FieldInfo fieldInfo = RuntimeFieldAndTypeHandle.DotNetFieldInfo;
         RuntimeTypeHandle fieldTypeHandle = fieldInfo.FieldType.TypeHandle;
-        _fieldTypeAddress = RuntimeTypeTheory.GetOrAddAddress(fieldTypeHandle);
+
+        int addressCandidate = PrimitiveValueTypeTheory.IndexOf(fieldTypeHandle);
+        if (addressCandidate >= 0)
+        {
+            _isFieldTypePrimitive = true;
+            _fieldTypeAddress = addressCandidate;
+        }
+        else
+        {
+            _isFieldTypePrimitive = false;
+            _fieldTypeAddress = RuntimeTypeTheory.GetOrAddAddress(fieldTypeHandle);
+        }
+
         _declaringTypeAddress = RuntimeTypeTheory.GetOrAddAddress(DeclaringTypeHandle);
         _fieldAttributes = fieldInfo.Attributes;
 
-        _flags |= WellKnownPropertiesAssignedMask;
+        _flags.AddFlags(Flags.WellKnownPropertiesAssigned);
     }
+
+    public bool IsFieldTypePrimitive { get { AssignWellKnownPropertiesIfNeeded(); return _isFieldTypePrimitive; } }
 
     public int FieldTypeAddress { get { AssignWellKnownPropertiesIfNeeded(); return _fieldTypeAddress; } }
 
     public int DeclaringTypeAddress { get { AssignWellKnownPropertiesIfNeeded(); return _declaringTypeAddress; } }
 
-    public RuntimeTypeHandle FieldTypeHandle => RuntimeTypeTheory.TypeInfos[FieldTypeAddress].RuntimeTypeHandle;
-
     public FieldAttributes FieldAttributes { get { AssignWellKnownPropertiesIfNeeded(); return _fieldAttributes; } }
 
+    public ref readonly TypeInfo DeclaringTypeInfo => ref RuntimeTypeTheory.TypeInfos[DeclaringTypeAddress];
 
-    private const uint ExplicitFieldOffsetOrNoneAssignedMask = 1 << 1;
+    //public bool IsFieldTypeValueType => IsFieldTypePrimitive || RuntimeTypeTheory.TypeInfos[FieldTypeAddress].IsValueType;
 
-    public bool TryGetExplicitFieldOffset(out int offset)
+    public bool HasStableLayoutAsLeaf
     {
-        if ((_flags & ExplicitFieldOffsetOrNoneAssignedMask) == 0)
+        get
         {
-            _explicitFieldOffsetOrNone = ExplicitFieldOffsetNone;
-            if (!RuntimeTypeTheory.TypeInfos[FieldTypeAddress].IsExplicitLayout) { goto FlagAndExit; }
-            if (RuntimeFieldAndTypeHandle.DotNetFieldInfo.GetCustomAttribute<FieldOffsetAttribute>() is not { } fieldOffset) { goto FlagAndExit; }
-
-            _explicitFieldOffsetOrNone = fieldOffset.Value;
-
-        FlagAndExit:
-            _flags |= ExplicitFieldOffsetOrNoneAssignedMask;
+            if (IsFieldTypePrimitive) {return true;}
+            ref readonly TypeInfo fieldTypeInfo = ref RuntimeTypeTheory.TypeInfos[FieldTypeAddress];
+            return !fieldTypeInfo.IsValueType || fieldTypeInfo.HasStableLayoutAsContainer;
         }
-
-        return (offset = _explicitFieldOffsetOrNone) is not ExplicitFieldOffsetNone;
     }
+
+    //---|
+
+    //--- ordinal properties ---
+
+    public int Ordinal
+    {
+        get
+        {
+            if (!_flags.HasFlags(Flags.OrdinalPropertiesAssigned))
+            {
+                if (TryGetPreviousFieldAddress(out int prevAddress))
+                {
+                    _ordinal = RuntimeFieldTheory.FieldInfos[prevAddress].Ordinal + 1;
+                }
+                else
+                {
+                    _ordinal = 0;
+                }
+
+                _flags.AddFlags(Flags.OrdinalPropertiesAssigned);
+            }
+
+            return _ordinal;
+        }
+    }
+
+    //---|
+
+    //--- offset properties ---
+
+    public int StableLeafSizeOrZero
+    {
+        get
+        {
+            int leafSize;
+            if (IsFieldTypePrimitive)
+            {
+                leafSize = PrimitiveValueTypeTheory.Sizes[FieldTypeAddress];
+            }
+            else
+            {
+                ref readonly TypeInfo ftInfo = ref RuntimeTypeTheory.TypeInfos[FieldTypeAddress];
+                if (ftInfo.IsValueType)
+                {
+                    leafSize = ftInfo.StableContainerSizeOrZero;
+                }
+                else
+                {
+                    leafSize = ftInfo.StableLeafSizeOrZero;
+                }
+            }
+            return leafSize;
+        }
+    }
+
+    public int OffsetOrNone
+    {
+        get
+        {
+            if (!_flags.HasFlags(Flags.OffsetPropertiesAssigned))
+            {
+                ref readonly TypeInfo dtInfo = ref DeclaringTypeInfo;
+                if (!dtInfo.HasStableLayoutAsContainer)
+                {
+                    _offsetOrNone = Int32AddressTheory.None;
+                    goto AddFlagsAndExit;
+                }
+
+                if (dtInfo.IsExplicitLayout)
+                {
+                    FieldOffsetAttribute? fieldOffsetAttribute = RuntimeFieldAndTypeHandle.DotNetFieldInfo.GetCustomAttribute<FieldOffsetAttribute>();
+                    if (fieldOffsetAttribute is null) {throw new ArgumentNullException(nameof(fieldOffsetAttribute));}
+                    _offsetOrNone = fieldOffsetAttribute.Value;
+                }
+                else if (dtInfo.IsSequentialLayout)
+                {
+                    if (TryGetPreviousFieldAddress(out int prevAddress))
+                    {
+                        int prevAddressOffset = RuntimeFieldTheory.FieldInfos[prevAddress].OffsetOrNone;
+                        if (Int32AddressTheory.IsNone(prevAddressOffset))
+                        {
+                            throw new ArgumentNullException(nameof(prevAddressOffset));
+                        }
+
+                        int leafSize = StableLeafSizeOrZero;
+                        if (leafSize == 0)
+                        {
+                            throw new ArgumentOutOfRangeException(nameof(leafSize));
+                        }
+
+                        int clPack = dtInfo.ClassLayoutPack;
+
+                        //System.Numerics.BitOperations
+                    }
+                    else
+                    {
+                        _offsetOrNone = 0;
+                    }
+                }
+                else
+                {
+                    _offsetOrNone = Int32AddressTheory.None;
+                }
+
+            AddFlagsAndExit:
+                _flags.AddFlags(Flags.OffsetPropertiesAssigned);
+            }
+
+            return _offsetOrNone;
+        }
+    }
+
+    //---|
+
+
 
 }

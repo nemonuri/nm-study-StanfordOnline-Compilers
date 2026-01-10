@@ -8,11 +8,12 @@ using Interlocked = System.Threading.Interlocked;
 
 namespace Nemonuri.LowLevel.Primitives.DotNet
 {
+    [StructLayout(LayoutKind.Sequential)]
     public struct ThreadSafeFlags
     {
-        private volatile uint _value;
+        private volatile int _value;
 
-        public readonly uint Value
+        public readonly int Value
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get
@@ -22,13 +23,13 @@ namespace Nemonuri.LowLevel.Primitives.DotNet
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public readonly bool HasFlags(uint value)
+        public readonly bool HasFlags(int value)
         {
             return (_value & value) == value;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void AddFlags(uint flagsToAdd)
+        public void AddFlags(int flagsToAdd)
         {
             var originalFlags = _value;
             while (Interlocked.CompareExchange(ref _value, originalFlags | flagsToAdd, originalFlags) != originalFlags)
