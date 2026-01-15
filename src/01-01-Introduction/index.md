@@ -17,16 +17,16 @@
   - executable 역시 프로그램이다.
 - executable은 컴파일러와 별도로 실행된다. (offline)
 
-## 컴파일러의 역사 
+## 컴파일러의 역사 <span id="history-of-compiler"></span>
 
-### 1. 1954년, IBM이 704 를 출시 <span id="history-of-compiler-ibm704"></span>
+### 1. 1954년, IBM이 704 를 출시 <span id="ibm704"></span>
 
 - 이 당시 컴퓨터(하드웨어) 제작 비용은 엄청 비쌌다.
 - 문제는, 소프트웨어 제작 비용이 **훨씬** 더 비쌌다!
 - 산업계의 고민: 
   - 어떻게 하면 소프트웨어를 더 잘, 생산성있게 만들 수 있을까?
 
-### 2. 1953년, John Backs, "Speedcoding" 도입 <span id="history-of-compiler-speedcoding"></span>
+### 2. 1953년, John Backs, "Speedcoding" 도입 <span id="speedcoding"></span>
 
 - "Speedcoding" 이란, 초기 형태의 인터프리터
   - 장점: 프로그램 개발이 빠르다

@@ -1,6 +1,4 @@
-module YCSCS1.Introduction.Semantic.HistoryOfCompiler.IBM704
-
-// <snippet:history-of-compiler-ibm704>
+module YCSCS1.Introduction.HistoryOfCompiler.IBM704
 
 //--- frame ---
 
@@ -26,5 +24,3 @@ let is_less_expensive_than (pc_l pc_r: production_cost_t) : bool =
   | (Hardware, Current), (Software, Current) -> true
   | (Software, FutureGoal), (Software, Current) -> true
   | _ -> false
-
-// </snippet:history-of-compiler-ibm704>

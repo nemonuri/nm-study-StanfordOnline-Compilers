@@ -1,6 +1,4 @@
-module YCSCS1.Introduction.Semantic.HistoryOfCompiler.SpeedCoding
-
-// <snippet:history-of-compiler-ibm704>
+module YCSCS1.Introduction.HistoryOfCompiler.SpeedCoding
 
 //--- frame ---
 
@@ -25,7 +23,6 @@ type program_size_t =
 | Byte300
 
 //---|
-
 
 let get_program_kind (program: program_t) : program_kind_t =
   match program with
@@ -79,5 +76,3 @@ let is_well_known_language
   : bool =
   match lang, time with
   | SpeedCoding, Today -> false
-
-// </snippet:history-of-compiler-ibm704>
