@@ -3,6 +3,8 @@ module YCSCS1.Introduction.HistoryOfCompiler.SpeedCoding
 module Base = YCSCS1.Introduction.CompilerAndInterpreter.Compiler
 open Nemonuri.Choice
 
+/// <region:1>
+
 //--- frame ---
 
 type speedcoding_t = | SpeedCoding
@@ -65,3 +67,10 @@ let _ = assert ( Execution (c12 SpeedCoding) `is_execution_slower_than` Executio
 let _ = assert ( TodayExecution (c12 (OtherInterpreter Base.Interpreter)) `is_today_execution_slower_than` TodayExecution (c22 Base.Executable) )
 //---|
 
+/// </region:1>
+
+/// <region:2>
+/// </region:2>
+
+/// <region:3>
+/// </region:3>
