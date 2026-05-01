@@ -4,7 +4,7 @@ keywords = ["math"]
 defaultTargets = ["Nemonuri.Study.StanfordOnline.Compilers"]
 
 [leanOptions]
-pp.unicode.fun = true # pretty-prints `fun a ↦ b`
+pp.unicode.fun = false # pretty-prints `fun a ↦ b`
 relaxedAutoImplicit = false
 weak.linter.mathlibStandardSet = true
 maxSynthPendingDepth = 3
