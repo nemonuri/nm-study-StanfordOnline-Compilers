@@ -4,6 +4,9 @@ keywords = ["math"]
 defaultTargets = ["Nemonuri.Study.StanfordOnline.Compilers"]
 
 
+[leanOptions]
+mvcgen.warning = false
+
 [[require]]
 name = "mathlib"
 scope = "leanprover-community"
