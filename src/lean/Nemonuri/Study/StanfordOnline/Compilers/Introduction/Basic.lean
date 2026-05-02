@@ -115,6 +115,7 @@ structure LawfulState (TProgram: Type u1) (TData: Type u2) (TOutput: Type u3) wh
   state: State TProgram TData TOutput
   doesn't_do_any_processing: Predicates.doesn't_do_any_processing state
 
+
 instance instInhabitedLawfulState : Inhabited (LawfulState TProgram TData TOutput) where
   default := LawfulState.mk (Inhabited.default) (by unfold Predicates.doesn't_do_any_processing; trivial)
 
@@ -125,11 +126,39 @@ structure Interpreter (TProgram: Type u1) (TData: Type u2) (TOutput: Type u3) wh
   execute:
     {pre: Interpreter.LawfulState TProgram TData TOutput // pre.state.index = .takeInput} →
     {post: Interpreter.LawfulState TProgram TData TOutput // post.state.index = .produceOutput}
-  state: Interpreter.LawfulState TProgram TData TOutput
+  lawfulState: Interpreter.LawfulState TProgram TData TOutput
+
+namespace Interpreter
 
 @[reducible]
 def index (x: Interpreter TProgram TData TOutput) : Interpreter.Index :=
-  x.state.state.index
+  x.lawfulState.state.index
+
+
+def takeInput
+  (x: Interpreter TProgram TData TOutput) (index_eq: x.index = .init)
+  (prog: TProgram) (data: TData)
+  : Interpreter TProgram TData TOutput :=
+  open Predicates in
+  match meq1: x with
+  | ⟨execute, ⟨⟨idx, istate⟩, ddap⟩⟩ =>
+    have lemma1 : idx = .init := by
+      unfold Interpreter.index at index_eq
+      simp at index_eq
+      exact index_eq
+    let next := IndexedState.takeInput (lemma1 ▸ istate) prog data |> State.mk .takeInput
+    have lemma2 := show doesn't_do_any_processing next by trivial
+    Interpreter.mk execute (LawfulState.mk next lemma2)
+
+  --match meq2: istate with
+
+  --Interpreter.IndexedState.takeInput
+
+
+end Interpreter
+
+
+
 
 
 @[reducible]
@@ -142,18 +171,51 @@ namespace InterpreterM
 open Std.Do
 open Interpreter
 
-def init : (InterpreterM TProgram TData TOutput) PUnit := modify (fun s => { s with state := default })
-
+def init : (InterpreterM TProgram TData TOutput) PUnit := modify (fun s => { s with lawfulState := default })
 
 @[spec]
 theorem init_spec :
   ⦃fun (_: Interpreter TProgram TData TOutput) => ⌜True⌝⦄
   init
-  ⦃⇓ _ s => ⌜index s = Index.init⌝⦄
+  ⦃⇓ _ s => ⌜s.index = Index.init⌝⦄
   := by
-  mvcgen [init] with grind
+  mvcgen [init]
 
-#print init_spec
+
+def tryTakeInput (prog: TProgram) (data: TData) :
+  (InterpreterM TProgram TData TOutput) (ULift Bool) := do
+  let preItp ← get
+  if index_eq : preItp.index ≠ Index.init then
+    return .false |> ULift.up
+  else
+    let nextItp := takeInput preItp (index_eq |> Decidable.of_not_not) prog data
+    set nextItp
+    return .true |> ULift.up
+
+
+theorem tryTakeInput_if_init (prog: TProgram) (data: TData) :
+  ⦃fun (s: Interpreter TProgram TData TOutput) => ⌜s.index = .init⌝⦄
+  tryTakeInput prog data
+  ⦃⇓ r s => ⌜(r |> ULift.down) = .true ∧ s.index = .takeInput⌝⦄
+  := by
+  mvcgen [tryTakeInput]
+
+theorem tryTakeInput_if_not_init (prog: TProgram) (data: TData) (s1: Interpreter TProgram TData TOutput) :
+  ⦃fun (s: Interpreter TProgram TData TOutput) => ⌜s.index ≠ .init ∧ s1 = s⌝⦄
+  tryTakeInput prog data
+  ⦃⇓ r s => ⌜(r |> ULift.down) = .false ∧ s = s1⌝⦄
+  := by
+  mvcgen [tryTakeInput] with simp_all
+
+@[spec] -- ...이렇게 해도 되는건가?
+theorem tryTakeInput_spec (prog: TProgram) (data: TData) :
+  (type_of% (@tryTakeInput_if_init TProgram TData TOutput prog data)) ∧
+  (type_of% (@tryTakeInput_if_not_init TProgram TData TOutput prog data))
+  := by
+  simp [tryTakeInput_if_init, tryTakeInput_if_not_init]
+
+
+
 
 /-
 def invoke (prog: TProgram) (data: TData) : (InterpreterM TProgram TData TOutput) (ULift TOutput) := do
