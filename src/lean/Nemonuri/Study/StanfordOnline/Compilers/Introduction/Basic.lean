@@ -53,8 +53,8 @@ inductive StateLabel where
 variable {TInterpreter: (TProgram: Type u) → (TData: Type u) → StateLabel → Type u}
 variable {itp: (st: StateLabel) → (TInterpreter TProgram TData st)}
 
-class CanTakeAsInput (TSelf: type_of% (TInterpreter TProgram TData)) where
-  takeAsInput (self: TSelf .init) (prog: TProgram) (data: TData) : TSelf .takeAsInput
+class CanTakeAsInput (TProgram TData: Type u) (TInterpreter: type_of% TInterpreter) where
+  takeAsInput (self: TInterpreter TProgram TData .init) (prog: TProgram) (data: TData) : TInterpreter TProgram TData .takeAsInput
 
 /-!
 4. It(*self*) produces the **Output**(*output*) directly.
@@ -72,7 +72,7 @@ class HasProgram (TProgram: Type u) (TSource: Type u) where
 
 section
 variable
-  [ctai: CanTakeAsInput (TInterpreter TProgram TData)]
+  [ctai: CanTakeAsInput TProgram TData TInterpreter]
   [hp1: HasProgram TProgram (TInterpreter TProgram TData .takeAsInput)]
 
 @[reducible]
@@ -99,8 +99,7 @@ variable
   [hp2: HasProgram TProgram (TInterpreter TProgram TData .produceOutput)]
 
 
-set_option pp.explicit true in
-set_option trace.Meta.synthInstance true in
+
 def invoke
   (self: TInterpreter TProgram TData .init)
   (wf: ∀prog data, Specs.doesn't_do_any_processing_before self prog data)
@@ -108,9 +107,9 @@ def invoke
   { post: TOutput × (Traces.Invoke TProgram TData TInterpreter)
     // Tests.doesn't_do_any_processing_before prog post.snd.takeAsInput }
   :=
-  let trTakeAsInput := ctai.takeAsInput self1 prog data
+  let trTakeAsInput := ctai.takeAsInput self prog data
   match meq1: CanProduceOutput.produceOutput trTakeAsInput with
-  | ⟨output, trProduceOutput⟩ =>
+  | ⟨(output: TOutput), trProduceOutput⟩ =>
   sorry
 
 
