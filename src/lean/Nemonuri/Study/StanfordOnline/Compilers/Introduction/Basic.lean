@@ -66,37 +66,58 @@ class CanProduceOutput (TOutput: Type u) (TSelf: type_of% (TInterpreter TProgram
 
 /-!
 5. Meaning that it(*self*) *doesn't do any processing~* of the program(*prog*) *~before* it executes it on the input.
+6. So you just write the program(*prog*), and you invoke the interpreter(*self*) on the data(*data*), and the program(*prog*) immediately begins running.
 -/
 class HasProgram (TProgram: Type u) (TSource: Type u) where
   toProgram (self: TSource) : TProgram
 
-section
+
 variable
   [ctai: CanTakeAsInput TProgram TData TInterpreter]
   [hp1: HasProgram TProgram (TInterpreter TProgram TData .takeAsInput)]
 
-@[reducible]
-def Specs.doesn't_do_any_processing_before
-  (self1: TInterpreter TProgram TData .init) (prog1: TProgram) (data1: TData) : Prop :=
-  prog1 = (ctai.takeAsInput self1 prog1 data1 |> hp1.toProgram)
 
 @[reducible]
 def Tests.doesn't_do_any_processing_before
   (prog1: TProgram) (self2: TInterpreter TProgram TData .takeAsInput) : Prop :=
-  prog1 = (self2 |> hp1.toProgram)
+  prog1 = (self2 |> HasProgram.toProgram)
+
+@[reducible]
+def Specs.doesn't_do_any_processing_before
+  (self1: TInterpreter TProgram TData .init) (prog1: TProgram) (data1: TData) : Prop :=
+  Tests.doesn't_do_any_processing_before prog1 (CanTakeAsInput.takeAsInput self1 prog1 data1)
 
 /-!
-6. So you just write the program(*prog*), and you invoke the interpreter(*self*) on the data(*data*), and the program(*prog*) immediately begins running.
+7. we can say that the interpreter(*self*) is, *is online*, meaning it the work that it does is all part of running your program.
 -/
+variable
+  (TOutput: Type u)
+  [cpo: CanProduceOutput TOutput (TInterpreter TProgram TData)]
+  [hp2: HasProgram TProgram (TInterpreter TProgram TData .produceOutput)]
+
+@[reducible]
+def Tests.is_online
+  (self1: TInterpreter TProgram TData .takeAsInput)
+  (self2: TInterpreter TProgram TData .produceOutput) : Prop :=
+  hp1.toProgram self1 = hp2.toProgram self2
+
+@[reducible]
+def Specs.is_online
+  (self1: TInterpreter TProgram TData .takeAsInput) : Prop :=
+  self1
+  |> cpo.produceOutput
+  |> (·.snd)
+  |> Tests.is_online self1
+
+
+
+
 
 structure Traces.Invoke (TProgram TData: Type u) (TInterpreter: type_of% TInterpreter) where
   takeAsInput: TInterpreter TProgram TData .takeAsInput
   produceOutput: TInterpreter TProgram TData .produceOutput
 
-variable
-  (TOutput: Type u)
-  [cpo: CanProduceOutput TOutput (TInterpreter TProgram TData)]
-  [hp2: HasProgram TProgram (TInterpreter TProgram TData .produceOutput)]
+
 
 
 def invoke
@@ -111,14 +132,14 @@ def invoke
   | ⟨(output: TOutput), trProduceOutput⟩ =>
     let postVal := Prod.mk output (Traces.Invoke.mk trTakeAsInput trProduceOutput)
     have lemma1 : Tests.doesn't_do_any_processing_before prog postVal.snd.takeAsInput := by
-      unfold Tests.doesn't_do_any_processing_before
       unfold Specs.doesn't_do_any_processing_before at wf
       rw [wf prog data]
     Subtype.mk postVal lemma1
 
 
 
-end
+
+
 
 
 
