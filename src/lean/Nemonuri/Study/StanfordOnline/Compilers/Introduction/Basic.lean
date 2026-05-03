@@ -99,7 +99,6 @@ variable
   [hp2: HasProgram TProgram (TInterpreter TProgram TData .produceOutput)]
 
 
-
 def invoke
   (self: TInterpreter TProgram TData .init)
   (wf: ∀prog data, Specs.doesn't_do_any_processing_before self prog data)
@@ -110,7 +109,12 @@ def invoke
   let trTakeAsInput := ctai.takeAsInput self prog data
   match meq1: CanProduceOutput.produceOutput trTakeAsInput with
   | ⟨(output: TOutput), trProduceOutput⟩ =>
-  sorry
+    let postVal := Prod.mk output (Traces.Invoke.mk trTakeAsInput trProduceOutput)
+    have lemma1 : Tests.doesn't_do_any_processing_before prog postVal.snd.takeAsInput := by
+      unfold Tests.doesn't_do_any_processing_before
+      unfold Specs.doesn't_do_any_processing_before at wf
+      rw [wf prog data]
+    Subtype.mk postVal lemma1
 
 
 
