@@ -49,6 +49,7 @@ inductive StateLabel where
   | init
   | takeAsInput
   | produceOutput
+  deriving DecidableEq
 
 variable {TInterpreter: (TProgram: Type u) → (TData: Type u) → StateLabel → Type u}
 variable {itp: (st: StateLabel) → (TInterpreter TProgram TData st)}
@@ -111,36 +112,48 @@ def Specs.is_online
 
 
 
-
-
 structure Traces.Invoke (TProgram TData: Type u) (TInterpreter: type_of% TInterpreter) where
   takeAsInput: TInterpreter TProgram TData .takeAsInput
   produceOutput: TInterpreter TProgram TData .produceOutput
 
-
-
+@[reducible]
+def Specs.is_well_formed
+  (label: StateLabel)
+  (self: TInterpreter TProgram TData label)
+  (prog: TProgram) (data: TData)
+  : Prop :=
+  match label with
+  | .init => Specs.doesn't_do_any_processing_before self prog data
+  | .takeAsInput => Specs.is_online TOutput self
+  | .produceOutput => True
 
 def invoke
+  (wf: ∀label (self: TInterpreter TProgram TData label) prog data, Specs.is_well_formed TOutput label self prog data)
   (self: TInterpreter TProgram TData .init)
-  (wf: ∀prog data, Specs.doesn't_do_any_processing_before self prog data)
   (prog: TProgram) (data: TData) :
   { post: TOutput × (Traces.Invoke TProgram TData TInterpreter)
-    // Tests.doesn't_do_any_processing_before prog post.snd.takeAsInput }
+    // Tests.doesn't_do_any_processing_before prog post.snd.takeAsInput ∧
+       Tests.is_online post.snd.takeAsInput post.snd.produceOutput }
   :=
   let trTakeAsInput := ctai.takeAsInput self prog data
   match meq1: CanProduceOutput.produceOutput trTakeAsInput with
   | ⟨(output: TOutput), trProduceOutput⟩ =>
     let postVal := Prod.mk output (Traces.Invoke.mk trTakeAsInput trProduceOutput)
     have lemma1 : Tests.doesn't_do_any_processing_before prog postVal.snd.takeAsInput := by
+      unfold Specs.is_well_formed at wf
       unfold Specs.doesn't_do_any_processing_before at wf
-      rw [wf prog data]
-    Subtype.mk postVal lemma1
-
-
-
-
-
-
+      replace wf := wf _ self prog data
+      simp at wf
+      congr
+    have lemma2 : Tests.is_online postVal.snd.takeAsInput postVal.snd.produceOutput := by
+      unfold Specs.is_well_formed at wf
+      unfold Specs.is_online at wf
+      replace wf := wf _ trTakeAsInput prog data
+      simp at wf
+      subst postVal
+      simp_all
+      exact wf
+    Subtype.mk postVal (And.intro lemma1 lemma2)
 
 
 
