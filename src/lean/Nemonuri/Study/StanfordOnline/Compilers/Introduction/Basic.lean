@@ -33,10 +33,10 @@ So, what does an interpreter do?
 
 1. You wrote a **Program**(*prog*).
 2. You have a **Data**(*data*), whatever you want to run the program on.
-3. An **Interpreter**(*s*) takes as input, your program(*prog*) and your data(*data*).
-4. It(*s*) produces the **Output**(*output*) directly.
-5. Meaning that it(*s*) *doesn't do any processing* of the program(*prog*) before it executes it on the input.
-6. So you just write the program(*prog*), and you invoke the interpreter(*s*) on the data(*data*), and the program(*prog*) immediately begins running.
+3. An **Interpreter**(*self*) takes as input, your program(*prog*) and your data(*data*).
+4. It(*self*) produces the **Output**(*output*) directly.
+5. Meaning that it(*self*) *doesn't do any processing* of the program(*prog*) before it executes it on the input.
+6. So you just write the program(*prog*), and you invoke the interpreter(*self*) on the data(*data*), and the program(*prog*) immediately begins running.
 
 -/
 
@@ -150,14 +150,23 @@ def takeInput
     have lemma2 := show doesn't_do_any_processing next by trivial
     Interpreter.mk execute (LawfulState.mk next lemma2)
 
-  --match meq2: istate with
 
-  --Interpreter.IndexedState.takeInput
-
+def produceOutput
+  (x: Interpreter TProgram TData TOutput) (index_eq: x.index = .takeInput)
+  : { r: Interpreter TProgram TData TOutput // r.index = .produceOutput } :=
+  open Predicates in
+  match meq1: x with
+  | ⟨execute, ⟨⟨idx, istate⟩, ddap⟩⟩ =>
+    have lemma1 : idx = .takeInput := by
+      unfold Interpreter.index at index_eq
+      simp_all
+    have lemma2 : x.lawfulState.state.index = .takeInput := by
+      unfold Interpreter.index at index_eq
+      simp_all
+    match meq2: execute (Subtype.mk x.lawfulState lemma2) with
+    | ⟨next, next_index_eq⟩ => ⟨Interpreter.mk execute next, (by unfold Interpreter.index; simp [next_index_eq])⟩
 
 end Interpreter
-
-
 
 
 
@@ -196,14 +205,14 @@ def tryTakeInput (prog: TProgram) (data: TData) :
 theorem tryTakeInput_if_init (prog: TProgram) (data: TData) :
   ⦃fun (s: Interpreter TProgram TData TOutput) => ⌜s.index = .init⌝⦄
   tryTakeInput prog data
-  ⦃⇓ r s => ⌜(r |> ULift.down) = .true ∧ s.index = .takeInput⌝⦄
+  ⦃⇓ r s => ⌜r.down = .true ∧ s.index = .takeInput⌝⦄
   := by
   mvcgen [tryTakeInput]
 
 theorem tryTakeInput_if_not_init (prog: TProgram) (data: TData) (s1: Interpreter TProgram TData TOutput) :
   ⦃fun (s: Interpreter TProgram TData TOutput) => ⌜s.index ≠ .init ∧ s1 = s⌝⦄
   tryTakeInput prog data
-  ⦃⇓ r s => ⌜(r |> ULift.down) = .false ∧ s = s1⌝⦄
+  ⦃⇓ r s => ⌜r.down = .false ∧ s = s1⌝⦄
   := by
   mvcgen [tryTakeInput] with simp_all
 
@@ -215,17 +224,47 @@ theorem tryTakeInput_spec (prog: TProgram) (data: TData) :
   simp [tryTakeInput_if_init, tryTakeInput_if_not_init]
 
 
+def tryProduceOutput : (InterpreterM TProgram TData TOutput) (ULift Bool) := do
+  let preItp ← get
+  if index_eq : preItp.index ≠ Index.takeInput then
+    return .false |> ULift.up
+  else
+    let nextItp := produceOutput preItp (index_eq |> Decidable.of_not_not)
+    set nextItp.val
+    return .true |> ULift.up
 
-
-/-
-def invoke (prog: TProgram) (data: TData) : (InterpreterM TProgram TData TOutput) (ULift TOutput) := do
-  ← init ()
-  ← modify (fun self => Interpreter.IndexedState.takeInput self prog data |> )
--/
-
+@[spec]
+theorem tryProduceOutput_spec :
+  ⦃fun (s: Interpreter TProgram TData TOutput) => ⌜s.index = .takeInput⌝⦄
+  tryProduceOutput
+  ⦃⇓ r s => ⌜r.down = .true ∧ s.index = .produceOutput⌝⦄
+  := by
+  unfold Interpreter.index
+  mvcgen [tryProduceOutput] with simp
+  rename_i s heq2 heq1 nextItp
+  have lemma1 := nextItp.property
+  unfold Interpreter.index at lemma1
+  trivial
 
 
 end InterpreterM
+
+namespace Interpreter
+
+def invoke (self: Interpreter TProgram TData TOutput) (prog: TProgram) (data: TData) :
+  { post: Interpreter TProgram TData TOutput // post.index = .produceOutput }
+  :=
+  open InterpreterM in
+  match meq1: self |> init |> (·.snd) |> (tryTakeInput prog data) with
+  | ⟨ok1, post1⟩ =>
+  have lemma1 : ok1.down = true ∧ post1.index = .takeInput := by
+    simp at meq1
+  sorry
+
+
+
+end Interpreter
+
 
 
 
