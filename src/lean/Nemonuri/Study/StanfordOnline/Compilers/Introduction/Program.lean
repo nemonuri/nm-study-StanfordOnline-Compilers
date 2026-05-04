@@ -1,6 +1,5 @@
 module
 
-public import Std.Data.ExtDHashMap
 
 public section public_s
 @[expose] section expose_s
@@ -8,10 +7,111 @@ public section public_s
 
 namespace Nemonuri.Study.StanfordOnline.Compilers
 
+universe u
 set_option autoImplicit false
 
-universe u
 
+namespace Program
+
+namespace Implementer
+
+inductive Approach where
+  | compiler
+  | interpreter
+  deriving DecidableEq
+
+instance Approach.instLawfulBEq : LawfulBEq Approach := inferInstance
+
+class HasApproach (T: Type u) where
+  approach (target: T) : Approach
+
+
+
+namespace State
+
+inductive Label where
+  | init
+  | takeInput
+  | produceOutput
+  deriving DecidableEq
+
+instance Label.instLawfulBEq : LawfulBEq Label := inferInstance
+
+
+structure TypeContext : Type (u+1) where
+  TProgram : Type u
+  TData : Type u
+  TOutput : Type u
+
+
+end State
+
+
+inductive State (tc: State.TypeContext) : State.Label → Type u where
+  | init :
+      tc.TProgram →
+      State tc .init
+  | takeInput :
+      State tc .init →
+      tc.TData →
+      tc.TProgram →
+      State tc .takeInput
+  | produceOutput :
+      State tc .takeInput →
+      tc.TOutput →
+      tc.TProgram →
+      State tc .produceOutput
+
+
+namespace State
+
+
+structure SnapShot (tc: TypeContext) where
+  label : State.Label
+  state : State tc label
+
+class HasSnapShot (tc: TypeContext) (T: Type u) where
+  snapShot (target: T) : SnapShot tc
+
+end State
+
+open State in
+class HasState (tc: TypeContext) (T: Type u)
+  extends HasSnapShot tc T where
+  setState (before: T) (arg: SnapShot tc) : { after: T // (snapShot after) = arg }
+
+end Implementer
+
+
+open Implementer State in
+class Implementer (tc: TypeContext) (T : Type u)
+  extends HasApproach T where
+  init {label: Label} :
+    State tc label →
+    (prog: tc.TProgram) →
+    { after: State tc .init // match after with | .init prog2 => prog = prog2 }
+  takeInput :
+    State tc .init →
+    (data: tc.TData) →
+    { after: State tc .takeInput // match after with | .takeInput _ data2 _ => data = data2 }
+  produceOutput :
+    State tc .takeInput →
+    (output: tc.TOutput) →
+    { after: State tc .produceOutput // match after with | .produceOutput _ output2 _ => output = output2 }
+
+
+open Implementer State in
+class ImplementerM (tc: TypeContext) (T : Type u)
+  extends Implementer tc T, HasState tc T
+
+
+
+
+
+end Program
+
+
+/-
 protected class abbrev Key (T: Type u) := BEq T, Hashable T, EquivBEq T, LawfulHashable T
 
 namespace Programs
@@ -83,7 +183,7 @@ instance : LawfulBEq (Writer TOther) where
 end Writer
 
 end Programs
-
+-/
 
 
 end Nemonuri.Study.StanfordOnline.Compilers

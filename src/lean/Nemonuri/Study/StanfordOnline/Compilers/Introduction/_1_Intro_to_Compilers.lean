@@ -1,5 +1,6 @@
 module
 
+public import Nemonuri.Study.StanfordOnline.Compilers.Introduction.Program
 
 public section public_s
 @[expose] section expose_s
@@ -19,9 +20,7 @@ There are two major approaches to implementing programming languages
 
 -/
 
-inductive ImplementationApproach
-  | compiler
-  | interpreter
+abbrev ImplementationApproach := Program.Implementer.Approach
 
 
 end Nemonuri.Study.StanfordOnline.Compilers.Introduction

@@ -1,7 +1,7 @@
 module
 
-public import Std.Data.ExtDHashMap
-public import Nemonuri.Study.StanfordOnline.Compilers.Introduction.Programs
+--public import Std.Data.ExtDHashMap
+public import Nemonuri.Study.StanfordOnline.Compilers.Introduction.Program
 
 public section public_s
 @[expose] section expose_s
@@ -11,7 +11,7 @@ namespace Nemonuri.Study.StanfordOnline.Compilers.Introduction
 
 namespace Interpreter
 
-open Programs
+open Program
 
 universe u
 
@@ -33,11 +33,7 @@ variable {TData: Type u} {data: TData}
 /-!
 3. An **Interpreter**(*self*) takes as input, your program(*prog*) and your data(*data*).
 -/
-inductive StateLabel where
-  | init
-  | takeAsInput
-  | produceOutput
-  deriving DecidableEq
+abbrev StateLabel := Program.State.Label
 
 variable {TInterpreter: (TProgram: Type u) → (TData: Type u) → StateLabel → Type u}
 
@@ -50,7 +46,7 @@ class CanTakeAsInput (TSelf: type_of% TInterpreter) (TProgram TData: Type u) whe
 variable {TOutput: Type u} {output: TOutput}
 
 class CanProduceOutput (TSelf: type_of% (TInterpreter TProgram TData)) (TOutput: Type u) where
-  produceOutput (self: TSelf .takeAsInput) : TOutput × TSelf .produceOutput
+  produceOutput (self: TSelf .takeInput) : TOutput × TSelf .produceOutput
 
 /-!
 5. Meaning that it(*self*) *doesn't do any processing~* of the program(*prog*) *~before* it executes it on the input.
