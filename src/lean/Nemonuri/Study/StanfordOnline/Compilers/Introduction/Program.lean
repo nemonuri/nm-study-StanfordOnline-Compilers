@@ -42,6 +42,7 @@ structure TypeContext : Type (u+1) where
   TProgram : Type u
   TData : Type u
   TOutput : Type u
+  TTrace : Type u
 
 
 end State
@@ -50,16 +51,19 @@ end State
 inductive State (tc: State.TypeContext) : State.Label → Type u where
   | init :
       tc.TProgram →
+      tc.TTrace →
       State tc .init
   | takeInput :
       State tc .init →
       tc.TData →
       tc.TProgram →
+      tc.TTrace →
       State tc .takeInput
   | produceOutput :
       State tc .takeInput →
       tc.TOutput →
       tc.TProgram →
+      tc.TTrace →
       State tc .produceOutput
 
 
@@ -70,6 +74,8 @@ structure SnapShot (tc: TypeContext) where
   label : State.Label
   state : State tc label
 
+abbrev toSnapShot {tc: TypeContext} {label: Label} (state: State tc label) := SnapShot.mk label state
+
 class HasSnapShot (tc: TypeContext) (T: Type u) where
   snapShot (target: T) : SnapShot tc
 
@@ -78,7 +84,8 @@ end State
 open State in
 class HasState (tc: TypeContext) (T: Type u)
   extends HasSnapShot tc T where
-  setState (before: T) (arg: SnapShot tc) : { after: T // (snapShot after) = arg }
+  setState (before: T) (arg: SnapShot tc) : T--{ after: T // (snapShot after) = arg }
+  setState_spec : ∀before arg, (setState before arg |> snapShot) = arg
 
 end Implementer
 
@@ -88,23 +95,19 @@ class Implementer (tc: TypeContext) (T : Type u)
   extends HasApproach T where
   init {label: Label} :
     State tc label →
-    (prog: tc.TProgram) →
-    { after: State tc .init // match after with | .init prog2 => prog = prog2 }
+    tc.TProgram →
+    State tc .init
+  init_spec {label: Label} (pre: State tc label) : ∀prog, match init pre prog with | .init prog2 _ => prog = prog2
   takeInput :
     State tc .init →
-    (data: tc.TData) →
-    { after: State tc .takeInput // match after with | .takeInput _ data2 _ => data = data2 }
+    tc.TData →
+    State tc .takeInput
+  takeInput_spec : ∀pre data, match takeInput pre data with | .takeInput _ data2 _ _ => data = data2
   produceOutput :
     State tc .takeInput →
-    (output: tc.TOutput) →
-    { after: State tc .produceOutput // match after with | .produceOutput _ output2 _ => output = output2 }
-
-
-open Implementer State in
-class ImplementerM (tc: TypeContext) (T : Type u)
-  extends Implementer tc T, HasState tc T
-
-
+    tc.TOutput →
+    State tc .produceOutput
+  produceOutput_spec : ∀pre output, match produceOutput pre output with | .produceOutput _ output2  _ _ => output = output2
 
 
 
