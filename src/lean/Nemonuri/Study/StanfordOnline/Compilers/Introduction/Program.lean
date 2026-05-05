@@ -13,19 +13,9 @@ set_option autoImplicit false
 
 namespace Program
 
-namespace Implementer
-
-inductive Approach where
-  | compiler
-  | interpreter
-  deriving DecidableEq
-
-instance Approach.instLawfulBEq : LawfulBEq Approach := inferInstance
-
-class HasApproach (T: Type u) where
-  approach (target: T) : Approach
 
 
+namespace Runtime
 
 namespace State
 
@@ -85,33 +75,61 @@ class HasState (tc: TypeContext) (T: Type u)
   setState_spec : ∀before arg, (setState before arg |> snapShot) = arg
 
 
-class CanInit (tc: TypeContext) (T : Type u) where
+class CanInit (tc: TypeContext) where
   init {label: Label} :
     State tc label →
     tc.TProgram →
     State tc .init
   init_spec {label: Label} (pre: State tc label) : ∀prog, match init pre prog with | .init prog2 => prog = prog2
 
-class CanTakeInput (tc: TypeContext) (T : Type u) where
+class CanTakeInput (tc: TypeContext) where
   takeInput :
     State tc .init →
     tc.TData →
     State tc .takeInput
-  takeInput_spec : ∀pre data, match takeInput pre data with | .takeInput _ data2 _ => data = data2
+  takeInput_spec : ∀pre data, match takeInput pre data with | .takeInput pre2 data2 _ => pre = pre2 ∧ data = data2
 
-class CanProduceOutput (tc: TypeContext) (T : Type u) where
+class CanProduceOutput (tc: TypeContext) where
   produceOutput :
     State tc .takeInput →
-    tc.TOutput →
+    --tc.TOutput →
     State tc .produceOutput
-  produceOutput_spec : ∀pre output, match produceOutput pre output with | .produceOutput _ output2 _ => output = output2
+  produceOutput_spec : ∀pre, match produceOutput pre with | .produceOutput pre2 _ _ => pre = pre2
+
+end Runtime
+
+open Runtime State
+
+class Runtime (tc: TypeContext)
+  extends CanInit tc, CanTakeInput tc, CanProduceOutput tc
+
+namespace Runtime
+namespace Implementer
+
+inductive Approach where
+  | compiler
+  | interpreter
+  deriving DecidableEq
+
+instance Approach.instLawfulBEq : LawfulBEq Approach := inferInstance
+
+class HasApproach (T: Type u) where
+  approach (target: T) : Approach
 
 end Implementer
 
-open Implementer State
+class Implementer (tc: TypeContext)
+  extends Runtime tc where
+  approach : Implementer.Approach
 
-class Implementer (tc: TypeContext) (T : Type u)
-  extends HasApproach T, CanInit tc T, CanTakeInput tc T, CanProduceOutput tc T
+namespace Implementer
+
+instance instHasApproach {tc: TypeContext} : HasApproach (Implementer tc) where
+  approach target := target.approach
+
+end Implementer
+
+end Runtime
 
 
 class HasSourceProgram (TProgram T : Type u) where
@@ -119,11 +137,35 @@ class HasSourceProgram (TProgram T : Type u) where
 
 
 class Runnable (tc: TypeContext) (T : Type u)
-  extends Implementer tc T, HasState tc T, HasSourceProgram tc.TProgram T where
+  extends Runtime tc, HasState tc T, HasSourceProgram tc.TProgram T where
   sourceProgram_spec {label: Label} (pre: State tc label) :
     ∀target, match init pre (sourceProgram target) with | .init prog2 => (sourceProgram target) = prog2
   run (pre: T) (data: tc.TData) : T
   run_spec : ∀pre data, (snapShot (run pre data)).label = .produceOutput
+
+
+namespace Runnable
+
+variable (tc: TypeContext) {T : Type u} [inst: Runnable tc T]
+
+@[reducible]
+def label (target: T) : Label := (inst.snapShot target).label
+
+@[reducible]
+def state (target: T) : State tc (Runnable.label tc target) := (inst.snapShot target).state
+
+
+
+
+
+--abbrev is_init (target: T) : Prop := inst.toHasState.toHasSnapShot.snapShot target |> (·.label = .init)
+
+end Runnable
+
+
+--def Runnable.reset (tc: TypeContext) (T : Type u) [Runnable tc T] (target: T) : T :=
+--  Runnable.toHasSourceProgram.sourceProgram target
+--  |>
 
 
 end Program

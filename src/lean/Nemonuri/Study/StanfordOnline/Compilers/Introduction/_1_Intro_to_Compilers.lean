@@ -20,7 +20,7 @@ There are two major approaches to implementing programming languages
 
 -/
 
-abbrev ImplementationApproach := Program.Implementer.Approach
+abbrev ImplementationApproach := Program.Runtime.Implementer.Approach
 
 
 end Nemonuri.Study.StanfordOnline.Compilers.Introduction
