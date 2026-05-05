@@ -8,10 +8,9 @@ public section public_s
 
 namespace Nemonuri.Study.StanfordOnline.Compilers.Introduction
 
+open Program Runtime State
 
 namespace Interpreter
-
-open Program Runtime State
 
 universe u
 
@@ -33,7 +32,7 @@ variable (TData: Type u) (data: TData)
 /-!
 3. An **Interpreter**(*self*) takes as input, your program(*prog*) and your data(*data*).
 -/
-protected abbrev Specs.Aux.TakesAsInput := fun __ => CanTakeInput (.mk TProgram TData __)
+protected abbrev Specs.Aux.TakesAsInput := λ __ => CanTakeInput (.mk TProgram TData __)
 
 /-!
 4. It(*self*) produces the **Output**(*output*) directly.
@@ -65,11 +64,11 @@ def Specs.is_online
   (self: Specs.ProduceOutput TProgram TData TOutput)
   (state: State (.mk TProgram TData TOutput) .takeInput)
   : Prop :=
-  match self.produceOutput state
+  match self.produceOutput state with
+  | .produceOutput (.takeInput _ _ prog1) _ prog2 => prog1 = prog2
 
 
-
---set_option trace.Meta.synthInstance true in
+/-
 structure Traces.Invoke (TProgram: Type u) (TData: Type u) (TInterpreter: type_of% TInterpreter) where
   takeAsInput: TInterpreter TProgram TData .takeAsInput
   produceOutput: TInterpreter TProgram TData .produceOutput
@@ -111,10 +110,22 @@ def invoke
       subst postVal
       simp_all
     Subtype.mk postVal (And.intro lemma1 lemma2)
-
+-/
 
 
 end Interpreter
+
+open Interpreter in
+class Interpreter (tc: TypeContext)
+  extends
+    toProduceOutput: Specs.ProduceOutput tc.TProgram tc.TData tc.TOutput,
+    toTakesAsInput: Specs.TakesAsInput tc.TProgram tc.TData tc.TOutput
+  where
+    doesn't_do_any_processing_before :
+      ∀state data, Specs.doesn't_do_any_processing_before tc.TProgram tc.TData tc.TOutput toTakesAsInput state data
+    is_online :
+      ∀state, Specs.is_online tc.TProgram tc.TData tc.TOutput toProduceOutput state
+
 
 
 
