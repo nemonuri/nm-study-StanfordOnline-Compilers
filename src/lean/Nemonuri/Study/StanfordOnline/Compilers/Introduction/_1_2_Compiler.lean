@@ -1,5 +1,6 @@
 module
 
+public import Nemonuri.Study.StanfordOnline.Compilers.Introduction.Program
 public import Nemonuri.Study.StanfordOnline.Compilers.Introduction._1_1_Interpreter
 
 public section public_s
@@ -7,9 +8,12 @@ public section public_s
 
 namespace Nemonuri.Study.StanfordOnline.Compilers.Introduction
 
+open Program Runtime State
+
 namespace Compiler
 
 universe u
+set_option autoImplicit false
 
 /-!
 
@@ -17,43 +21,54 @@ universe u
 
 Now a compiler is structured differently.
 
-1. The **Compiler**(*self*) takes as input just your **Program**(*prog*).
+1. The **Compiler**(*self*) takes as input just **Your Program**(*yourProg*).
 -/
-variable {TCompiler: Type u} {self: TCompiler}
-variable {TProgram: Type u} {prog: TProgram}
+variable (TYourProgram: Type u) (yourProg: TYourProgram)
 
-abbrev CanTakeAsInput := Interpreter.CanTakeAsInput
+protected abbrev Specs.TakeYourProgram := λ _₁ ↦ CanTakeInput (.mk TYourProgram PUnit _₁)
 
 /-!
 2. And then it produces an **Executable**(*exec*).
 -/
-variable {TExecutable: Type u} {exec: TExecutable}
+variable (TExecutable: Type u) (exec: TExecutable)
 
-class CanProduceExecutable (TExecutable: Type u) (TSource: Type u) where
-  produceExecutable (self: TSource) : TExecutable
+protected abbrev Specs.ProduceExecutable := CanProduceOutput (.mk TYourProgram PUnit TExecutable)
 
 /-!
 3. And this executable(*exec*) is another **Program**, might be assembly language, it might be bytecode.
 4. It could be in any number of different implementation languages.
 -/
-variable [e2p: Coe TExecutable TProgram]
-variable {TDil: Type u}
+protected inductive Program (TYourProgram TExecutable: Type u) where
+  | yourProgram (yourProg: TYourProgram)
+  | executable (exec: TExecutable)
 
-inductive ProgramLanguage (TDil: type_of% TDil) where
+protected class Specs.HasOtherLanguageType (TExecutable: Type u) where
+  otherLanguageType : Type u
+
+inductive LanguageOfExecutable (TExecutable: Type u) [inst: Specs.HasOtherLanguageType TExecutable] where
   | assemblyLanguage
   | bytecode
-  | differentImplementationLanguage (x: TDil)
+  | otherLanguage (lang: inst.otherLanguageType)
 
-class HasProgramLanguage (TProgram: type_of% TProgram) (TDil: type_of% TDil) where
-  toProgramLanguage (self: TProgram) : ProgramLanguage TDil
-
-variable [hpl: HasProgramLanguage TProgram TDil]
 
 /-!
 5. But now this can be run separately on your data. And that will produce the output. Okay?
 -/
-protected inductive OtherWriter where
-  | compiler
+protected class SeparateRuntime (tc: TypeContext) --(TExecutable TData TOutput: Type u)
+  extends
+    Runtime tc
+  where
+  program : tc.TProgram
+  init_spec2 {label: Label} (pre: State tc label) :
+    ∀prog, match init pre prog with | .init prog2 => program = prog2
+  takeInput_spec2 :
+    ∀state data, Interpreter.Specs.doesn't_do_any_processing_before tc.TProgram tc.TData tc.TOutput toCanTakeInput state data
+  produceOutput_spec2 :
+    ∀state, Interpreter.Specs.is_online tc.TProgram tc.TData tc.TOutput toCanProduceOutput state
+
+
+protected class Specs.CanRunSeparately (TExecutable TData TOutput: Type u) where
+  runSeparately (exec: TExecutable) : (Compiler.SeparateRuntime (.mk TExecutable TData TOutput))
 
 
 end Compiler

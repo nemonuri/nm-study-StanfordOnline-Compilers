@@ -32,7 +32,7 @@ variable (TData: Type u) (data: TData)
 /-!
 3. An **Interpreter**(*self*) takes as input, your program(*prog*) and your data(*data*).
 -/
-protected abbrev Specs.Aux.TakesAsInput := λ __ => CanTakeInput (.mk TProgram TData __)
+protected abbrev Specs.Aux.TakesAsInput := λ _₁ ↦ CanTakeInput (.mk TProgram TData _₁)
 
 /-!
 4. It(*self*) produces the **Output**(*output*) directly.
