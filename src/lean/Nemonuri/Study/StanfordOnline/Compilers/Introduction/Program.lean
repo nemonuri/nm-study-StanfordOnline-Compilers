@@ -41,8 +41,8 @@ inductive State (tc: State.TypeContext) : State.Label → Type u where
   | init :
       tc.TProgram →
       State tc .init
-  | takeInput :
-      State tc .init →
+  | takeInput {label: State.Label} :
+      State tc label →
       tc.TData →
       tc.TProgram →
       State tc .takeInput
@@ -83,16 +83,18 @@ class Init (tc: TypeContext) where
   init_spec {label: Label} (pre: State tc label) : ∀prog, match init pre prog with | .init prog2 => prog = prog2
 
 class TakeInput (tc: TypeContext) where
-  takeInput :
-    State tc .init →
+  takeInput_req {label: Label} (state: State tc label) : Prop
+  takeInput {label: Label} (state: State tc label) :
+    (takeInput_req state) →
     tc.TData →
     State tc .takeInput
-  takeInput_spec : ∀pre data, match takeInput pre data with | .takeInput pre2 data2 _ => pre = pre2 ∧ data = data2
+  takeInput_spec {label} (pre: State tc label) req data :
+    match takeInput pre req data with
+    | .takeInput pre2 data2 _ => pre ≍ pre2 ∧ data = data2
 
 class ProduceOutput (tc: TypeContext) where
   produceOutput :
     State tc .takeInput →
-    --tc.TOutput →
     State tc .produceOutput
   produceOutput_spec : ∀pre, match produceOutput pre with | .produceOutput pre2 _ _ => pre = pre2
 
