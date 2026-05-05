@@ -25,14 +25,14 @@ Now a compiler is structured differently.
 -/
 variable (TYourProgram: Type u) (yourProg: TYourProgram)
 
-protected abbrev Specs.TakeYourProgram := λ _₁ ↦ CanTakeInput (.mk TYourProgram PUnit _₁)
+protected abbrev Specs.TakeYourProgram := λ _₁ ↦ TakeInput (.mk TYourProgram PUnit _₁)
 
 /-!
 2. And then it produces an **Executable**(*exec*).
 -/
 variable (TExecutable: Type u) (exec: TExecutable)
 
-protected abbrev Specs.ProduceExecutable := CanProduceOutput (.mk TYourProgram PUnit TExecutable)
+protected abbrev Specs.ProduceExecutable := ProduceOutput (.mk TYourProgram PUnit TExecutable)
 
 /-!
 3. And this executable(*exec*) is another **Program**, might be assembly language, it might be bytecode.
@@ -62,12 +62,12 @@ protected class SeparateRuntime (tc: TypeContext) --(TExecutable TData TOutput: 
   init_spec2 {label: Label} (pre: State tc label) :
     ∀prog, match init pre prog with | .init prog2 => program = prog2
   takeInput_spec2 :
-    ∀state data, Interpreter.Specs.doesn't_do_any_processing_before tc.TProgram tc.TData tc.TOutput toCanTakeInput state data
+    ∀state data, Interpreter.Specs.doesn't_do_any_processing_before tc.TProgram tc.TData tc.TOutput toTakeInput state data
   produceOutput_spec2 :
-    ∀state, Interpreter.Specs.is_online tc.TProgram tc.TData tc.TOutput toCanProduceOutput state
+    ∀state, Interpreter.Specs.is_online tc.TProgram tc.TData tc.TOutput toProduceOutput state
 
 
-protected class Specs.CanRunSeparately (TExecutable TData TOutput: Type u) where
+protected class Specs.RunSeparately (TExecutable TData TOutput: Type u) where
   runSeparately (exec: TExecutable) : (Compiler.SeparateRuntime (.mk TExecutable TData TOutput))
 
 

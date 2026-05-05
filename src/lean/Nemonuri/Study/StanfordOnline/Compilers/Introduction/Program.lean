@@ -75,21 +75,21 @@ class HasState (tc: TypeContext) (T: Type u)
   setState_spec : ∀before arg, (setState before arg |> snapShot) = arg
 
 
-class CanInit (tc: TypeContext) where
+class Init (tc: TypeContext) where
   init {label: Label} :
     State tc label →
     tc.TProgram →
     State tc .init
   init_spec {label: Label} (pre: State tc label) : ∀prog, match init pre prog with | .init prog2 => prog = prog2
 
-class CanTakeInput (tc: TypeContext) where
+class TakeInput (tc: TypeContext) where
   takeInput :
     State tc .init →
     tc.TData →
     State tc .takeInput
   takeInput_spec : ∀pre data, match takeInput pre data with | .takeInput pre2 data2 _ => pre = pre2 ∧ data = data2
 
-class CanProduceOutput (tc: TypeContext) where
+class ProduceOutput (tc: TypeContext) where
   produceOutput :
     State tc .takeInput →
     --tc.TOutput →
@@ -101,7 +101,7 @@ end Runtime
 open Runtime State
 
 class Runtime (tc: TypeContext)
-  extends CanInit tc, CanTakeInput tc, CanProduceOutput tc
+  extends Init tc, TakeInput tc, ProduceOutput tc
 
 namespace Runtime
 namespace Implementer
