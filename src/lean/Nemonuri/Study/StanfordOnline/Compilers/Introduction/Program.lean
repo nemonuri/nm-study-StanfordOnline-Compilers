@@ -20,7 +20,7 @@ namespace Runtime
 namespace State
 
 inductive Label where
-  | init
+  | load
   | takeInput
   | produceOutput
   deriving DecidableEq
@@ -38,9 +38,9 @@ end State
 
 
 inductive State (tc: State.TypeContext) : State.Label → Type u where
-  | init :
+  | load :
       tc.TProgram →
-      State tc .init
+      State tc .load
   | takeInput {label: State.Label} :
       State tc label →
       tc.TData →
@@ -51,6 +51,13 @@ inductive State (tc: State.TypeContext) : State.Label → Type u where
       tc.TOutput →
       tc.TProgram →
       State tc .produceOutput
+
+
+def toProgram {tc label} (state: State tc label) : tc.TProgram :=
+  match state with
+  | .load prog => prog
+  | .takeInput _ _ prog => prog
+  | .produceOutput _ _ prog => prog
 
 
 namespace State
@@ -74,23 +81,26 @@ class HasState (tc: TypeContext) (T: Type u)
   setState (before: T) (arg: SnapShot tc) : T--{ after: T // (snapShot after) = arg }
   setState_spec : ∀before arg, (setState before arg |> snapShot) = arg
 
-
+/-
 class Init (tc: TypeContext) where
   init {label: Label} :
     State tc label →
     tc.TProgram →
     State tc .init
   init_spec {label: Label} (pre: State tc label) : ∀prog, match init pre prog with | .init prog2 => prog = prog2
+-/
 
 class TakeInput (tc: TypeContext) where
   takeInput_req {label: Label} (state: State tc label) : Prop
-  takeInput {label: Label} (state: State tc label) :
-    (takeInput_req state) →
+  takeInput {label: Label} :
+    ({state: State tc label // takeInput_req state}) →
     tc.TData →
     State tc .takeInput
-  takeInput_spec {label} (pre: State tc label) req data :
-    match takeInput pre req data with
+  takeInput_spec {label} (pre: Subtype (@takeInput_req label)) data :
+    match takeInput pre data with
     | .takeInput pre2 data2 _ => pre ≍ pre2 ∧ data = data2
+
+abbrev TakeInput.ReqState {tc} (self: TakeInput tc) label := Subtype (@self.takeInput_req label)
 
 class ProduceOutput (tc: TypeContext) where
   produceOutput :
@@ -103,7 +113,7 @@ end Runtime
 open Runtime State
 
 class Runtime (tc: TypeContext)
-  extends Init tc, TakeInput tc, ProduceOutput tc
+  extends TakeInput tc, ProduceOutput tc
 
 namespace Runtime
 namespace Implementer
@@ -134,14 +144,8 @@ end Implementer
 end Runtime
 
 
-class HasSourceProgram (TProgram T : Type u) where
-  sourceProgram (target: T) : TProgram
-
-
 class Runnable (tc: TypeContext) (T : Type u)
-  extends Runtime tc, HasState tc T, HasSourceProgram tc.TProgram T where
-  sourceProgram_spec {label: Label} (pre: State tc label) :
-    ∀target, match init pre (sourceProgram target) with | .init prog2 => (sourceProgram target) = prog2
+  extends Runtime tc, HasState tc T where
   run (pre: T) (data: tc.TData) : T
   run_spec : ∀pre data, (snapShot (run pre data)).label = .produceOutput
 

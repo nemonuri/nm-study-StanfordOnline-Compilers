@@ -48,12 +48,14 @@ protected abbrev Specs.TakesAsInput := Specs.Aux.TakesAsInput TOutput
 6. So you just write the program(*prog*), and you invoke the interpreter(*self*) on the data(*data*), and the program(*prog*) immediately begins running.
 -/
 protected abbrev Specs.doesn't_do_any_processing_before
-  (self: Specs.TakesAsInput TProgram TData TOutput)
-  (state: State (.mk TProgram TData TOutput) .init)
-  (data: TData)
+  {tc: TypeContext}
+  (self: Specs.TakesAsInput tc.TProgram tc.TData tc.TOutput)
+  (label)
+  (state: self.ReqState label)
+  (data: tc.TData)
   : Prop :=
   match self.takeInput state data with
-  | .takeInput (.init prog1) _ prog2 => prog1 = prog2
+  | .takeInput state1 _ prog2 => (toProgram state1) = prog2
 
 
 /-!
@@ -61,8 +63,9 @@ protected abbrev Specs.doesn't_do_any_processing_before
 -/
 @[reducible]
 def Specs.is_online
-  (self: Specs.ProduceOutput TProgram TData TOutput)
-  (state: State (.mk TProgram TData TOutput) .takeInput)
+  {tc: TypeContext}
+  (self: Specs.ProduceOutput tc.TProgram tc.TData tc.TOutput)
+  (state: State tc .takeInput)
   : Prop :=
   match self.produceOutput state with
   | .produceOutput (.takeInput _ _ prog1) _ prog2 => prog1 = prog2
@@ -121,10 +124,9 @@ class Interpreter (tc: TypeContext)
     toProduceOutput: Specs.ProduceOutput tc.TProgram tc.TData tc.TOutput,
     toTakesAsInput: Specs.TakesAsInput tc.TProgram tc.TData tc.TOutput
   where
-    doesn't_do_any_processing_before :
-      ∀state data, Specs.doesn't_do_any_processing_before tc.TProgram tc.TData tc.TOutput toTakesAsInput state data
-    is_online :
-      ∀state, Specs.is_online tc.TProgram tc.TData tc.TOutput toProduceOutput state
+    doesn't_do_any_processing_before label state data :
+      Specs.doesn't_do_any_processing_before toTakesAsInput label state data
+    is_online state : Specs.is_online toProduceOutput state
 
 
 
