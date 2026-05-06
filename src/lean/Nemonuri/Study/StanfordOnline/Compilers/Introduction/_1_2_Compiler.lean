@@ -38,29 +38,19 @@ protected abbrev Specs.ProduceExecutable := ProduceOutput (.mk TYourProgram PUni
 3. And this executable(*exec*) is another **Program**, might be assembly language, it might be bytecode.
 4. It could be in any number of different implementation languages.
 -/
-protected inductive Program (TYourProgram TExecutable: Type u) where
-  | yourProgram (yourProg: TYourProgram)
-  | executable (exec: TExecutable)
+protected class Specs.ExecutableAsProgram (TExecutable: Type u) where
+  executableAsProgram : Program TExecutable
 
-protected structure TypeContext : Type (u+1) where
-  TYourProgram : Type u
-  TExecutable : Type u
-  TData : Type u
-  TOutput : Type u
 
-protected abbrev TypeContext.normalize (tc: Compiler.TypeContext) : TypeContext :=
-  .mk (Compiler.Program tc.TYourProgram tc.TExecutable) tc.TData tc.TOutput
-
-protected instance TypeContext.instCoe : Coe Compiler.TypeContext TypeContext where
-  coe := Compiler.TypeContext.normalize
-
-protected class Specs.HasOtherLanguageType (TExecutable: Type u) where
-  otherLanguageType : Type u
-
-inductive LanguageOfExecutable (TExecutable: Type u) [inst: Specs.HasOtherLanguageType TExecutable] where
+protected inductive LanguageOfExecutable.Raw (TExecutable TOtherLanguage: Type u) where
   | assemblyLanguage
   | bytecode
-  | otherLanguage (lang: inst.otherLanguageType)
+  | otherLanguage (lang: TOtherLanguage)
+
+structure LanguageOfExecutable (TExecutable: Type u) where
+  TOtherLanguage: Type u
+  raw: LanguageOfExecutable.Raw TExecutable TOtherLanguage
+
 
 
 /-!
@@ -71,12 +61,10 @@ protected class SeparateRuntime (tc: TypeContext)
     Runtime tc
   where
   program : tc.TProgram
-  init_spec2 {label: Label} (pre: State tc label) :
-    ∀prog, match init pre prog with | .init prog2 => program = prog2
-  takeInput_spec2 :
-    ∀state data, Interpreter.Specs.doesn't_do_any_processing_before tc.TProgram tc.TData tc.TOutput toTakeInput state data
-  produceOutput_spec2 :
-    ∀state, Interpreter.Specs.is_online tc.TProgram tc.TData tc.TOutput toProduceOutput state
+  takeInput_spec2 label state data :
+    Interpreter.Specs.doesn't_do_any_processing_before toTakeInput label state data
+  produceOutput_spec2 state :
+    Interpreter.Specs.is_online toProduceOutput state
 
 
 protected class Specs.RunSeparately (TExecutable TData TOutput: Type u) where
@@ -94,14 +82,15 @@ protected class PreProcess (TYourProgram TExecutable: Type u) where
 protected def Specs.is_offline
   (tc: Compiler.TypeContext)
   (self: TakeInput ↑tc)
-  (state: State ↑tc .init)
+  (state: self.ReqState .load)
   (data: tc.TData)
   : Prop :=
   match self.takeInput state data with
-  | .takeInput (.init prog1) _ prog2 =>
-  match prog1, prog2 with
-  | .yourProgram _, .executable _ => True
-  | _, _ => False
+  | .takeInput (.load prog1) _ prog2 =>
+    match prog1, prog2 with
+    | .yourProgram _, .executable _ => True
+    | _, _ => False
+  | _ => False
 
 
 variable (TData TOutput: Type u)

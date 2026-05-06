@@ -128,6 +128,8 @@ class Interpreter (tc: TypeContext)
       Specs.doesn't_do_any_processing_before toTakesAsInput label state data
     is_online state : Specs.is_online toProduceOutput state
 
+instance Interpreter.instRuntime {tc: TypeContext} [self: Interpreter tc] : Runtime tc :=
+  @Runtime.mk _ self.toTakesAsInput self.toProduceOutput
 
 
 

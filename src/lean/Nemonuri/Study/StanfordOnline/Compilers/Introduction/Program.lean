@@ -176,7 +176,10 @@ end Runnable
 
 end Program
 
-
+class Program (TProgram: Type u) where
+  TData: Type u
+  TOutput: Type u
+  runtime: Program.Runtime (.mk TData TOutput TProgram)
 
 
 end Nemonuri.Study.StanfordOnline.Compilers
