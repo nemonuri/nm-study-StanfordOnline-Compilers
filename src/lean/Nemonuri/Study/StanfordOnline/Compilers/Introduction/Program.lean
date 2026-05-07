@@ -7,7 +7,7 @@ public section public_s
 
 namespace Nemonuri.Study.StanfordOnline.Compilers
 
-universe u u1 u2
+universe u --u1 u2
 set_option autoImplicit false
 
 
@@ -38,28 +38,88 @@ instance instLawfulBEq : LawfulBEq Label := inferInstance
 
 def Motive : Sort (u+1) := Label → Sort u
 
-def Motive.mk (self: Label → Sort u) : Motive := self
+instance Motive.instInhabited : Inhabited Motive where
+  default := Function.const Label (default: Sort u)
 
 
+--def Motive.pulift.{u1, u2} (m1: Motive.{u1}) : Motive.{max u1 u2} :=
 
-namespace Motive
+--variable {TTarget: Sort u}
 
-
-end Motive
-
-class MotiveM (T: Sort u) : Sort (u+1) where
+class MotiveM (TTarget: Sort u) : Sort (u+1) where
   motiveM : Motive.{u}
 
-class CtorM (T: Sort u)
+namespace MotiveM
+
+
+instance instInhabited (TTarget: Sort u) : Inhabited (MotiveM TTarget) where
+  default := { motiveM := Function.const Label TTarget }
+
+
+
+class SpecM (TPre : Motive) : Sort (u+1) where --M target --(target: TTarget)
+  TPost (label: Label) : MotiveM (TPre label) --M target
+
+instance SpecM.instInhabited (TPre : Motive) : Inhabited (SpecM TPre) where
+  default := { TPost := fun label => (default : MotiveM (TPre label)) }
+
+#print SpecM.instInhabited
+
+--instance Spec.instInhabited (target: TTarget) [Subsingleton TTarget] : Inhabited (Spec target) where
+--  default := { TPre := default, TPost := default }
+
+end MotiveM
+
+
+class CtorM (TPre : Motive)
   extends
-    MotiveM T
+    toSpecM: MotiveM.SpecM TPre
   where
-  load: motiveM .load
-  takeInput : motiveM .takeInput
-  produceOutput : motiveM .produceOutput
+  ctorM (label: Label) : (TPre label) → (toSpecM.TPost label).motiveM label
+
 
 namespace CtorM
 
+open MotiveM
+
+
+instance instInhabited (TPre : Motive) : Inhabited (CtorM TPre) where
+  default := {
+    toSpecM := default
+    ctorM _ pre := pre
+  }
+  --toSpecM := default
+
+--instance instInhabited (target: TTarget) [Subsingleton TTarget] : Inhabited (CtorM target) where
+--  default := CtorM.mk (toSpec := (default: Spec target)) (Function.const Label id)
+
+section match_pattern_s
+variable (TPre : Motive)
+
+def load (ctor: CtorM TPre) := ctor.ctorM .load
+def takeInput (ctor: CtorM TPre) := ctor.ctorM .takeInput
+def produceOutput (ctor: CtorM TPre) := ctor.ctorM .produceOutput
+
+end match_pattern_s
+
+attribute [match_pattern, reducible] load takeInput produceOutput
+
+
+
+--protected class Dep (target: TTarget) (TPre TPost : MotiveM target) where
+--  ctorM (label: Label) : (TPre.motiveM label) → (TPost.motiveM label)
+
+/-
+instance Dep.instCtorM
+  (target: TTarget)
+  (TPre TPost : MotiveM target)
+  (ctor: CtorM.Dep target TPre TPost) : CtorM target where
+  TPre := { motiveM := TPre.motiveM }
+  TPost := { motiveM := TPre.motiveM }
+  ctorM label pre := inst.ctorM label pre
+-/
+
+/-
 abbrev recM (TPre: Sort u) (inst: CtorM TPre) (t: Label) : inst.toMotiveM.motiveM t :=
   match t with
   | .load => inst.load
@@ -71,113 +131,41 @@ abbrev casesOnM (TPost: Motive) (t: Label) (inst: CtorM (TPost t)) : inst.toMoti
   | .load => inst.load
   | .takeInput => inst.takeInput
   | .produceOutput => inst.produceOutput
-
+-/
 
 end CtorM
 
---class MotiveM.Lift (TPre: Sort u) (TPost: Sort u) [MotiveM TPre] [MotiveM TPost]
-
---class Motive.LiftM (TPre: semiOutParam Motive) (TPost: Motive) where
---  liftM (label) : (TPre label) → (TPost label)
-
-
-/-
-class Pattern (motive: Motive) where
-  protected load : motive .load
-  protected takeInput : motive .takeInput
-  protected produceOutput : motive .produceOutput
-
-namespace Pattern
-
-def Target (motive: Motive) : Type u := (label: Label) × (motive label)
-
-namespace Target
-
-variable {motive: Motive}
-
-
-end Target
-
-end Pattern
--/
-
---protected def Pattern.elim (motive: Motive) [Pattern motive] {label}  :
-
-
-/-
-instance {TPre TPost} [inst: Motive.LiftM TPre TPost] : MotiveM (Motive.LiftM TPre TPost) where
-  motiveM label := (inst.liftM label) (TPre label)
--/
-
-
---instance {T} [inst: MotiveOf T] : Motive.LiftM (inst.motiveOf)
-
-
-/-
-instance (priority := low) instMotiveOf {motive: Motive} {label} : MotiveOf (motive label) where
-  motiveOf := motive
--/
+@[implicit_reducible]
+def Motive.toDefaultCtorM (TMotive: Motive) : CtorM TMotive := default
 
 end Label
+
+open Label
+
 
 /--
 info:
   Nemonuri.Study.StanfordOnline.Compilers.Program.Runtime.Label.rec.{u}
-  {motive : Label → Sort u}
-  (load : motive Label.load) (takeInput : motive Label.takeInput) (produceOutput : motive Label.produceOutput)
-  (t : Label) :
-  motive t
+  {motive : Label → Sort u} (load : motive load)
+  (takeInput : motive takeInput) (produceOutput : motive produceOutput) (t : Label) : motive t
 -/
 #guard_msgs (info, whitespace := lax) in
 #check Label.rec
 
+
 /--
-info:
-  Nemonuri.Study.StanfordOnline.Compilers.Program.Runtime.Label.casesOn.{u}
-  {motive : Label → Sort u}
-  (t : Label)
-  (load : motive Label.load) (takeInput : motive Label.takeInput) (produceOutput : motive Label.produceOutput) :
-  motive t
+info: Nemonuri.Study.StanfordOnline.Compilers.Program.Runtime.Label.casesOn.{u} {motive : Label → Sort u} (t : Label)
+  (load : motive load) (takeInput : motive takeInput) (produceOutput : motive produceOutput) : motive t
 -/
 #guard_msgs (info, whitespace := lax) in
 #check Label.casesOn
-
-/-
-open Label in
-class LabelM (T: Sort u) [m: MotiveOf T] : Sort (u+1) where
-  recM
-    (load: m.motiveOf .load) (takeInput : m.motiveOf .takeInput) (produceOutput : m.motiveOf .produceOutput)
-    (label: Label) (t: m.motiveOf)
--/
-
-
-/-
-class OfLabelM (T: Type u1) (m: Type u1 → Type u2) where
-  ofLabel: Label → m T
-
-class ToLabelM (T: Type u1) (m: Type u1 → Type u2) where
-  toLabel: m T → Label
-
-abbrev OfLabel T := OfLabelM T Id
-
-abbrev ToLabel T := ToLabelM T Id
--/
-
-/-
-open Label Motive in
-class StepM TPre TPost [inst: LiftM.{u} TPre TPost] where
-  step (label) : (TPre label) → (LiftM.liftM label (TPre label))
--/
-
-
---class LogM (m1 m2: (label: Label) → Sort u) where
---  log {}
 
 
 inductive State (tc: TypeContext) : Label → Type u where
   | load : tc.TProgram → State tc .load
   | takeInput : tc.TData → tc.TProgram → State tc .takeInput
   | produceOutput : tc.TOutput → tc.TProgram → State tc .produceOutput
+
 
 --def Label.Motive.ofState (tc: TypeContext) : Label.Motive := State tc
 
