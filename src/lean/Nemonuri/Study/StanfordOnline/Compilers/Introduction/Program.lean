@@ -21,11 +21,104 @@ structure TypeContext : Type (u+1) where
   TData : Type u
   TOutput : Type u
 
-inductive Label where
+inductive Label : Type 0 where
   | load
   | takeInput
   | produceOutput
   deriving DecidableEq
+
+
+
+namespace Label
+
+instance instLawfulBEq : LawfulBEq Label := inferInstance
+
+-- Note: 대체 이건 무슨 패턴이지...?
+-- https://github.com/leanprover/lean4/blob/v4.30.0-rc2/src/Init/Control/State.lean
+
+def Motive : Sort (u+1) := Label → Sort u
+
+def Motive.mk (self: Label → Sort u) : Motive := self
+
+
+
+namespace Motive
+
+
+end Motive
+
+class MotiveM (T: Sort u) : Sort (u+1) where
+  motiveM : Motive.{u}
+
+class CtorM (T: Sort u)
+  extends
+    MotiveM T
+  where
+  load: motiveM .load
+  takeInput : motiveM .takeInput
+  produceOutput : motiveM .produceOutput
+
+namespace CtorM
+
+abbrev recM (TPre: Sort u) (inst: CtorM TPre) (t: Label) : inst.toMotiveM.motiveM t :=
+  match t with
+  | .load => inst.load
+  | .takeInput => inst.takeInput
+  | .produceOutput => inst.produceOutput
+
+abbrev casesOnM (TPost: Motive) (t: Label) (inst: CtorM (TPost t)) : inst.toMotiveM.motiveM t :=
+  match t with
+  | .load => inst.load
+  | .takeInput => inst.takeInput
+  | .produceOutput => inst.produceOutput
+
+
+end CtorM
+
+--class MotiveM.Lift (TPre: Sort u) (TPost: Sort u) [MotiveM TPre] [MotiveM TPost]
+
+--class Motive.LiftM (TPre: semiOutParam Motive) (TPost: Motive) where
+--  liftM (label) : (TPre label) → (TPost label)
+
+
+/-
+class Pattern (motive: Motive) where
+  protected load : motive .load
+  protected takeInput : motive .takeInput
+  protected produceOutput : motive .produceOutput
+
+namespace Pattern
+
+def Target (motive: Motive) : Type u := (label: Label) × (motive label)
+
+namespace Target
+
+variable {motive: Motive}
+
+
+end Target
+
+end Pattern
+-/
+
+--protected def Pattern.elim (motive: Motive) [Pattern motive] {label}  :
+
+
+/-
+instance {TPre TPost} [inst: Motive.LiftM TPre TPost] : MotiveM (Motive.LiftM TPre TPost) where
+  motiveM label := (inst.liftM label) (TPre label)
+-/
+
+
+--instance {T} [inst: MotiveOf T] : Motive.LiftM (inst.motiveOf)
+
+
+/-
+instance (priority := low) instMotiveOf {motive: Motive} {label} : MotiveOf (motive label) where
+  motiveOf := motive
+-/
+
+end Label
 
 /--
 info:
@@ -49,40 +142,14 @@ info:
 #guard_msgs (info, whitespace := lax) in
 #check Label.casesOn
 
-namespace Label
-
-instance instLawfulBEq : LawfulBEq Label := inferInstance
-
--- Note: 대체 이건 무슨 패턴이지...?
--- https://github.com/leanprover/lean4/blob/v4.30.0-rc2/src/Init/Control/State.lean
-
 /-
-protected def ToSort (toSort: Label → Sort u) : Sort u := (label: Label) → toSort label
-
-protected def ToSort.mk {toSort: Label → Sort u} {label: Label} (x: toSort label) := x
-
-protected def OfSort (_: Sort u) : Type := Label
-
-protected def OfSort.mk {_: Sort u} (x: Label) := x
+open Label in
+class LabelM (T: Sort u) [m: MotiveOf T] : Sort (u+1) where
+  recM
+    (load: m.motiveOf .load) (takeInput : m.motiveOf .takeInput) (produceOutput : m.motiveOf .produceOutput)
+    (label: Label) (t: m.motiveOf)
 -/
 
-def Motive : Sort (u+1) := Label → Sort u
-
-def Motive.mk (self: Label → Sort u) : Motive := self
-
-
-
-
-class Motive.LiftM (TPre: semiOutParam Motive.{u}) (TPost: Motive.{u}) where
-  liftM (label) : TPre label → TPost label
-
-
-class MotiveOf (T: Sort u) : Sort (u+1) where motiveOf : Motive.{u}
-
-instance (priority := low) instMotiveOf {motive: Motive} {label} : MotiveOf (motive label) where
-  motiveOf := motive
-
-end Label
 
 /-
 class OfLabelM (T: Type u1) (m: Type u1 → Type u2) where
