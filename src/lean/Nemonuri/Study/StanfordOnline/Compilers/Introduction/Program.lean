@@ -38,67 +38,46 @@ instance instLawfulBEq : LawfulBEq Label := inferInstance
 
 def Motive : Sort (u+1) := Label → Sort u
 
-instance Motive.instInhabited : Inhabited Motive where
+namespace Motive
+
+instance instInhabited : Inhabited Motive where
   default := Function.const Label (default: Sort u)
 
+structure LiftM (TMotive : Motive) where
+  liftM (label: Label) : (TMotive label) → Sort u
 
---def Motive.pulift.{u1, u2} (m1: Motive.{u1}) : Motive.{max u1 u2} :=
+namespace LiftM
 
---variable {TTarget: Sort u}
+instance instInhabited (TMotive: Motive) : Inhabited (LiftM TMotive) where
+  default := { liftM label := Function.const _ (TMotive label) }
 
-class MotiveM (TTarget: Sort u) : Sort (u+1) where
-  motiveM : Motive.{u}
+end LiftM
 
-namespace MotiveM
-
-
-instance instInhabited (TTarget: Sort u) : Inhabited (MotiveM TTarget) where
-  default := { motiveM := Function.const Label TTarget }
+end Motive
 
 
-
-class SpecM (TPre : Motive) : Sort (u+1) where --M target --(target: TTarget)
-  TPost (label: Label) : MotiveM (TPre label) --M target
-
-instance SpecM.instInhabited (TPre : Motive) : Inhabited (SpecM TPre) where
-  default := { TPost := fun label => (default : MotiveM (TPre label)) }
-
-#print SpecM.instInhabited
-
---instance Spec.instInhabited (target: TTarget) [Subsingleton TTarget] : Inhabited (Spec target) where
---  default := { TPre := default, TPost := default }
-
-end MotiveM
-
-
-class CtorM (TPre : Motive)
-  extends
-    toSpecM: MotiveM.SpecM TPre
-  where
-  ctorM (label: Label) : (TPre label) → (toSpecM.TPost label).motiveM label
+class CtorM (TPre : Motive) (TLift: Motive.LiftM TPre) where
+  ctorM (label: Label) (pre: TPre label) : (TLift.liftM label pre)
 
 
 namespace CtorM
 
-open MotiveM
+open Motive LiftM
 
 
-instance instInhabited (TPre : Motive) : Inhabited (CtorM TPre) where
-  default := {
-    toSpecM := default
-    ctorM _ pre := pre
-  }
+instance instInhabited (TPre : Motive) : Inhabited (CtorM TPre (default)) where
+  default := { ctorM _ := id }
   --toSpecM := default
 
 --instance instInhabited (target: TTarget) [Subsingleton TTarget] : Inhabited (CtorM target) where
 --  default := CtorM.mk (toSpec := (default: Spec target)) (Function.const Label id)
 
 section match_pattern_s
-variable (TPre : Motive)
+variable {TPre : Motive} {TLift: LiftM TPre} [ctor: CtorM TPre TLift]
 
-def load (ctor: CtorM TPre) := ctor.ctorM .load
-def takeInput (ctor: CtorM TPre) := ctor.ctorM .takeInput
-def produceOutput (ctor: CtorM TPre) := ctor.ctorM .produceOutput
+def load (pre: TPre .load) := ctor.ctorM .load pre
+def takeInput (pre: TPre .takeInput) := ctor.ctorM .takeInput pre
+def produceOutput (pre: TPre .produceOutput) := ctor.ctorM .produceOutput pre
 
 end match_pattern_s
 
@@ -136,7 +115,8 @@ abbrev casesOnM (TPost: Motive) (t: Label) (inst: CtorM (TPost t)) : inst.toMoti
 end CtorM
 
 @[implicit_reducible]
-def Motive.toDefaultCtorM (TMotive: Motive) : CtorM TMotive := default
+def Motive.toDefaultCtorM (TMotive: Motive) : CtorM TMotive (default) := default
+
 
 end Label
 
@@ -189,69 +169,40 @@ inductive State (tc: TypeContext) : Label → Type u where
 
 
 
-inductive History.Raw (tc: TypeContext) : Label → Type u where
+inductive History (tc: TypeContext) : Label → Type u where
   | load :
       State tc .load →
-      History.Raw tc .load
+      History tc .load
   | takeInput :
       (label: Label) →
-      History.Raw tc label →
+      History tc label →
       State tc .takeInput →
-      History.Raw tc .takeInput
+      History tc .takeInput
   | produceOutput :
-      History.Raw tc .takeInput →
+      History tc .takeInput →
       State tc .produceOutput →
-      History.Raw tc .produceOutput
+      History tc .produceOutput
 
 
-structure History (tc: TypeContext) where
-  label: Label
-  raw: History.Raw tc label
+def State.ToHistory (tc: TypeContext) : Label.Motive.LiftM (State tc) where
+  liftM label _ :=
+    match label with
+    | .load => History tc .load
+    | .takeInput => (label: Label) → (History tc label) → (History tc .takeInput)
+    | .produceOutput => (History tc .takeInput) → (History tc .produceOutput)
+
+
+instance State.instCtorMToHistory {tc: TypeContext} : CtorM (State tc) (State.ToHistory tc) where
+  ctorM label state :=
+    match label with
+    | .load => History.load state
+    | .takeInput => fun label pre => History.takeInput label pre state
+    | .produceOutput => fun pre => History.produceOutput pre state
 
 
 
-namespace History
-
-abbrev Raw.toHistory {tc label} (raw: History.Raw tc label) : History tc := .mk label raw
-
-instance instMotiveOf {tc} : Label.MotiveOf (History tc) where
-  motiveOf label := History.Raw tc label
 
 
-open Raw
-
-variable {tc: TypeContext}
-
-@[match_pattern]
-def load (prog: tc.TProgram) : History tc :=
-  State.load prog |> Raw.load |> toHistory
-
-@[match_pattern]
-def takeInput (label) (pre: History.Raw tc label) (data: tc.TData) (prog: tc.TProgram) : History tc :=
-  State.takeInput data prog |> Raw.takeInput label pre |> toHistory
-
-@[match_pattern]
-def produceOutput (pre: History.Raw tc .takeInput) (output: tc.TOutput) (prog: tc.TProgram) : History tc :=
-  State.produceOutput output prog |> Raw.produceOutput pre |> toHistory
-
-@[simp, spec]
-theorem load_label_eq (prog: tc.TProgram) : (load prog).label = .load := by
-  unfold load
-  simp
-
-@[simp, spec]
-theorem takeInput_label_eq label pre (data: tc.TData) (prog: tc.TProgram)
-  : (takeInput label pre data prog).label = .takeInput := by
-  unfold takeInput
-  simp
-
-@[simp, spec]
-theorem produceOutput_label_eq pre (output: tc.TOutput) (prog: tc.TProgram)
-  : (produceOutput pre output prog).label = .produceOutput := by
-  unfold produceOutput
-  simp
-
-end History
 
 
 
