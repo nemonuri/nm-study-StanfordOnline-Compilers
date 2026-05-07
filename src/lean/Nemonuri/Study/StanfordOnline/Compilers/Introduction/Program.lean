@@ -27,6 +27,27 @@ inductive Label where
   | produceOutput
   deriving DecidableEq
 
+/--
+info:
+  Nemonuri.Study.StanfordOnline.Compilers.Program.Runtime.Label.rec.{u}
+  {motive : Label → Sort u}
+  (load : motive Label.load) (takeInput : motive Label.takeInput) (produceOutput : motive Label.produceOutput)
+  (t : Label) :
+  motive t
+-/
+#guard_msgs (info, whitespace := lax) in
+#check Label.rec
+
+/--
+info:
+  Nemonuri.Study.StanfordOnline.Compilers.Program.Runtime.Label.casesOn.{u}
+  {motive : Label → Sort u}
+  (t : Label)
+  (load : motive Label.load) (takeInput : motive Label.takeInput) (produceOutput : motive Label.produceOutput) :
+  motive t
+-/
+#guard_msgs (info, whitespace := lax) in
+#check Label.casesOn
 
 namespace Label
 
@@ -45,14 +66,21 @@ protected def OfSort (_: Sort u) : Type := Label
 protected def OfSort.mk {_: Sort u} (x: Label) := x
 -/
 
-def Motive : Type u := Label → Sort u
+def Motive : Sort (u+1) := Label → Sort u
 
 def Motive.mk (self: Label → Sort u) : Motive := self
+
+
 
 
 class Motive.LiftM (TPre: semiOutParam Motive.{u}) (TPost: Motive.{u}) where
   liftM (label) : TPre label → TPost label
 
+
+class MotiveOf (T: Sort u) : Sort (u+1) where motiveOf : Motive.{u}
+
+instance (priority := low) instMotiveOf {motive: Motive} {label} : MotiveOf (motive label) where
+  motiveOf := motive
 
 end Label
 
@@ -84,7 +112,8 @@ inductive State (tc: TypeContext) : Label → Type u where
   | takeInput : tc.TData → tc.TProgram → State tc .takeInput
   | produceOutput : tc.TOutput → tc.TProgram → State tc .produceOutput
 
-def Label.Motive.ofState (tc: TypeContext) : Label.Motive := State tc
+--def Label.Motive.ofState (tc: TypeContext) : Label.Motive := State tc
+
 
 --instance State.instStepM {tc} : StepM id (State tc) where
 --  step _ := id
@@ -105,41 +134,12 @@ def Label.Motive.ofState (tc: TypeContext) : Label.Motive := State tc
 
 
 
-inductive Trace (tc: TypeContext) : Label → Type u where
-  | load :
-      State tc .load →
-      Trace tc .load
-  | takeInput :
-      (label: Label) →
-      Trace tc label →
-      State tc .takeInput →
-      Trace tc .takeInput
-  | produceOutput :
-      Trace tc .takeInput →
-      State tc .produceOutput →
-      Trace tc .produceOutput
-
-def Label.Motive.ofTrace (tc: TypeContext) : Label.Motive := Trace tc
-
-instance Trace.instTraceM {tc} : TraceM (Trace tc) where
-  TMotivePre label :=
-    match label with
-    | .load => State tc .load
-    | .takeInput => (label: Label) × (Trace tc label) × (State tc .takeInput)
-    | .produceOutput =>
-
-
-
---inductive StateM (tc: TypeContext) (m: (label: State.Label) → State tc label → (Type u))
-
-namespace History
-
-protected inductive Raw (tc: TypeContext) : State.Label → Type u where
+inductive History.Raw (tc: TypeContext) : Label → Type u where
   | load :
       State tc .load →
       History.Raw tc .load
   | takeInput :
-      (label: State.Label) →
+      (label: Label) →
       History.Raw tc label →
       State tc .takeInput →
       History.Raw tc .takeInput
@@ -148,16 +148,20 @@ protected inductive Raw (tc: TypeContext) : State.Label → Type u where
       State tc .produceOutput →
       History.Raw tc .produceOutput
 
-end History
 
 structure History (tc: TypeContext) where
-  label: State.Label
+  label: Label
   raw: History.Raw tc label
 
-abbrev History.Raw.toHistory {tc label} (raw: History.Raw tc label) : History tc := .mk label raw
 
 
 namespace History
+
+abbrev Raw.toHistory {tc label} (raw: History.Raw tc label) : History tc := .mk label raw
+
+instance instMotiveOf {tc} : Label.MotiveOf (History tc) where
+  motiveOf label := History.Raw tc label
+
 
 open Raw
 
@@ -195,48 +199,64 @@ theorem produceOutput_label_eq pre (output: tc.TOutput) (prog: tc.TProgram)
 end History
 
 
-/-
-def toProgram {tc label} (state: State tc label) : tc.TProgram :=
-  match state with
-  | .load prog => prog
-  | .takeInput _ _ prog => prog
-  | .produceOutput _ _ prog => prog
--/
-
-namespace State
-
-
-structure SnapShot (tc: TypeContext) where
-  label : State.Label
-  state : State tc label
-
-abbrev toSnapShot {tc: TypeContext} {label: Label} (state: State tc label) := SnapShot.mk label state
-
-class HasSnapShot (tc: TypeContext) (T: Type u) where
-  snapShot (target: T) : SnapShot tc
-
-end State
-
-open State
 
 namespace Step
 
-class Load (tc: TypeContext) where
+protected class Load (tc: TypeContext) where
   load: tc.TProgram → State tc .load
 
-class TakeInput (tc: TypeContext) (req: Label.Req) where
-  takeInput (label: Label) : (req label) → (State tc label) → (State tc .takeInput)
+protected class TakeInput (tc: TypeContext) where
+  takeInput (label: Label) : (State tc label) → (State tc .takeInput)
 
-class ProduceOutput (tc: TypeContext) where
+protected class ProduceOutput (tc: TypeContext) where
   produceOutput :
     State tc .takeInput →
     State tc .produceOutput
 
 end Step
 
+class Step (tc: TypeContext) extends
+  toLoad: Step.Load tc,
+  toTakeInput: Step.TakeInput tc,
+  toProduceOutput: Step.ProduceOutput tc
 
-protected class abbrev Raw (tc: TypeContext) (req: Label.Req) :=
-  Step.Load tc, Step.TakeInput tc req, Step.ProduceOutput tc
+
+namespace Step
+
+open Label
+
+instance instMotiveOf {tc} : MotiveOf (Step tc) where
+  motiveOf label :=
+    match label with
+    | .load => Step.Load tc
+    | .takeInput => Step.TakeInput tc
+    | .produceOutput => Step.ProduceOutput tc
+
+#print instMotiveOf
+
+/-
+inductive State (tc: TypeContext) : Label → Type u where
+  | load : tc.TProgram → State tc .load
+  | takeInput : tc.TData → tc.TProgram → State tc .takeInput
+  | produceOutput : tc.TOutput → tc.TProgram → State tc .produceOutput
+-/
+
+inductive Log (tc: TypeContext) [Step tc] : Label → Type u where
+  | load (prog: tc.TProgram) (toLoad: motiveOf inst) : Log tc .load
+
+
+
+end Step
+
+
+
+
+def Spec (motive: Label.Motive) : Sort (max 1 u) := (label: Label) → (motive label) → Prop
+
+def Spec.mk
+  {motive: Label.Motive}
+  (self: (label: Label) → (motive label) → Prop)
+  : Spec motive := self
 
 end Runtime
 
