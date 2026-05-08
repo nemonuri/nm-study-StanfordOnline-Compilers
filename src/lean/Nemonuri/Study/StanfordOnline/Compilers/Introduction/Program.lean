@@ -27,14 +27,91 @@ inductive Label : Type 0 where
   | produceOutput
   deriving DecidableEq
 
-
-
 namespace Label
 
 instance instLawfulBEq : LawfulBEq Label := inferInstance
 
+abbrev Literal (l: Label) : Type := { x: Label // x = l }
+
+instance Literal.instSubsingleton {l} : Subsingleton (Literal l) where
+  allEq := by simp
+
+
 -- Note: 대체 이건 무슨 패턴이지...?
 -- https://github.com/leanprover/lean4/blob/v4.30.0-rc2/src/Init/Control/State.lean
+
+def LabelT.{u1, u2}
+  (α: Label → Type u1) (m: Label → Type u1 → Type u2) (β: Label → Type u1)
+  : Type (max u1 u2) :=
+  (l: Label) → (α l) → (m l (β l))
+
+def LabelT.mk.{u1, u2}
+  {α: Label → Type u1} {m: Label → Type u1 → Type u2} {β: Label → Type u1}
+  (x: (l: Label) → (α l) → (m l (β l)))
+  : LabelT α m β :=
+  x
+
+def LabelM α β := LabelT α (Function.const Label Id) β
+
+
+namespace LabelT
+
+--def bindLabel (l: Label) (α m β) (labelT: LabelT α m β) := labelT l
+
+--def bindLabelAndFlip α m β l labelT := bindLabel l α m β labelT
+
+
+end LabelT
+
+--def LabelM.{u1, u2} (α: Type u1) : Type (max u1 (u2 + 1)) := Label → α → Type u2
+
+--def LabelM.mk.{u1, u2} {α: Type u1} (x: Label → α → Type u2) : LabelM α := x
+
+/-
+def LabelT (m: Label → Type u) : Type u := (l: Label) → (m l)
+
+def LabelT.mk {m: Label → Type u} (x: (l: Label) → (m l)) : LabelT m := x
+
+instance instLabelT : LabelT (Function.const Label Label) := id
+-/
+
+namespace LabelT
+
+
+protected def pure {α: Type u} (a: α) : LabelT (Function.const Label α) := Function.const Label a
+
+/-
+instance : Pure (λ (α: Type u) ↦ LabelT (Function.const Label α)) where
+  pure := LabelT.pure
+
+
+class Lift.{u1, u2} (m1: Label → Type u1) (m2: Label → Type u2) where
+  lift (l: Label) : (m1 l) → (m2 l)
+-/
+
+
+
+
+
+
+
+end LabelT
+
+
+
+
+--class LabelM.{u1, u2} (m1: Label → Type u1) (m2: Label → Type u2) where
+--  labelM {l: Label} : (m1 l) → (m2 l)
+
+
+
+
+
+
+
+--def CtorT {lm tm} (lt: LabelT lm tm) := (l: Label) → (lm l) → (lt l)
+
+
 
 def Motive : Sort (u+1) := Label → Sort u
 
@@ -42,6 +119,8 @@ namespace Motive
 
 instance instInhabited : Inhabited Motive where
   default := Function.const Label (default: Sort u)
+
+--abbrev const (T: Sort u) : Motive := Function.const Label T
 
 structure LiftM (TMotive : Motive) where
   liftM (label: Label) : (TMotive label) → Sort u
@@ -192,18 +271,12 @@ def State.ToHistory (tc: TypeContext) : Label.Motive.LiftM (State tc) where
     | .produceOutput => (History tc .takeInput) → (History tc .produceOutput)
 
 
-instance State.instCtorMToHistory {tc: TypeContext} : CtorM (State tc) (State.ToHistory tc) where
+instance State.ToHistory.instCtorM {tc: TypeContext} : CtorM (State tc) (State.ToHistory tc) where
   ctorM label state :=
     match label with
     | .load => History.load state
     | .takeInput => fun label pre => History.takeInput label pre state
     | .produceOutput => fun pre => History.produceOutput pre state
-
-
-
-
-
-
 
 
 namespace Step
@@ -221,34 +294,65 @@ protected class ProduceOutput (tc: TypeContext) where
 
 end Step
 
-class Step (tc: TypeContext) extends
+end Runtime
+
+open Runtime in
+class Runtime (tc: TypeContext) extends
   toLoad: Step.Load tc,
   toTakeInput: Step.TakeInput tc,
   toProduceOutput: Step.ProduceOutput tc
 
+namespace Runtime
+
+open Label Motive
+variable (tc: TypeContext)
+
+structure Step [Runtime tc] where
+  protected label: Label
+
 
 namespace Step
 
-open Label
+structure Log [Runtime tc] where
+  step: Step tc
+  state: State tc step.label
 
-instance instMotiveOf {tc} : MotiveOf (Step tc) where
-  motiveOf label :=
+protected abbrev Log.label [Runtime tc] (log: Log tc) := log.step.label
+
+protected abbrev Log.LabelM [Runtime tc] (label: Label) := {log: Log tc // log.label = label}
+
+end Step
+
+open Step
+
+def State.ToStepLog [Runtime tc] : LiftM  where
+  liftM label _ :=
     match label with
     | .load => Step.Load tc
     | .takeInput => Step.TakeInput tc
     | .produceOutput => Step.ProduceOutput tc
 
-#print instMotiveOf
 
-/-
-inductive State (tc: TypeContext) : Label → Type u where
-  | load : tc.TProgram → State tc .load
-  | takeInput : tc.TData → tc.TProgram → State tc .takeInput
-  | produceOutput : tc.TOutput → tc.TProgram → State tc .produceOutput
--/
 
-inductive Log (tc: TypeContext) [Step tc] : Label → Type u where
-  | load (prog: tc.TProgram) (toLoad: motiveOf inst) : Log tc .load
+
+instance ToSum.instCtorM {tc: TypeContext} : CtorM (const (Step tc)) (ToSum tc) where
+  ctorM label step :=
+    match label with
+    | .load => step.toLoad
+    | .takeInput => step.toTakeInput
+    | .produceOutput => step.toProduceOutput
+
+
+
+
+
+def ToLog (tc: TypeContext) [Step tc] : LiftM (const (Step tc)) where
+  liftM label _ :=
+    match label with
+    | .load =>
+
+--inductive Log (tc: TypeContext) [Step tc] : Label → Type u where
+--  | load (prog: tc.TProgram) (toLoad: motiveOf inst) : Log tc .load
 
 
 
