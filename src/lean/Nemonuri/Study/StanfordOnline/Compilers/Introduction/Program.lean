@@ -40,161 +40,37 @@ instance Literal.instSubsingleton {l} : Subsingleton (Literal l) where
 -- Note: 대체 이건 무슨 패턴이지...?
 -- https://github.com/leanprover/lean4/blob/v4.30.0-rc2/src/Init/Control/State.lean
 
+def Motive : Sort (u+1) := Label → Sort u
+
+def MotiveM.{u1, u2} : Sort ((max u1 u2) + 1) := Label → Sort u1 → Sort u2
+
+
+namespace MotiveM
+
+def constId : MotiveM := Function.const Label Id
+
+instance instInhabited : Inhabited MotiveM where
+  default := constId
+
+class LiftT.{u1, u2, u3} (m1: MotiveM.{u1, u2}) (m2: MotiveM.{u1, u3}) where
+  lift {l: Label} {α: Sort u1} : (m1 l α) → (m2 l α)
+
+end MotiveM
+
+
+
 def LabelT.{u1, u2}
-  (α: Label → Type u1) (m: Label → Type u1 → Type u2) (β: Label → Type u1)
-  : Type (max u1 u2) :=
+  (α: Motive.{u1}) (m: MotiveM.{u1, u2}) (β: Motive.{u1})
+  : Sort (imax u1 u2) :=
   (l: Label) → (α l) → (m l (β l))
 
 def LabelT.mk.{u1, u2}
-  {α: Label → Type u1} {m: Label → Type u1 → Type u2} {β: Label → Type u1}
+  {α: Motive.{u1}} {m: MotiveM.{u1, u2}} {β: Motive.{u1}}
   (x: (l: Label) → (α l) → (m l (β l)))
   : LabelT α m β :=
   x
 
-def LabelM α β := LabelT α (Function.const Label Id) β
-
-
-namespace LabelT
-
---def bindLabel (l: Label) (α m β) (labelT: LabelT α m β) := labelT l
-
---def bindLabelAndFlip α m β l labelT := bindLabel l α m β labelT
-
-
-end LabelT
-
---def LabelM.{u1, u2} (α: Type u1) : Type (max u1 (u2 + 1)) := Label → α → Type u2
-
---def LabelM.mk.{u1, u2} {α: Type u1} (x: Label → α → Type u2) : LabelM α := x
-
-/-
-def LabelT (m: Label → Type u) : Type u := (l: Label) → (m l)
-
-def LabelT.mk {m: Label → Type u} (x: (l: Label) → (m l)) : LabelT m := x
-
-instance instLabelT : LabelT (Function.const Label Label) := id
--/
-
-namespace LabelT
-
-
-protected def pure {α: Type u} (a: α) : LabelT (Function.const Label α) := Function.const Label a
-
-/-
-instance : Pure (λ (α: Type u) ↦ LabelT (Function.const Label α)) where
-  pure := LabelT.pure
-
-
-class Lift.{u1, u2} (m1: Label → Type u1) (m2: Label → Type u2) where
-  lift (l: Label) : (m1 l) → (m2 l)
--/
-
-
-
-
-
-
-
-end LabelT
-
-
-
-
---class LabelM.{u1, u2} (m1: Label → Type u1) (m2: Label → Type u2) where
---  labelM {l: Label} : (m1 l) → (m2 l)
-
-
-
-
-
-
-
---def CtorT {lm tm} (lt: LabelT lm tm) := (l: Label) → (lm l) → (lt l)
-
-
-
-def Motive : Sort (u+1) := Label → Sort u
-
-namespace Motive
-
-instance instInhabited : Inhabited Motive where
-  default := Function.const Label (default: Sort u)
-
---abbrev const (T: Sort u) : Motive := Function.const Label T
-
-structure LiftM (TMotive : Motive) where
-  liftM (label: Label) : (TMotive label) → Sort u
-
-namespace LiftM
-
-instance instInhabited (TMotive: Motive) : Inhabited (LiftM TMotive) where
-  default := { liftM label := Function.const _ (TMotive label) }
-
-end LiftM
-
-end Motive
-
-
-class CtorM (TPre : Motive) (TLift: Motive.LiftM TPre) where
-  ctorM (label: Label) (pre: TPre label) : (TLift.liftM label pre)
-
-
-namespace CtorM
-
-open Motive LiftM
-
-
-instance instInhabited (TPre : Motive) : Inhabited (CtorM TPre (default)) where
-  default := { ctorM _ := id }
-  --toSpecM := default
-
---instance instInhabited (target: TTarget) [Subsingleton TTarget] : Inhabited (CtorM target) where
---  default := CtorM.mk (toSpec := (default: Spec target)) (Function.const Label id)
-
-section match_pattern_s
-variable {TPre : Motive} {TLift: LiftM TPre} [ctor: CtorM TPre TLift]
-
-def load (pre: TPre .load) := ctor.ctorM .load pre
-def takeInput (pre: TPre .takeInput) := ctor.ctorM .takeInput pre
-def produceOutput (pre: TPre .produceOutput) := ctor.ctorM .produceOutput pre
-
-end match_pattern_s
-
-attribute [match_pattern, reducible] load takeInput produceOutput
-
-
-
---protected class Dep (target: TTarget) (TPre TPost : MotiveM target) where
---  ctorM (label: Label) : (TPre.motiveM label) → (TPost.motiveM label)
-
-/-
-instance Dep.instCtorM
-  (target: TTarget)
-  (TPre TPost : MotiveM target)
-  (ctor: CtorM.Dep target TPre TPost) : CtorM target where
-  TPre := { motiveM := TPre.motiveM }
-  TPost := { motiveM := TPre.motiveM }
-  ctorM label pre := inst.ctorM label pre
--/
-
-/-
-abbrev recM (TPre: Sort u) (inst: CtorM TPre) (t: Label) : inst.toMotiveM.motiveM t :=
-  match t with
-  | .load => inst.load
-  | .takeInput => inst.takeInput
-  | .produceOutput => inst.produceOutput
-
-abbrev casesOnM (TPost: Motive) (t: Label) (inst: CtorM (TPost t)) : inst.toMotiveM.motiveM t :=
-  match t with
-  | .load => inst.load
-  | .takeInput => inst.takeInput
-  | .produceOutput => inst.produceOutput
--/
-
-end CtorM
-
-@[implicit_reducible]
-def Motive.toDefaultCtorM (TMotive: Motive) : CtorM TMotive (default) := default
+def LabelM α β := LabelT α (default) β
 
 
 end Label
@@ -220,11 +96,24 @@ info: Nemonuri.Study.StanfordOnline.Compilers.Program.Runtime.Label.casesOn.{u} 
 #check Label.casesOn
 
 
-inductive State (tc: TypeContext) : Label → Type u where
-  | load : tc.TProgram → State tc .load
-  | takeInput : tc.TData → tc.TProgram → State tc .takeInput
-  | produceOutput : tc.TOutput → tc.TProgram → State tc .produceOutput
+inductive StepT (tc: TypeContext) (m: MotiveM) : Label → Type _ where
+  | load :
+      (m .load tc.TProgram) → StepT tc m .load
+  | takeInput :
+      (m .takeInput tc.TData × tc.TProgram) → StepT tc m .takeInput
+  | produceOutput :
+      (m .produceOutput tc.TOutput × tc.TProgram) →
+      StepT tc m .produceOutput
 
+
+def State tc := StepT tc (Label.MotiveM.constId)
+
+/--
+info: State :
+  TypeContext → Label → Type u
+-/
+#guard_msgs (info, whitespace := lax) in
+#check State.{u}
 
 --def Label.Motive.ofState (tc: TypeContext) : Label.Motive := State tc
 
@@ -248,10 +137,20 @@ inductive State (tc: TypeContext) : Label → Type u where
 
 
 
-inductive History (tc: TypeContext) : Label → Type u where
+inductive TraceT (tc: TypeContext) (m: MotiveM) : Label → Sort _ where
   | load :
-      State tc .load →
-      History tc .load
+      (StepT tc m .load) →
+      TraceT tc m .load
+  | takeInput :
+      (label: Label) →
+      (TraceT tc m label) →
+      (StepT tc m .takeInput) →
+      TraceT tc m .takeInput
+  | produceOutput :
+      (TraceT tc m produceOutput) →
+      (StepT tc m .produceOutput) →
+      TraceT tc m .produceOutput
+/-
   | takeInput :
       (label: Label) →
       History tc label →
@@ -261,8 +160,9 @@ inductive History (tc: TypeContext) : Label → Type u where
       History tc .takeInput →
       State tc .produceOutput →
       History tc .produceOutput
+-/
 
-
+/-
 def State.ToHistory (tc: TypeContext) : Label.Motive.LiftM (State tc) where
   liftM label _ :=
     match label with
@@ -277,32 +177,51 @@ instance State.ToHistory.instCtorM {tc: TypeContext} : CtorM (State tc) (State.T
     | .load => History.load state
     | .takeInput => fun label pre => History.takeInput label pre state
     | .produceOutput => fun pre => History.produceOutput pre state
-
+-/
 
 namespace Step
 
-protected class Load (tc: TypeContext) where
-  load: tc.TProgram → State tc .load
+protected class Load tc m where
+  load: TraceT tc m .load
+--load: tc.TProgram → State tc .load
 
-protected class TakeInput (tc: TypeContext) where
-  takeInput (label: Label) : (State tc label) → (State tc .takeInput)
+protected class TakeInput tc m where
+  takeInput: TraceT tc m .takeInput
+  --takeInput (label: Label) : (State tc label) → (State tc .takeInput)
 
-protected class ProduceOutput (tc: TypeContext) where
+protected class ProduceOutput tc m where
+  produceOutput: TraceT tc m .produceOutput
+/-
   produceOutput :
     State tc .takeInput →
     State tc .produceOutput
+-/
 
 end Step
 
 end Runtime
 
-open Runtime in
-class Runtime (tc: TypeContext) extends
-  toLoad: Step.Load tc,
-  toTakeInput: Step.TakeInput tc,
-  toProduceOutput: Step.ProduceOutput tc
+/-
+open Runtime Label in
+class Runtime (tc: TypeContext) (m: MotiveM) extends
+  toLoad: Step.Load tc m,
+  toTakeInput: Step.TakeInput tc m,
+  toProduceOutput: Step.ProduceOutput tc m
+-/
+
+open Runtime Label in
+def Runtime (tc: TypeContext) (m: MotiveM) : Type _ := (l: Label) → (TraceT tc m l)
 
 namespace Runtime
+
+open Label
+variable (tc: TypeContext) (m: MotiveM)
+
+def Spec (l: Label) : Type _ := (TraceT tc m l) → Prop
+
+
+--def Spec (l: Label)
+
 
 open Label Motive
 variable (tc: TypeContext)
