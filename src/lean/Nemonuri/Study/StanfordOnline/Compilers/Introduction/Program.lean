@@ -16,10 +16,6 @@ namespace Program
 
 namespace Runtime
 
-structure TypeContext : Type (u+1) where
-  TProgram : Type u
-  TData : Type u
-  TOutput : Type u
 
 inductive Label : Type 0 where
   | load
@@ -42,23 +38,58 @@ instance Literal.instSubsingleton {l} : Subsingleton (Literal l) where
 
 def Motive : Sort (u+1) := Label → Sort u
 
-def MotiveM.{u1, u2} : Sort ((max u1 u2) + 1) := Label → Sort u1 → Sort u2
+def Motive.mk (x: Label → Sort u) : Motive := x
+
+namespace Motive
 
 
-namespace MotiveM
+def IsEquiv (m1 m2: Motive) : Prop := (l: Label) → (m1 l) = (m2 l)
 
-def constId : MotiveM := Function.const Label Id
+attribute [scoped simp] IsEquiv
 
-instance instInhabited : Inhabited MotiveM where
+instance instEquivalenceIsEquiv : Equivalence IsEquiv where
+  refl m := by simp
+  symm := by
+    intro m1 m2 is_eq
+    simp at is_eq
+    simp [is_eq]
+  trans := by
+    intro m1 m2 m3 is_eq_12 is_eq_23
+    simp at is_eq_12
+    simp at is_eq_23
+    simp [is_eq_12, is_eq_23]
+
+
+instance instSetoid : Setoid Motive where
+  r := IsEquiv
+  iseqv := instEquivalenceIsEquiv
+
+
+end Motive
+
+def Monadic.{u1, u2} : Type _ := Label → Type u1 → Type u2
+
+
+namespace Monadic
+
+def toMotive (m: Monadic) : Motive := Motive.mk (fun (l: Label) => (α: Type _) → (m l α))
+
+#print toMotive
+
+--protected def bindLabel (m: Monadic) (l: Label) := m l
+
+def constId : Monadic := Function.const Label Id
+
+instance instInhabited : Inhabited Monadic where
   default := constId
 
-class LiftT.{u1, u2, u3} (m1: MotiveM.{u1, u2}) (m2: MotiveM.{u1, u3}) where
-  lift {l: Label} {α: Sort u1} : (m1 l α) → (m2 l α)
+class LiftT.{u1, u2, u3} (m1: Monadic.{u1, u2}) (m2: Monadic.{u1, u3}) where
+  lift {l: Label} {α: Type u1} : (m1 l α) → (m2 l α)
 
-end MotiveM
+end Monadic
 
 
-
+/-
 def LabelT.{u1, u2}
   (α: Motive.{u1}) (m: MotiveM.{u1, u2}) (β: Motive.{u1})
   : Sort (imax u1 u2) :=
@@ -71,7 +102,7 @@ def LabelT.mk.{u1, u2}
   x
 
 def LabelM α β := LabelT α (default) β
-
+-/
 
 end Label
 
@@ -95,109 +126,51 @@ info: Nemonuri.Study.StanfordOnline.Compilers.Program.Runtime.Label.casesOn.{u} 
 #guard_msgs (info, whitespace := lax) in
 #check Label.casesOn
 
+structure Memory.Config : Type (u+1) where
+  protected Program : Type u
+  protected Data : Type u
+  protected Output : Type u
 
-inductive StepT (tc: TypeContext) (m: MotiveM) : Label → Type _ where
+inductive Memory (sc: Memory.Config) : Label → Type _ where
   | load :
-      (m .load tc.TProgram) → StepT tc m .load
+      sc.Program → Memory sc .load
   | takeInput :
-      (m .takeInput tc.TData × tc.TProgram) → StepT tc m .takeInput
+      sc.Data → sc.Program → Memory sc .takeInput
   | produceOutput :
-      (m .produceOutput tc.TOutput × tc.TProgram) →
-      StepT tc m .produceOutput
+      sc.Output → sc.Program → Memory sc .produceOutput
 
 
-def State tc := StepT tc (Label.MotiveM.constId)
+def MemoryM (sc: Memory.Config) (m: Monadic) (l: Label) : Type _ := m l (Memory sc l)
 
-/--
-info: State :
-  TypeContext → Label → Type u
--/
-#guard_msgs (info, whitespace := lax) in
-#check State.{u}
+--def LogT.mk {sc m l} (x: m l (State sc l)) : StepT sc m l := x
 
---def Label.Motive.ofState (tc: TypeContext) : Label.Motive := State tc
-
-
---instance State.instStepM {tc} : StepM id (State tc) where
---  step _ := id
-  --TMotivePost := State tc
-/-
-    match label with
-    | .load => tc.TProgram
-    | .takeInput => tc.TData × tc.TProgram
-    | .produceOutput => tc.TOutput × tc.TProgram
--/
-  --trace _ := id
-/-
-    match label, pre with
-    | .load, prog => State.load prog
-    | .takeInput, ⟨data, prog⟩ => State.takeInput data prog
-    | .produceOutput, ⟨output, prog⟩ => State.produceOutput output prog
--/
-
-
-
-inductive TraceT (tc: TypeContext) (m: MotiveM) : Label → Sort _ where
+inductive HistoryM (sc: Memory.Config) (m: Monadic) : Label → Type _ where
   | load :
-      (StepT tc m .load) →
-      TraceT tc m .load
+      MemoryM sc m .load →
+      HistoryM sc m .load
   | takeInput :
-      (label: Label) →
-      (TraceT tc m label) →
-      (StepT tc m .takeInput) →
-      TraceT tc m .takeInput
+      (l: Label) →
+      (HistoryM sc m l) →
+      MemoryM sc m .takeInput →
+      HistoryM sc m .takeInput
   | produceOutput :
-      (TraceT tc m produceOutput) →
-      (StepT tc m .produceOutput) →
-      TraceT tc m .produceOutput
-/-
-  | takeInput :
-      (label: Label) →
-      History tc label →
-      State tc .takeInput →
-      History tc .takeInput
-  | produceOutput :
-      History tc .takeInput →
-      State tc .produceOutput →
-      History tc .produceOutput
--/
+      (HistoryM sc m .produceOutput) →
+      MemoryM sc m .produceOutput →
+      HistoryM sc m .produceOutput
+
+
+namespace HistoryM
+
+--def Spec (sc: State.Config) (m: Monadic) : Type _ := (l: Label) → (HistoryM sc m l) → Prop
 
 /-
-def State.ToHistory (tc: TypeContext) : Label.Motive.LiftM (State tc) where
-  liftM label _ :=
-    match label with
-    | .load => History tc .load
-    | .takeInput => (label: Label) → (History tc label) → (History tc .takeInput)
-    | .produceOutput => (History tc .takeInput) → (History tc .produceOutput)
-
-
-instance State.ToHistory.instCtorM {tc: TypeContext} : CtorM (State tc) (State.ToHistory tc) where
-  ctorM label state :=
-    match label with
-    | .load => History.load state
-    | .takeInput => fun label pre => History.takeInput label pre state
-    | .produceOutput => fun pre => History.produceOutput pre state
+class Step (sc: State.Config) (m: Monadic) where
+  spec: Spec sc m
+  step
 -/
 
-namespace Step
+end HistoryM
 
-protected class Load tc m where
-  load: TraceT tc m .load
---load: tc.TProgram → State tc .load
-
-protected class TakeInput tc m where
-  takeInput: TraceT tc m .takeInput
-  --takeInput (label: Label) : (State tc label) → (State tc .takeInput)
-
-protected class ProduceOutput tc m where
-  produceOutput: TraceT tc m .produceOutput
-/-
-  produceOutput :
-    State tc .takeInput →
-    State tc .produceOutput
--/
-
-end Step
 
 end Runtime
 
