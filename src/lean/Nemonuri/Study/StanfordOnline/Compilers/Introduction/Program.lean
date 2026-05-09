@@ -38,12 +38,12 @@ instance Literal.instSubsingleton {l} : Subsingleton (Literal l) where
 
 def Motive : Sort (u+1) := Label → Sort u
 
-def Motive.mk (x: Label → Sort u) : Motive := x
+def Motive.mk (x: Label → Sort u) : Motive.{u} := x
 
 namespace Motive
 
 
-def IsEquiv (m1 m2: Motive) : Prop := (l: Label) → (m1 l) = (m2 l)
+def IsEquiv (m1 m2: Motive.{u}) : Prop := (l: Label) → (m1 l) = (m2 l)
 
 attribute [scoped simp] IsEquiv
 
@@ -67,16 +67,22 @@ instance instSetoid : Setoid Motive where
 
 end Motive
 
-def Monadic.{u1, u2} : Type _ := Label → Type u1 → Type u2
+def Monadic.{u1, u2} : Type (max (u1 + 1) (u2 + 1)) := Label → Type u1 → Type u2
 
 
 namespace Monadic
 
-def toMotive (m: Monadic) : Motive := Motive.mk (fun (l: Label) => (α: Type _) → (m l α))
 
-def IsEquiv (m1 m2: Monadic) : Prop := (l: Label) → (m1 l) = (m2 l)
+
+def toMotive.{u1, u2} (m: Monadic.{u1, u2})
+  : Motive.{max (u1 + 2) (u2 + 1)} :=
+  Motive.mk (fun (l: Label) => (α: Type u1) → (m l α))
+
+
+def IsEquiv.{u1, u2} (m1 m2: Monadic.{u1, u2}) : Prop := (l: Label) → (m1 l) = (m2 l)
 
 attribute [scoped simp] Motive.IsEquiv Monadic.IsEquiv Monadic.toMotive Motive.mk
+
 
 theorem IsEquiv.imp_toMotive_isEquiv (m1 m2: Monadic) (is_equiv: IsEquiv m1 m2)
   : Motive.IsEquiv m1.toMotive m2.toMotive := by
@@ -84,6 +90,19 @@ theorem IsEquiv.imp_toMotive_isEquiv (m1 m2: Monadic) (is_equiv: IsEquiv m1 m2)
     simp
     intro l
     rw [is_equiv l]
+
+#print IsEquiv.imp_toMotive_isEquiv
+
+/-
+theorem IsEquiv.iff_toMotive_isEquiv (m1 m2: Monadic)
+  : (IsEquiv m1 m2) ↔ (Motive.IsEquiv m1.toMotive m2.toMotive) := by
+  constructor
+  case mp => exact (IsEquiv.imp_toMotive_isEquiv m1 m2)
+  case mpr =>
+    simp
+    intro toMotive_isEquiv l
+    replace toMotive_isEquiv := toMotive_isEquiv l
+-/
 
 
 /-
