@@ -84,7 +84,7 @@ def IsEquiv.{u1, u2} (m1 m2: Monadic.{u1, u2}) : Prop := (l: Label) → (m1 l) =
 attribute [scoped simp] Motive.IsEquiv Monadic.IsEquiv Monadic.toMotive Motive.mk
 
 
-theorem IsEquiv.imp_toMotive_isEquiv (m1 m2: Monadic) (is_equiv: IsEquiv m1 m2)
+theorem IsEquiv.imp_toMotive_isEquiv.{u1, u2} (m1 m2: Monadic.{u1, u2}) (is_equiv: IsEquiv m1 m2)
   : Motive.IsEquiv m1.toMotive m2.toMotive := by
     simp at is_equiv
     simp
@@ -94,7 +94,7 @@ theorem IsEquiv.imp_toMotive_isEquiv (m1 m2: Monadic) (is_equiv: IsEquiv m1 m2)
 #print IsEquiv.imp_toMotive_isEquiv
 
 /-
-theorem IsEquiv.iff_toMotive_isEquiv (m1 m2: Monadic)
+theorem IsEquiv.iff_toMotive_isEquiv.{u1, u2} (m1 m2: Monadic.{u1, u2})
   : (IsEquiv m1 m2) ↔ (Motive.IsEquiv m1.toMotive m2.toMotive) := by
   constructor
   case mp => exact (IsEquiv.imp_toMotive_isEquiv m1 m2)
@@ -102,7 +102,13 @@ theorem IsEquiv.iff_toMotive_isEquiv (m1 m2: Monadic)
     simp
     intro toMotive_isEquiv l
     replace toMotive_isEquiv := toMotive_isEquiv l
+    apply funext
+    --cbv --at toMotive_isEquiv
+    --skip
+
+    --conv at toMotive_isEquiv =>
 -/
+
 
 
 /-
