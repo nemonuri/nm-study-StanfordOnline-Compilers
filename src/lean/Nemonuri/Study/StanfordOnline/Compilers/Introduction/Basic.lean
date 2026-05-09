@@ -1,6 +1,8 @@
 module
 
 
+public import Mathlib.Data.Fintype.Defs
+
 public section public_s
 @[expose] section expose_s
 
@@ -116,6 +118,35 @@ instance instInhabited : Inhabited (Monadic T) where
 --  lift {l: Label} {α: Type u1} : (m1 l α) → (m2 l α)
 
 end Monadic
+
+class HasLabel (TTarget TLabel: Type _) [DecidableEq TLabel] where
+  label (t: TTarget) : TLabel
+
+class MaybeHasLabel (TTarget TLabel: Type _) [DecidableEq TLabel] where
+  label? (t: TTarget) : Option TLabel
+
+class HasLabelWhen (TTarget TLabel: Type _) (pred: TTarget → Prop) [DecidableEq TLabel]
+  extends
+    toMaybeHasLabel: MaybeHasLabel TTarget TLabel
+  where
+  label?_not_none (t: TTarget) (h: pred t) : (toMaybeHasLabel.label? t) ≠ .none
+
+namespace HasLabelWhen
+
+instance instHasLabelSubtype
+  {TTarget TLabel: Type _} {pred: TTarget → Prop} [DecidableEq TLabel] [HasLabelWhen TTarget TLabel pred]
+  : HasLabel (Subtype pred) TLabel where
+  label t :=
+    match t with
+    | ⟨val, prop⟩ =>
+    match meq: MaybeHasLabel.label? val with
+    | Option.some v => v
+    | Option.none => absurd meq (HasLabelWhen.label?_not_none val prop)
+
+end HasLabelWhen
+
+
+
 
 end Nemonuri.Study.StanfordOnline.Compilers
 

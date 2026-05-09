@@ -94,6 +94,32 @@ open Config
 
 def StepSpec (cfg: Runtime.Config) : Sort _ := (tr: Label.Transition) → (PreInner cfg tr) → (PreOuter cfg tr) → (PostInner cfg tr) → Prop
 
+namespace StepSpec
+
+namespace Default
+
+protected def isValidTransition (tr: Label.Transition) : Bool :=
+  match tr with
+  | .init => .true
+  | .step pre post =>
+  match pre, post with
+  | _, .load => .false
+  | .load, .takeInput | .produceOutput, .takeInput => .true
+  | .takeInput, .produceOutput => .false
+  | _, _ => .false
+
+abbrev IsValidTransition (tr: Label.Transition) : Prop := Default.isValidTransition tr
+
+instance {tr} : Decidable (IsValidTransition tr) := if h: Default.isValidTransition tr then .isTrue h else .isFalse h
+
+end Default
+
+def defaultSpec (cfg: Runtime.Config) : StepSpec cfg := fun tr _ _ _ => StepSpec.Default.IsValidTransition tr
+
+end StepSpec
+
+
+
 end Runtime
 
 open Runtime Label Config in
@@ -101,20 +127,18 @@ structure Runtime
   extends
     toConfig: Runtime.Config
   where
-  stepSpec: StepSpec toConfig
+  stepSpec: StepSpec toConfig := StepSpec.defaultSpec toConfig
   step
     (tr: Label.Transition)
     (preInner: toConfig.PreInner tr)
     (preOuter: toConfig.PreOuter tr)
-    : { postInner: toConfig.PostInner tr // stepSpec tr preInner preOuter postInner }
-/-
-  step
-    (tr: Label.Transition)
-    (preInner: (Option.map innerM tr.pre?).getD PUnit)
-    (preOuter: outerM tr) : innerM tr.post
--/
+    : toConfig.PostInner tr --{ postInner: toConfig.PostInner tr // stepSpec tr preInner preOuter postInner }
+  step_meets_spec: ∀tr preInner preOuter, stepSpec tr preInner preOuter (step tr preInner preOuter)
+
 
 namespace Runtime
+
+
 
 open Label
 
