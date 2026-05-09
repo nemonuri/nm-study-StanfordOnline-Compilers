@@ -1,6 +1,8 @@
 module
 
 
+public import Nemonuri.Study.StanfordOnline.Compilers.Introduction.Basic
+
 public section public_s
 @[expose] section expose_s
 
@@ -27,137 +29,92 @@ namespace Label
 
 instance instLawfulBEq : LawfulBEq Label := inferInstance
 
+
+inductive Transition : Type 0 where
+  | init
+  | step (pre: Label) (post: Label)
+  deriving DecidableEq
+
+
+namespace Transition
+
+instance instLawfulBEq : LawfulBEq Transition := inferInstance
+
+def post (tr: Transition) : Label :=
+  match tr with
+  | .init => .load
+  | .step _ post => post
+
+def pre? (tr: Transition) : Option Label :=
+  match tr with
+  | .init => .none
+  | .step pre _ => .some pre
+
+theorem pre?_not_init (tr: Transition) (not_init: tr ≠ .init) : (pre? tr) ≠ .none := by
+  simp [pre?]
+  match tr with
+  | .init => contradiction
+  | .step _ _ => simp
+
+def pre (tr: Transition) (not_init: tr ≠ .init) : Label :=
+  match meq1: pre? tr with
+  | .none => absurd meq1 (pre?_not_init tr not_init)
+  | .some v => v
+
+end Transition
+
+
+
 abbrev Literal (l: Label) : Type := { x: Label // x = l }
 
 instance Literal.instSubsingleton {l} : Subsingleton (Literal l) where
   allEq := by simp
 
-
--- Note: 대체 이건 무슨 패턴이지...?
--- https://github.com/leanprover/lean4/blob/v4.30.0-rc2/src/Init/Control/State.lean
-
-def Motive : Sort (u+1) := Label → Sort u
-
-def Motive.mk (x: Label → Sort u) : Motive.{u} := x
-
-namespace Motive
-
-
-def IsEquiv (m1 m2: Motive.{u}) : Prop := (l: Label) → (m1 l) = (m2 l)
-
-attribute [scoped simp] IsEquiv
-
-instance instEquivalenceIsEquiv : Equivalence IsEquiv where
-  refl m := by simp
-  symm := by
-    intro m1 m2 is_eq
-    simp at is_eq
-    simp [is_eq]
-  trans := by
-    intro m1 m2 m3 is_eq_12 is_eq_23
-    simp at is_eq_12
-    simp at is_eq_23
-    simp [is_eq_12, is_eq_23]
-
-
-instance instSetoid : Setoid Motive where
-  r := IsEquiv
-  iseqv := instEquivalenceIsEquiv
-
-
-end Motive
-
-def Monadic.{u1, u2} : Type (max (u1 + 1) (u2 + 1)) := Label → Type u1 → Type u2
-
-
-namespace Monadic
-
-
-
-def toMotive.{u1, u2} (m: Monadic.{u1, u2})
-  : Motive.{max (u1 + 2) (u2 + 1)} :=
-  Motive.mk (fun (l: Label) => (α: Type u1) → (m l α))
-
-
-def IsEquiv.{u1, u2} (m1 m2: Monadic.{u1, u2}) : Prop := (l: Label) → (m1 l) = (m2 l)
-
-attribute [scoped simp] Motive.IsEquiv Monadic.IsEquiv Monadic.toMotive Motive.mk
-
-
-theorem IsEquiv.imp_toMotive_isEquiv.{u1, u2} (m1 m2: Monadic.{u1, u2}) (is_equiv: IsEquiv m1 m2)
-  : Motive.IsEquiv m1.toMotive m2.toMotive := by
-    simp at is_equiv
-    simp
-    intro l
-    rw [is_equiv l]
-
-#print IsEquiv.imp_toMotive_isEquiv
-
-/-
-theorem IsEquiv.iff_toMotive_isEquiv.{u1, u2} (m1 m2: Monadic.{u1, u2})
-  : (IsEquiv m1 m2) ↔ (Motive.IsEquiv m1.toMotive m2.toMotive) := by
-  constructor
-  case mp => exact (IsEquiv.imp_toMotive_isEquiv m1 m2)
-  case mpr =>
-    simp
-    intro toMotive_isEquiv l
-    replace toMotive_isEquiv := toMotive_isEquiv l
-    apply funext
-    --cbv --at toMotive_isEquiv
-    --skip
-
-    --conv at toMotive_isEquiv =>
--/
-
-
-
-/-
-    have lemma1 (α0: Type _) : m1 l α0 = m2 l α0 := by
-      have lemma2 := toMotive_isEquiv l
-      apply congrFun
--/
-
-
-
-
-
-
-
-
-
-
-
-
---#print IsEquiv.imp_toMotive_isEquiv
-
-
-def constId : Monadic := Function.const Label Id
-
-instance instInhabited : Inhabited Monadic where
-  default := constId
-
-class LiftT.{u1, u2, u3} (m1: Monadic.{u1, u2}) (m2: Monadic.{u1, u3}) where
-  lift {l: Label} {α: Type u1} : (m1 l α) → (m2 l α)
-
-end Monadic
-
-
-/-
-def LabelT.{u1, u2}
-  (α: Motive.{u1}) (m: MotiveM.{u1, u2}) (β: Motive.{u1})
-  : Sort (imax u1 u2) :=
-  (l: Label) → (α l) → (m l (β l))
-
-def LabelT.mk.{u1, u2}
-  {α: Motive.{u1}} {m: MotiveM.{u1, u2}} {β: Motive.{u1}}
-  (x: (l: Label) → (α l) → (m l (β l)))
-  : LabelT α m β :=
-  x
-
-def LabelM α β := LabelT α (default) β
--/
-
 end Label
+
+protected structure Config where
+  innerMotive : Motive.{1,u} Label
+  outerMotive : Motive.{1,u} Label.Transition
+
+
+
+namespace Config
+
+open Label
+variable (cfg: Runtime.Config) (tr: Transition)
+
+def PreInner : Type _ := if h: tr = .init then PUnit else tr.pre h |> cfg.innerMotive
+
+def PreOuter : Type _ := cfg.outerMotive tr
+
+def PostInner : Type _ := cfg.innerMotive tr.post
+
+end Config
+open Config
+
+def StepSpec (cfg: Runtime.Config) : Sort _ := (tr: Label.Transition) → (PreInner cfg tr) → (PreOuter cfg tr) → (PostInner cfg tr) → Prop
+
+end Runtime
+
+open Runtime Label Config in
+structure Runtime
+  extends
+    toConfig: Runtime.Config
+  where
+  stepSpec: StepSpec toConfig
+  step
+    (tr: Label.Transition)
+    (preInner: toConfig.PreInner tr)
+    (preOuter: toConfig.PreOuter tr)
+    : { postInner: toConfig.PostInner tr // stepSpec tr preInner preOuter postInner }
+/-
+  step
+    (tr: Label.Transition)
+    (preInner: (Option.map innerM tr.pre?).getD PUnit)
+    (preOuter: outerM tr) : innerM tr.post
+-/
+
+namespace Runtime
 
 open Label
 
