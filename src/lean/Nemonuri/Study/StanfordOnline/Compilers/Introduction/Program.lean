@@ -74,9 +74,37 @@ namespace Monadic
 
 def toMotive (m: Monadic) : Motive := Motive.mk (fun (l: Label) => (α: Type _) → (m l α))
 
-#print toMotive
+def IsEquiv (m1 m2: Monadic) : Prop := (l: Label) → (m1 l) = (m2 l)
 
---protected def bindLabel (m: Monadic) (l: Label) := m l
+attribute [scoped simp] Motive.IsEquiv Monadic.IsEquiv Monadic.toMotive Motive.mk
+
+theorem IsEquiv.imp_toMotive_isEquiv (m1 m2: Monadic) (is_equiv: IsEquiv m1 m2)
+  : Motive.IsEquiv m1.toMotive m2.toMotive := by
+    simp at is_equiv
+    simp
+    intro l
+    rw [is_equiv l]
+
+
+/-
+    have lemma1 (α0: Type _) : m1 l α0 = m2 l α0 := by
+      have lemma2 := toMotive_isEquiv l
+      apply congrFun
+-/
+
+
+
+
+
+
+
+
+
+
+
+
+--#print IsEquiv.imp_toMotive_isEquiv
+
 
 def constId : Monadic := Function.const Label Id
 
