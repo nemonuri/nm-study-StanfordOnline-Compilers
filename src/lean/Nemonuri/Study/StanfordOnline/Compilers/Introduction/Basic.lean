@@ -1,7 +1,6 @@
 module
 
 
-public import Mathlib.Data.Fintype.Defs
 
 public section public_s
 @[expose] section expose_s
@@ -119,6 +118,37 @@ instance instInhabited : Inhabited (Monadic T) where
 
 end Monadic
 
+class HasMember (TTarget TMember: Type _) where
+  member (t: TTarget) : TMember
+
+class MaybeHasMember (TTarget TMember: Type _) where
+  member? (t: TTarget) : Option TMember
+
+@[default_instance 100]
+instance {TTarget TMember} : MaybeHasMember TTarget TMember where
+  member? _ := Option.none
+
+class HasMemberWhen (TTarget TMember: Type _) (pred: TTarget → Prop)
+  extends
+    toMaybeHasMember: MaybeHasMember TTarget TMember
+  where
+  member?_not_none (t: TTarget) (h: pred t) : (toMaybeHasMember.member? t) ≠ .none
+
+namespace HasMemberWhen
+
+instance instHasMemberSubtype
+  {TTarget TMember: Type _} {pred: TTarget → Prop} [HasMemberWhen TTarget TMember pred]
+  : HasMember (Subtype pred) TMember where
+  member t :=
+    match t with
+    | ⟨val, prop⟩ =>
+    match meq: MaybeHasMember.member? val with
+    | Option.some v => v
+    | Option.none => absurd meq (HasMemberWhen.member?_not_none val prop)
+
+end HasMemberWhen
+
+
 class HasLabel (TTarget TLabel: Type _) [DecidableEq TLabel] where
   label (t: TTarget) : TLabel
 
@@ -143,9 +173,44 @@ instance instHasLabelSubtype
     | Option.some v => v
     | Option.none => absurd meq (HasLabelWhen.label?_not_none val prop)
 
+
 end HasLabelWhen
 
+class TryRun (α: Type _) (β: Type _) where
+  run? (x: α) : Option β
 
+class HasReq (α β: Type _) [TryRun α β] where --(tr: TryRun α β)
+  Req: α → Prop
+  run?_not_none (x: α) : (Req x) → (TryRun.run? x : Option β) ≠ .none
+
+protected def RunReq.run
+  {α: Type _} (x: α) (β: Type _) [tr: TryRun α β] [rr: HasReq α β]
+  (req: rr.Req x)
+  : β :=
+  match meq: tr.run? x with
+  | Option.some b => b
+  | Option.none => absurd meq (rr.run?_not_none x req)
+
+class InitialState (TState: Type _) where
+  initialState: TState
+
+namespace InitialState
+
+def IsProcessedM m [mnd: Pure m] {TState} [is: InitialState TState] (st: m TState)
+  : Prop :=
+  st ≠ (mnd.pure is.initialState)
+
+def IsProcessed {TState} [InitialState TState] (st: TState) : Prop := IsProcessedM Id st
+
+instance IsProcessedM.instDecidablePred {m} [mnd: Pure m] {TState} [is: InitialState TState] [DecidableEq (m TState)] : DecidablePred (IsProcessedM m: (m TState → Prop)) :=
+  fun st => dite (st ≠ (mnd.pure is.initialState)) .isTrue .isFalse
+
+instance IsProcessed.instDecidablePred {TState} [is: InitialState TState] [deq: DecidableEq TState] : DecidablePred (IsProcessed: TState → Prop) :=
+  @IsProcessedM.instDecidablePred Id (inferInstance) TState is deq
+
+
+
+end InitialState
 
 
 end Nemonuri.Study.StanfordOnline.Compilers

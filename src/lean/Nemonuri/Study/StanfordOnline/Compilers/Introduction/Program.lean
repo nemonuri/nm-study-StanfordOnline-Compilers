@@ -1,6 +1,7 @@
 module
 
 
+public import Mathlib.Data.Fintype.Basic
 public import Nemonuri.Study.StanfordOnline.Compilers.Introduction.Basic
 
 public section public_s
@@ -13,11 +14,138 @@ universe u --u1 u2
 set_option autoImplicit false
 
 
+/-
+structure Program (TProgram: Type u) [InitialState TProgram] where
+  program?: Option TProgram
+  deriving DecidableEq
+-/
+
+namespace Runtime
+
+
+protected structure Config where
+  Cell: Type u
+  cell_deq: DecidableEq Cell
+  initialState: Finset Cell
+  --filter? {α: Type u} (x: α) : Option ((p: Cell → Prop) × (DecidablePred p))
+
+namespace Config
+
+def Filter (cfg: Runtime.Config) : Type u := (p: cfg.Cell → Prop) × (DecidablePred p)
+
+def Filter.mk (cfg: Runtime.Config) (p: cfg.Cell → Prop) [dec: DecidablePred p] : Filter cfg := ⟨p, dec⟩
+
+class MaybeHasFilter (cfg: Runtime.Config) (α: Type u) where
+  filter? (x: α) : Option cfg.Filter
+
+protected def filter? (cfg: Runtime.Config) {α: Type u} := @MaybeHasFilter.filter? cfg α
+
+instance (priority := low) {cfg: Runtime.Config} {α: Type u} : MaybeHasFilter cfg α where
+  filter? _ := .none
+
+abbrev TryRunAt (cfg: Runtime.Config) (α: Type u) [MaybeHasFilter cfg α] := TryRun α cfg.Filter
+
+namespace MaybeHasFilter
+
+instance (priority := high) {cfg: Runtime.Config} {α: Type u} [mhf: MaybeHasFilter cfg α] : TryRunAt cfg α where
+  run? x := mhf.filter? x
+
+end MaybeHasFilter
+
+
+abbrev HasFilterReq (cfg: Runtime.Config) (α: Type u) [MaybeHasFilter cfg α] [TryRunAt cfg α] := HasReq α cfg.Filter
+
+protected def filter
+  (cfg: Runtime.Config) {α: Type u} [MaybeHasFilter cfg α] [TryRunAt cfg α] [hfr: HasFilterReq cfg α] (x: α) (req: hfr.Req x)
+  : cfg.Filter := RunReq.run x cfg.Filter req
+
+
+
+instance instDecidableEqFinsetCell (cfg: Runtime.Config) : DecidableEq (Finset cfg.Cell) := @Finset.decidableEq cfg.Cell cfg.cell_deq
+
+end Config
+
+
+structure Environment (cfg: Runtime.Config) where
+  environment: Finset cfg.Cell
+  deriving DecidableEq
+
+#check instDecidableEqEnvironment.decEq
+
+namespace Environment
+
+open Config
+
+instance instMaybeHasFilter {cfg: Runtime.Config} : MaybeHasFilter cfg (Environment cfg) where
+  filter? _ := .some (Filter.mk cfg (fun _ => True))
+
+instance instHasFilterReq {cfg: Runtime.Config} : HasFilterReq cfg (Environment cfg) where
+  Req _ := True
+  run?_not_none x h := by
+    simp [TryRun.run?]
+
+
+end Environment
+
+def Config.initialEnvironment (cfg: Runtime.Config) : Environment cfg := cfg.initialState |> Environment.mk
+
+protected class Program.Config (cfg: Runtime.Config) where
+  protected filter : cfg.Filter
+
+class Program (cfg: Runtime.Config) [pcfg: Program.Config cfg] (env: Environment cfg) where
+  protected val : Finset cfg.Cell
+  protected property :
+    let ⟨fst, _⟩ := pcfg.filter
+    (Finset.filter fst env.environment) = val
+
 namespace Program
+
+
+
+
+
+end Program
+
+
+end Runtime
+
+
+
+namespace Program
+
+
+
+
+section program_1_s
+variable {TProgram} [InitialState TProgram]
+
+instance instCoeTryRun : Coe (Program TProgram) (TryRun (Program TProgram) TProgram) where
+  coe _ := .mk (Program.program?)
+
+
+def IsProcessed (prog: Program TProgram) : Prop := InitialState.IsProcessedM Option prog.program?
+
+--instance [DecidableEq TProgram] : DecidablePred (IsProcessed : Program TProgram → Prop) := (inferInstance : (DecidablePred (InitialState.IsProcessedM Option)))
+
+
+def State.IsError (s: Program TProgram) : Prop := s.program?.isNone
+
+instance : DecidablePred (State.IsError : Program TProgram → Prop) :=
+  fun s => dite (s.program?.isNone) .isTrue .isFalse
+
+end program_1_s
+
 
 
 namespace Runtime
 
+/-
+structure Load TProgram [Program TProgram] where
+  load? (s: Program.State TProgram) : Option TProgram
+
+variable {TProgram} [Program TProgram] in
+instance Load.instCoeTryRun : Coe (Load TProgram) (TryRun (Program.State TProgram) TProgram) where coe x := .mk (x.load?)
+-/
 
 inductive Label : Type 0 where
   | load
