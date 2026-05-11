@@ -1,18 +1,23 @@
 module
 
 --public import Std.Data.ExtDHashMap
-public import Nemonuri.Study.StanfordOnline.Compilers.Introduction.Program
+--public import Nemonuri.Study.StanfordOnline.Compilers.Introduction.Program
+public import Cslib.Foundations.Semantics.LTS.Basic
+public import Cslib.Foundations.Semantics.LTS.Relation
 
 public section public_s
 @[expose] section expose_s
 
+set_option autoImplicit false
+
 namespace Nemonuri.Study.StanfordOnline.Compilers.Introduction
 
-open Program Runtime State
+--open Program Runtime State
 
 namespace Interpreter
 
-universe u
+universe us ul
+--variable {St: Type u} {La: Type v}
 
 /-!
 
@@ -22,31 +27,85 @@ So, what does an interpreter do?
 
 1. You wrote a **Program**(*prog*).
 -/
-variable (TProgram: Type u) (prog: TProgram)
+class Program (St: Type us) where
+  protected T: Type us
+  protected v: (st: St) → T
+--variable (TProgram: Type u) (prog: TProgram)
+
+--protected def prog := @Spec.Program.v
+
 
 /-!
 2. You have a **Data**(*data*), whatever you want to run the program on.
 -/
-variable (TData: Type u) (data: TData)
+class Data (St: Type us) where
+  protected T: Type us
+  protected v: (st: St) → T
+--variable (TData: Type u) (data: TData)
+
+--protected def data := @Spec.Data.v
 
 /-!
 3. An **Interpreter**(*self*) takes as input, your program(*prog*) and your data(*data*).
 -/
-protected abbrev Specs.Aux.TakesAsInput := λ _₁ ↦ TakeInput (.mk TProgram TData _₁)
+variable
+  (St: Type us)
+  [Program St] [Zero (Program.T St)]
+  [Data St] [Zero (Data.T St)]
+
+def TakeAsInput (prog: Program.T St) (data: Data.T St) (_ st2: St) : Prop :=
+  (prog ≠ 0) ∧ (Program.v st2 = prog) ∧ (data ≠ 0) ∧ (Data.v st2 = data)
+
+
+
+structure TakeAsInput.Label [DecidableEq (Program.T St)] [DecidableEq (Data.T St)] where
+  prog: Program.T St
+  data: Data.T St
+
+variable [DecidableEq (Program.T St)] [DecidableEq (Data.T St)]
+
+instance TakeAsInput.Label.instDecidableEq : DecidableEq (TakeAsInput.Label St) :=
+  fun l1 l2 =>
+    if h: l1.prog = l2.prog ∧ l1.data = l2.data then
+      .isTrue (by simp [← TakeAsInput.Label.mk.injEq] at h; exact h)
+    else
+      .isFalse (by simp [← TakeAsInput.Label.mk.injEq] at h; exact h)
+
+def TakeAsInput.toLTS (l: TakeAsInput.Label St) : Cslib.LTS St (TakeAsInput.Label St) :=
+  Cslib.LTS.Relation.toLTS (TakeAsInput St l.prog l.data) l
+
+
 
 /-!
 4. It(*self*) produces the **Output**(*output*) directly.
 -/
-variable (TOutput: Type u) (output: TOutput)
+class Output (St: Type us) where
+  protected T: Type us
+  protected v: (st: St) → T
 
-protected abbrev Specs.ProduceOutput := ProduceOutput (.mk TProgram TData TOutput)
-protected abbrev Specs.TakesAsInput := Specs.Aux.TakesAsInput TOutput
+variable
+  [Output St] [DecidableEq (Output.T St)] [Zero (Output.T St)]
+
+def ProduceOutput (st1 st2: St) : Prop :=
+  (Program.v st1 ≠ 0) ∧ (Data.v st1 ≠ 0) ∧ (Output.v st2 ≠ 0)
+
+structure ProduceOutput.Label where
+  deriving DecidableEq
+
 
 
 /-!
-5. Meaning that it(*self*) *doesn't do any processing~* of the program(*prog*) *~before* it executes it on the input.
+5. Meaning that it(*self*) doesn't do any processing of the program(*prog*) before it executes it on the input.
 6. So you just write the program(*prog*), and you invoke the interpreter(*self*) on the data(*data*), and the program(*prog*) immediately begins running.
 -/
+/-
+def DoesNotDoAnyProcessingBefore (st1 st3: St) : Prop :=
+  (st2: St) → (prog: Program.T St) →
+  (data: Data.T St) → (TakeAsInput prog data st1 st2) → (ProduceOutput st2 st3) →
+-/
+  --(prog: Program.T St) → (data: Data.T St) → (TakeAsInput prog data st1 st2) →
+
+/-
 protected abbrev Specs.doesn't_do_any_processing_before
   {tc: TypeContext}
   (self: Specs.TakesAsInput tc.TProgram tc.TData tc.TOutput)
@@ -56,6 +115,7 @@ protected abbrev Specs.doesn't_do_any_processing_before
   : Prop :=
   match self.takeInput state data with
   | .takeInput state1 _ prog2 => (toProgram state1) = prog2
+-/
 
 
 /-!

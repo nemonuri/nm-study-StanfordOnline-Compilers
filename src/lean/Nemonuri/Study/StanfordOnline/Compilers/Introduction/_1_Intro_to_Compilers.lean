@@ -1,6 +1,6 @@
 module
 
-public import Nemonuri.Study.StanfordOnline.Compilers.Introduction.Program
+--public import Nemonuri.Study.StanfordOnline.Compilers.Introduction.Program
 
 public section public_s
 @[expose] section expose_s
@@ -20,7 +20,10 @@ There are two major approaches to implementing programming languages
 
 -/
 
-abbrev ImplementationApproach := Program.Runtime.Implementer.Approach
+inductive ImplementationApproach where
+  | compiler
+  | interpreter
+  deriving DecidableEq
 
 
 end Nemonuri.Study.StanfordOnline.Compilers.Introduction
