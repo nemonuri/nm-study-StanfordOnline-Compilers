@@ -189,13 +189,14 @@ inductive Label where
   | produceOutput
 
 
-instance : LabelSetLike (Option ProduceOutput.Directly.Label) (Label St) where
+instance : LabelMorph (Option ProduceOutput.Directly.Label) (Label St) where
   coe la :=
     match la with
-    | .some .produceOutput => setOf (· matches .produceOutput)
-    | .none => setOf (fun x => !(x matches .produceOutput))
+    | .some .produceOutput =>
+      setOf (fun x => match x with | [.some .produceOutput] => True | _ => False)
+    | .none =>
+      setOf (fun x => match x with | [.some .produceOutput] => False | [.some _] => True | _ => False)
   coe_injective' := by
-    have lemma1 : Nonempty (Label St) := Nonempty.intro (.produceOutput)
     intro la1 la2 h1
     simp at h1
     match meq1: la1, meq2: la2 with
@@ -205,7 +206,9 @@ instance : LabelSetLike (Option ProduceOutput.Directly.Label) (Label St) where
       simp at h1
       unfold setOf Set at h1
       rewrite [funext_iff] at h1
+      replace h1 := h1 [.some .produceOutput]
       simp at h1
+
 
 /-
 instance : LabelMap (Label St) (DoesNotDoAnyProcessing.Label St) where
@@ -235,16 +238,16 @@ def mkLTS : Cslib.LTS St (Label St) where
 
 
 
-attribute [local simp] mkLTS Cslib.LTS.mapBySetLike
+attribute [local simp] mkLTS Cslib.LTS.mapByLabelMorph
 
 protected theorem ProduceOutput.Directly.proof
-  : (mkLTS St).mapBySetLike (Option ProduceOutput.Directly.Label) |> ProduceOutput.Directly St := by
+  : (mkLTS St).mapByLabelMorph (Option ProduceOutput.Directly.Label) |> ProduceOutput.Directly St := by
     simp [ProduceOutput.Directly]
     intro st1 st2 h1
-    replace h1 := h1 .produceOutput
-    simp at h1
-    apply h1
-    simp [Membership.mem, Set.Mem, SetLike.coe, setOf]
+    replace h1 := h1 [.some .produceOutput]
+    simp [Cslib.LTS.withIdle, ← Cslib.LTS.MTr.single_iff] at h1
+    simp [Membership.mem, Set.Mem, SetLike.coe, setOf] at h1
+    exact h1
 
 #print ProduceOutput.Directly.proof
 

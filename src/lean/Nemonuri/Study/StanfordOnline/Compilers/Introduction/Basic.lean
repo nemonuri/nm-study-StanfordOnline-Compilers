@@ -51,10 +51,13 @@ def Cslib.LTS.mapByLabelMap {St La1} (lts: Cslib.LTS St La1) La2 [LabelMap La1 L
 -/
 
 open Nemonuri.Study.StanfordOnline.Compilers in
-def Cslib.LTS.mapBySetLike {St LaB} (ltsB: Cslib.LTS St LaB) LaA [LabelMorph LaA LaB] : Cslib.LTS St LaA :=
+def Cslib.LTS.mapByLabelMorph {St LaB} (ltsB: Cslib.LTS St LaB) LaA [LabelMorph LaA LaB] : Cslib.LTS St LaA :=
   { Tr st1 la st2 := ∀lb, (lb ∈ SetLike.coe la) → ltsB.withIdle.MTr st1 lb st2 }
 
-
+theorem Cslib.LTS.MTr.single_iff.{u, v}
+  {State : Type u} {Label : Type v} (lts : LTS State Label) (s1 : State) (μ : Label) (s2 : State)
+  : lts.Tr s1 μ s2 ↔ lts.MTr s1 [μ] s2 :=
+  Iff.intro (Cslib.LTS.MTr.single lts) (Cslib.LTS.MTr.single_invert lts s1 μ s2)
 
 end expose_s
 end public_s
