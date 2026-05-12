@@ -51,30 +51,32 @@ variable
   [Program St] [Zero (Program.T St)]
   [Data St] [Zero (Data.T St)]
 
-def TakeAsInput (prog: Program.T St) (data: Data.T St) (_ st2: St) : Prop :=
-  (prog ≠ 0) ∧ (Program.v st2 = prog) ∧ (data ≠ 0) ∧ (Data.v st2 = data)
-
+structure TakeAsInput (prog: Program.T St) (data: Data.T St) (_ st2: St) : Prop where
+  pre: (prog ≠ 0) ∧ (data ≠ 0)
+  post: (Program.v st2 = prog) ∧ (Data.v st2 = data)
+  --(prog ≠ 0) ∧ (Program.v st2 = prog) ∧ (data ≠ 0) ∧ (Data.v st2 = data)
 
 variable [DecidableEq (Program.T St)] [DecidableEq (Data.T St)]
+/-
 namespace TakeAsInput
 
-structure Label [DecidableEq (Program.T St)] [DecidableEq (Data.T St)] where
-  prog: Program.T St
-  data: Data.T St
+  structure Label [DecidableEq (Program.T St)] [DecidableEq (Data.T St)] where
+    prog: Program.T St
+    data: Data.T St
 
 
-instance Label.instDecidableEq : DecidableEq (Label St) :=
-  fun l1 l2 =>
-    if h: l1.prog = l2.prog ∧ l1.data = l2.data then
-      .isTrue (by simp [← Label.mk.injEq] at h; exact h)
-    else
-      .isFalse (by simp [← Label.mk.injEq] at h; exact h)
+  instance Label.instDecidableEq : DecidableEq (Label St) :=
+    fun l1 l2 =>
+      if h: l1.prog = l2.prog ∧ l1.data = l2.data then
+        .isTrue (by simp [← Label.mk.injEq] at h; exact h)
+      else
+        .isFalse (by simp [← Label.mk.injEq] at h; exact h)
 
-def toLTS (l: Label St) : Cslib.LTS St (Label St) :=
-  Cslib.LTS.Relation.toLTS (TakeAsInput St l.prog l.data) l
+  def toLTS (l: Label St) : Cslib.LTS St (Label St) :=
+    Cslib.LTS.Relation.toLTS (TakeAsInput St l.prog l.data) l
 
 end TakeAsInput
-
+-/
 
 /-!
 4. It(*self*) produces the **Output**(*output*) directly.
@@ -86,27 +88,85 @@ class Output (St: Type us) where
 variable
   [Output St] [DecidableEq (Output.T St)] [Zero (Output.T St)]
 
-def ProduceOutput (st1 st2: St) : Prop :=
-  (Program.v st1 ≠ 0) ∧ (Data.v st1 ≠ 0) ∧ (Output.v st2 ≠ 0)
+structure ProduceOutput (st1 st2: St) : Prop where
+  pre: (Program.v st1 ≠ 0) ∧ (Data.v st1 ≠ 0)
+  post: (Output.v st2 ≠ 0)
+  --(Program.v st1 ≠ 0) ∧ (Data.v st1 ≠ 0) ∧ (Output.v st2 ≠ 0)
 
 namespace ProduceOutput
 
-structure Label (St: Type us)
+inductive Directly.LabelView where
+  | other
+  | produceOutput
+  deriving DecidableEq
 
-instance Label.instDecidableEq : DecidableEq (Label St) :=
-  fun l1 l2 => .isTrue (by simp)
-
-def toLTS (l: Label St) : Cslib.LTS St (Label St) :=
-  Cslib.LTS.Relation.toLTS (ProduceOutput St) l
+def Directly (lts: Cslib.LTS St Directly.LabelView) : Prop :=
+  ∀st1 st2,
+    (lts.Tr st1 .produceOutput st2) →
+    (ProduceOutput St st1 st2)
 
 end ProduceOutput
+
+/-!
+5. Meaning that it(*self*) doesn't do any processing of the program(*prog*) before it executes it on the input.
+-/
+inductive DoesNotDoAnyProcessing.LabelView where
+  | takeAsInput (prog: Program.T St)
+  | produceOutput
+
+structure DoesNotDoAnyProcessing (lts: Cslib.LTS St (DoesNotDoAnyProcessing.LabelView St)) : Prop where
+  takeAsInput_spec prog data st1 st2 : (lts.Tr st1 (.takeAsInput prog) st2) → (TakeAsInput St prog data st1 st2)
+  produceOutput_spec st1 st2 : (lts.Tr st1 .produceOutput st2) → (ProduceOutput St st1 st2)
+  main_spec prog (st1 st2 st3: St) :
+    (lts.Tr st1 (.takeAsInput prog) st2) →
+    (lts.Tr st2 .produceOutput st3) →
+    ((prog = (Program.v st2)) ∧ ((Program.v st2) = (Program.v st3)))
+
+
+
+protected inductive ExecutionState.T where
+  | idle
+  | busy
+  deriving DecidableEq
+
+instance ExecutionState.T.instZero : Zero (ExecutionState.T) where zero := .idle
+
+class ExecutionState (St: Type us) where
+  protected v: (st: St) → ExecutionState.T
+
+variable
+  [ExecutionState St]
+
+structure ExecuteOnTheInput (st1 st2: St) : Prop where
+  pre : (Program.v st1 ≠ 0) ∧ (Data.v st1 ≠ 0) ∧ (ExecutionState.v st1 = 0)
+  --(Program.v st1 ≠ 0) ∧ (Data.v st1 ≠ 0) ∧ (Program.v st1 ≠ Program.v st2)
 
 
 
 /-!
-5. Meaning that it(*self*) doesn't do any processing of the program(*prog*) before it executes it on the input.
-6. So you just write the program(*prog*), and you invoke the interpreter(*self*) on the data(*data*), and the program(*prog*) immediately begins running.
+6. So you just **write the program**(*prog*), and you **invoke** the interpreter(*self*) **on the data**(*data*), and the program(*prog*) immediately begins running.
 -/
+--structure WriteTheProgram.Label where
+
+
+def WriteTheProgram (prog: Program.T St) (st1 st2: St) : Prop :=
+  (Program.v st1 = 0) ∧ (prog ≠ 0) ∧ (Program.v st2 = prog)
+
+namespace WriteTheProgram
+
+structure Label where
+  prog: Program.T St
+
+instance Label.instDecidableEq [DecidableEq (Program.T St)] : DecidableEq (Label St) :=
+  fun ⟨p1⟩ ⟨p2⟩ => if h: p1 = p2 then .isTrue (by simp [h]) else .isFalse (by simp [h])
+
+def toLTS (l: Label St) : Cslib.LTS St (Label St) :=
+  Cslib.LTS.Relation.toLTS (WriteTheProgram St l.prog) l
+
+end WriteTheProgram
+
+
+
 namespace DoesNotDoAnyProcessingBefore
 
 open Std
