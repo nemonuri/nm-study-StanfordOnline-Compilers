@@ -169,7 +169,7 @@ section def_s
 
 protected class abbrev State.Program (St: Type us) := Program St, Zero (Program.T St)
 
-protected class abbrev State.Data (St: Type us) := Data St, Zero (Data.T St), BEq (Data.T St), LawfulBEq (Data.T St)
+protected class abbrev State.Data (St: Type us) := Data St, Zero (Data.T St)
 
 protected class abbrev State.Output (St: Type us) := Output St, Zero (Output.T St)
 
@@ -189,8 +189,7 @@ inductive Label where
   | takeAsInput (prog: Program.T St) (data: Data.T St)
   | produceOutput
 
-set_option allowUnsafeReducibility true in
-attribute [scoped reducible, instance 5] instDecidableEqOfLawfulBEq
+
 attribute [scoped simp] Singleton.singleton Set.singleton setOf Set funext_iff
 
 instance : LabelMorph (ProduceOutput.Directly.Label) (Label St) where
@@ -213,6 +212,7 @@ instance : LabelMorph (ProduceOutput.Directly.Label) (Label St) where
       simp at h1
 
 
+/-
 theorem forall_prop_congr_iff.{u} {α : Sort u} {p q : α → Prop} [dp: DecidablePred p] [dq: DecidablePred q] : (∀ a, p a = q a) ↔ (∀ a, p a) = (∀ a, q a) := by
   constructor
   case mp =>
@@ -232,6 +232,7 @@ theorem forall_prop_congr_iff.{u} {α : Sort u} {p q : α → Prop} [dp: Decidab
     --have lm1 : (∃a, p a) := ⟨a, dp a⟩
     --simp [←decide_eq_decide]
     --simp [←decide_eq_decide] at h1
+-/
 /-
     match mdp: (dp a).decide, mdq: (dq a).decide with
     | .true, .true | .false, .false => simp_all
@@ -257,7 +258,7 @@ theorem forall_prop_congr_iff.{u} {α : Sort u} {p q : α → Prop} [dp: Decidab
 instance : LabelMorph (DoesNotDoAnyProcessing.Label St) (Label St) where
   coe (la: DoesNotDoAnyProcessing.Label St) :=
     match la with
-    | .takeAsInput prog => { x | ∀data, [.some (.takeAsInput prog data)] = x }
+    | .takeAsInput prog => { x | ∃data, [.some (.takeAsInput prog data)] = x }
     | .produceOutput => { [.some .produceOutput] }
   coe_injective' := by
     intro la1 la2 h1
@@ -268,17 +269,11 @@ instance : LabelMorph (DoesNotDoAnyProcessing.Label St) (Label St) where
       simp at h1
       have lm1 (data: Data.T St) := h1 [.some (.takeAsInput prog1 data)]
       simp at lm1
-        --apply propext_iff.mpr
-        --arg 2
-        --ext
-      --have lm1 (data: Data.T St) := h1 [.some (.takeAsInput prog1 data)]
-      --simp at lm1
-/-
-      by_cases h2: Nonempty (Data.T St)
-      case pos =>
-        replace lm1 := Classical.choice h2 |> lm1
-        simp at lm1
--/
+      simp [lm1]
+    | .produceOutput, .takeAsInput prog | .takeAsInput prog, .produceOutput =>
+      simp at h1
+      have lm1 (data: Data.T St) := h1 [.some (.takeAsInput prog data)]
+      simp at lm1
 
 
 
