@@ -139,29 +139,35 @@ structure InvokeOnTheData (data: Data.T St) (st1 st2: St) : Prop where
 
 
 inductive ImmediatelyBeginsRunning.Label where
+  | other
   | invokeOnTheData
   deriving DecidableEq
 
 class IsRunning where
-  v: (Program.T St) → Bool
+  isRunning: (Program.T St) → Bool
 
 variable [IsRunning St]
 
-structure ImmediatelyBeginsRunning (lts: Cslib.LTS St (Option ImmediatelyBeginsRunning.Label)) : Prop where
-  lts_spec (st1 st2: St) (data: Data.T St) : (lts.Tr st1 (.some .invokeOnTheData) st2) → (InvokeOnTheData St data st1 st2)
-  main_spec (st1 st2: St) :
-    (lts.Tr st1 (.some .invokeOnTheData) st2) →
-    (IsRunning.v (Program.v st1) = false ∧ IsRunning.v (Program.v st2) = true)
+abbrev ImmediatelyBeginsRunning.MainEns (st1 st2: St) : Prop :=
+  (IsRunning.isRunning (Program.v st1) = false ∧ IsRunning.isRunning (Program.v st2) = true)
 
+structure ImmediatelyBeginsRunning (lts: Cslib.LTS St (ImmediatelyBeginsRunning.Label)) : Prop where
+  lts_spec (st1 st2: St) (data: Data.T St) : (lts.Tr st1 (.invokeOnTheData) st2) → (InvokeOnTheData St data st1 st2)
+  main_spec (st1 st2: St) :
+    (lts.Tr st1 (.invokeOnTheData) st2) →
+    (ImmediatelyBeginsRunning.MainEns St st1 st2)
 
 /-!
 7. we can say that the interpreter(*self*) is, *is online*, meaning it the work that it does is all part of running your program.
 -/
 inductive IsOnline.Label where
+  | other
   | partOfRunningYourProgram
   deriving DecidableEq
 
-def IsOnline (lts: Cslib.LTS St (Option IsOnline.Label)) : Prop := ∀st1 st2, (lts.Tr st1 (.some .partOfRunningYourProgram) st2)
+def IsOnline (lts: Cslib.LTS St (IsOnline.Label)) : Prop :=
+  ∀st1 st2, (st1 ≠ st2) → ¬(lts.Tr st1 (.other) st2)
+
 
 end _1
 
@@ -176,7 +182,8 @@ protected class abbrev State.Output (St: Type us) := Output St, Zero (Output.T S
 class State (St: Type us) extends
   toStateProgram: State.Program St,
   toStateData: State.Data St,
-  toStateOutput: State.Output St
+  toStateOutput: State.Output St,
+  toIsRunning: IsRunning St
 
 --abbrev LawfulState (St: Type us) [State St] [Zero (Program.T St)] [Zero (Data.T St)] [Zero (Output.T St)] := State St
 
@@ -189,13 +196,15 @@ inductive Label where
 --  | takeAsInput (prog: Program.T St) (data: Data.T St)
   | produceOutput
 
+
 instance instLTS : Cslib.LTS St (Label St) where
   Tr st1 μ st2 :=
     match μ with
     --| .takeAsInput prog data => TakeAsInput St prog data st1 st2
     | .produceOutput => ProduceOutput St st1 st2
     | .writeTheProgram prog => WriteTheProgram St prog st1 st2
-    | .invokeOnTheData data => InvokeOnTheData St data st1 st2
+    | .invokeOnTheData data =>
+      (InvokeOnTheData St data st1 st2) ∧ (ImmediatelyBeginsRunning.MainEns St st1 st2)
 
 attribute [scoped simp] Singleton.singleton Set.singleton setOf Set funext_iff
 
@@ -205,7 +214,7 @@ instance : LabelMorph (ProduceOutput.Directly.Label) (Label St) where
     | .produceOutput =>
       { [.some .produceOutput] }
     | .other =>
-      { x | (match x with | [.some .produceOutput] => False | [.some _] => True | _ => False) }
+      { x | x.length = 1 ∧ (x ≠ [.some .produceOutput]) }
   coe_injective' := by
     intro la1 la2 h1
     simp at h1
@@ -214,52 +223,8 @@ instance : LabelMorph (ProduceOutput.Directly.Label) (Label St) where
     | .other, .produceOutput | .produceOutput, .other =>
       --unfold setOf Set at h1
       simp at h1
-      --rewrite [funext_iff] at h1
-      replace h1 := h1 [.some .produceOutput]
+      specialize h1 [.some .produceOutput]
       simp at h1
-
-
-/-
-theorem forall_prop_congr_iff.{u} {α : Sort u} {p q : α → Prop} [dp: DecidablePred p] [dq: DecidablePred q] : (∀ a, p a = q a) ↔ (∀ a, p a) = (∀ a, q a) := by
-  constructor
-  case mp =>
-    intro h
-    exact (forall_congr h)
-  case mpr =>
-    intro h1 a
-    simp [DecidablePred] at dp dq
-    match mdp: (dp a).decide, mdq: (dq a).decide with
-    | .true, .true | .false, .false => simp_all
-    | .true, .false =>
-      have lm1 : (∃a, p a) := ⟨a, (by simp_all)⟩
-      have lm2 : (∃a, ¬q a) := ⟨a, (by simp_all)⟩
-      replace lm2 := Classical.not_forall.mpr lm2
-      simp [lm2] at h1
-      have lm3 := And.intro lm1 h1 --: (∃ x, p x) ∧ ∃ x, ¬p x --...모순이 아니네...!!!!!
-    --have lm1 : (∃a, p a) := ⟨a, dp a⟩
-    --simp [←decide_eq_decide]
-    --simp [←decide_eq_decide] at h1
--/
-/-
-    match mdp: (dp a).decide, mdq: (dq a).decide with
-    | .true, .true | .false, .false => simp_all
-    | .true, .false =>
--/
-/-
-    | .isTrue _, .isTrue _ | .isFalse _, .isFalse _ => simp_all
-    | .isTrue hp, .isFalse hq =>
-      simp_all
-      have := (Iff.mpr h1)
-    | .isTrue _, .isFalse _ =>
--/
-    --simp [DecidablePred] at dp dq
-    --dite
-
-    --let dpa (a: α) := dp a
-    --let dqa (a: α) := dq a
-
-  --intro h
-  --exact (forall_congr h) |> propext_iff.mp
 
 
 instance : LabelMorph (DoesNotDoAnyProcessing.Label St) (Label St) where
@@ -282,25 +247,37 @@ instance : LabelMorph (DoesNotDoAnyProcessing.Label St) (Label St) where
       have lm1 (data: Data.T St) := h1 [.some (.writeTheProgram prog), .some (.invokeOnTheData data)]
       simp at lm1
 
-#print instLabelMorphLabelLabel_1
 
 
-/-
-instance : LabelMap (Label St) (DoesNotDoAnyProcessing.Label St) where
-  labelMap l :=
-    match l with
-    | .takeAsInput prog _ => .some (.takeAsInput prog)
-    | _ => .none
+instance : LabelMorph (ImmediatelyBeginsRunning.Label) (Label St) where
+  coe la :=
+    let spec (x: List (Option (Label St))) : Prop := ∃data, [.some (.invokeOnTheData data)] = x
+    match la with
+    | .invokeOnTheData => { x | spec x }
+    | .other => { x | x.length = 1 ∧ ¬(spec x) }
+  coe_injective' := by
+    intro la1 la2 h1
+    simp at h1
+    match meq1: la1, meq2: la2 with
+    | .other, .other | .invokeOnTheData, .invokeOnTheData => rfl
+    | .other, .invokeOnTheData | .invokeOnTheData, .other =>
+      simp at h1
+      have lm1 (data: Data.T St) := h1 [.some (.invokeOnTheData data)]
+      simp at lm1
 
-instance : LabelMap (Label St) (ImmediatelyBeginsRunning.Label) where
-  labelMap l :=
-    match l with
-    | .invokeOnTheData _ => .some (.invokeOnTheData)
-    | _ => .none
-
-instance : LabelMap (Label St) (IsOnline.Label) where
-  labelMap _ := .some (.partOfRunningYourProgram)
--/
+instance : LabelMorph (IsOnline.Label) (Label St) where
+  coe la :=
+    match la with
+    | .partOfRunningYourProgram => { x | (x matches [.some _]) }
+    | .other => { x | (x matches [.none]) }
+  coe_injective' := by
+    intro la1 la2 h1
+    simp at h1
+    match la1, la2 with
+    | .other, .other | .partOfRunningYourProgram, .partOfRunningYourProgram => rfl
+    | .other, .partOfRunningYourProgram | .partOfRunningYourProgram, .other =>
+      specialize h1 [.none]
+      simp at h1
 
 
 
@@ -339,16 +316,12 @@ private theorem proof_aux1
     simp at hd
     simp [←Cslib.LTS.MTr.single_iff] at tl
     obtain ⟨hd1, hd2⟩ := hd
-    obtain ⟨tl1, tl2⟩ := tl
+    obtain ⟨⟨tl1, tl2⟩, _⟩ := tl
     constructor
     case w => exact st1_2
     case h =>
       constructor <;> constructor <;> simp_all
-    --unfold WriteTheProgram at cont
 
-
-    --constructor <;> constructor
-    --simp_all
 
 protected theorem proof
   : (M.lts St) |> DoesNotDoAnyProcessing St := by
@@ -368,11 +341,47 @@ protected theorem proof
     obtain ⟨⟨st2_p1, st2_p2⟩,⟨st2_p3,st2_p4⟩⟩ := st2_p
     constructor <;> simp_all
 
+
 end DoesNotDoAnyProcessing
 
+namespace ImmediatelyBeginsRunning
+
+attribute [scoped simp] Membership.mem Set.Mem SetLike.coe
+
+protected theorem proof
+  : (instLTS St).mapTo (ImmediatelyBeginsRunning.Label) |> ImmediatelyBeginsRunning St := by
+  constructor
+  · intro st1 st2 data h1
+    simp [←Cslib.LTS.MTr.single_iff] at h1
+    specialize h1 data
+    simp [instLTS] at h1
+    exact h1.left
+  · intro st1 st2 h1
+    simp [instLTS] at h1
+    simp [←Cslib.LTS.MTr.single_iff] at h1
+    specialize h1 0
+    exact h1.right
+
+end ImmediatelyBeginsRunning
 
 
 
+namespace IsOnline
+
+attribute [scoped simp] Membership.mem Set.Mem SetLike.coe
+attribute [scoped simp ←] Cslib.LTS.MTr.single_iff
+
+protected theorem proof
+  : (instLTS St).mapTo (IsOnline.Label) |> IsOnline St := by
+  simp [IsOnline]
+  intro st1 st2 h1
+  exists [.none]
+  simp
+  exact h1
+
+
+
+end IsOnline
 
 
 
