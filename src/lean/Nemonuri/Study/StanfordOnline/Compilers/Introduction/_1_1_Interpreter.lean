@@ -169,7 +169,7 @@ section def_s
 
 protected class abbrev State.Program (St: Type us) := Program St, Zero (Program.T St)
 
-protected class abbrev State.Data (St: Type us) := Data St, Zero (Data.T St)
+protected class abbrev State.Data (St: Type us) := Data St, Zero (Data.T St), BEq (Data.T St), LawfulBEq (Data.T St)
 
 protected class abbrev State.Output (St: Type us) := Output St, Zero (Output.T St)
 
@@ -189,6 +189,8 @@ inductive Label where
   | takeAsInput (prog: Program.T St) (data: Data.T St)
   | produceOutput
 
+set_option allowUnsafeReducibility true in
+attribute [scoped reducible, instance 5] instDecidableEqOfLawfulBEq
 attribute [scoped simp] Singleton.singleton Set.singleton setOf Set funext_iff
 
 instance : LabelMorph (ProduceOutput.Directly.Label) (Label St) where
@@ -211,13 +213,42 @@ instance : LabelMorph (ProduceOutput.Directly.Label) (Label St) where
       simp at h1
 
 
-theorem forall_prop_congr_iff.{u} {α : Sort u} {p q : α → Prop} : (∀ a, p a = q a) ↔ (∀ a, p a) = (∀ a, q a) := by
+theorem forall_prop_congr_iff.{u} {α : Sort u} {p q : α → Prop} [dp: DecidablePred p] [dq: DecidablePred q] : (∀ a, p a = q a) ↔ (∀ a, p a) = (∀ a, q a) := by
   constructor
   case mp =>
     intro h
     exact (forall_congr h)
   case mpr =>
-    intro h
+    intro h1 a
+    simp [DecidablePred] at dp dq
+    match mdp: (dp a).decide, mdq: (dq a).decide with
+    | .true, .true | .false, .false => simp_all
+    | .true, .false =>
+      have lm1 : (∃a, p a) := ⟨a, (by simp_all)⟩
+      have lm2 : (∃a, ¬q a) := ⟨a, (by simp_all)⟩
+      replace lm2 := Classical.not_forall.mpr lm2
+      simp [lm2] at h1
+      have lm3 := And.intro lm1 h1 --: (∃ x, p x) ∧ ∃ x, ¬p x --...모순이 아니네...!!!!!
+    --have lm1 : (∃a, p a) := ⟨a, dp a⟩
+    --simp [←decide_eq_decide]
+    --simp [←decide_eq_decide] at h1
+/-
+    match mdp: (dp a).decide, mdq: (dq a).decide with
+    | .true, .true | .false, .false => simp_all
+    | .true, .false =>
+-/
+/-
+    | .isTrue _, .isTrue _ | .isFalse _, .isFalse _ => simp_all
+    | .isTrue hp, .isFalse hq =>
+      simp_all
+      have := (Iff.mpr h1)
+    | .isTrue _, .isFalse _ =>
+-/
+    --simp [DecidablePred] at dp dq
+    --dite
+
+    --let dpa (a: α) := dp a
+    --let dqa (a: α) := dq a
 
   --intro h
   --exact (forall_congr h) |> propext_iff.mp
@@ -235,9 +266,8 @@ instance : LabelMorph (DoesNotDoAnyProcessing.Label St) (Label St) where
     | .produceOutput, .produceOutput => rfl
     | .takeAsInput prog1, .takeAsInput prog2 =>
       simp at h1
-      conv at h1 =>
-        arg 2
-        apply forall_prop_domain_congr
+      have lm1 (data: Data.T St) := h1 [.some (.takeAsInput prog1 data)]
+      simp at lm1
         --apply propext_iff.mpr
         --arg 2
         --ext
