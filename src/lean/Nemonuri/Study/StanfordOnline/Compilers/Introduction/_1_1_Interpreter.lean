@@ -186,9 +186,16 @@ variable (St: Type us) [State St]
 inductive Label where
   | writeTheProgram (prog: Program.T St)
   | invokeOnTheData (data: Data.T St)
-  | takeAsInput (prog: Program.T St) (data: Data.T St)
+--  | takeAsInput (prog: Program.T St) (data: Data.T St)
   | produceOutput
 
+instance instLTS : Cslib.LTS St (Label St) where
+  Tr st1 μ st2 :=
+    match μ with
+    --| .takeAsInput prog data => TakeAsInput St prog data st1 st2
+    | .produceOutput => ProduceOutput St st1 st2
+    | .writeTheProgram prog => WriteTheProgram St prog st1 st2
+    | .invokeOnTheData data => InvokeOnTheData St data st1 st2
 
 attribute [scoped simp] Singleton.singleton Set.singleton setOf Set funext_iff
 
@@ -258,7 +265,7 @@ theorem forall_prop_congr_iff.{u} {α : Sort u} {p q : α → Prop} [dp: Decidab
 instance : LabelMorph (DoesNotDoAnyProcessing.Label St) (Label St) where
   coe (la: DoesNotDoAnyProcessing.Label St) :=
     match la with
-    | .takeAsInput prog => { x | ∃data, [.some (.takeAsInput prog data)] = x }
+    | .takeAsInput prog => { x | ∃data, [.some (.writeTheProgram prog), .some (.invokeOnTheData data)] = x }
     | .produceOutput => { [.some .produceOutput] }
   coe_injective' := by
     intro la1 la2 h1
@@ -267,14 +274,15 @@ instance : LabelMorph (DoesNotDoAnyProcessing.Label St) (Label St) where
     | .produceOutput, .produceOutput => rfl
     | .takeAsInput prog1, .takeAsInput prog2 =>
       simp at h1
-      have lm1 (data: Data.T St) := h1 [.some (.takeAsInput prog1 data)]
+      have lm1 (data: Data.T St) := h1 [.some (.writeTheProgram prog1), .some (.invokeOnTheData data)]
       simp at lm1
       simp [lm1]
     | .produceOutput, .takeAsInput prog | .takeAsInput prog, .produceOutput =>
       simp at h1
-      have lm1 (data: Data.T St) := h1 [.some (.takeAsInput prog data)]
+      have lm1 (data: Data.T St) := h1 [.some (.writeTheProgram prog), .some (.invokeOnTheData data)]
       simp at lm1
 
+#print instLabelMorphLabelLabel_1
 
 
 /-
@@ -295,27 +303,72 @@ instance : LabelMap (Label St) (IsOnline.Label) where
 -/
 
 
-def mkLTS : Cslib.LTS St (Label St) where
-  Tr st1 μ st2 :=
-    match μ with
-    | .takeAsInput prog data => TakeAsInput St prog data st1 st2
-    | .produceOutput => ProduceOutput St st1 st2
-    | .writeTheProgram prog => WriteTheProgram St prog st1 st2
-    | .invokeOnTheData data => InvokeOnTheData St data st1 st2
 
 
 
-attribute [local simp] mkLTS Cslib.LTS.mapByLabelMorph
+
+attribute [scoped simp] Cslib.LTS.mapTo_iff Cslib.LTS.withIdle
+--attribute [scoped simp ←]
 
 protected theorem ProduceOutput.Directly.proof
-  : (mkLTS St).mapByLabelMorph (ProduceOutput.Directly.Label) |> ProduceOutput.Directly St := by
-    simp [ProduceOutput.Directly]
-    intro st1 st2 h1
-    replace h1 := h1 [.some .produceOutput]
-    simp [Cslib.LTS.withIdle, ← Cslib.LTS.MTr.single_iff] at h1
-    simp [Membership.mem, Set.Mem, SetLike.coe, setOf] at h1
-    exact h1
+  : (instLTS St).mapTo (ProduceOutput.Directly.Label) |> ProduceOutput.Directly St := by
+  simp [ProduceOutput.Directly]
+  intro st1 st2 h1
+  replace h1 := h1 [.some .produceOutput]
+  simp [←Cslib.LTS.MTr.single_iff, SetLike.coe, setOf] at h1
+  exact h1
 
+
+namespace DoesNotDoAnyProcessing
+
+open Cslib.LTS
+attribute [scoped simp] Membership.mem Set.Mem SetLike.coe
+
+protected abbrev M.lts := (instLTS St).mapTo (DoesNotDoAnyProcessing.Label St)
+
+private theorem proof_aux1
+  prog st1 st3
+  (h1: (M.lts St).Tr st1 (.takeAsInput prog) st3)
+  data
+  : ∃(st2: St), WriteTheProgram St prog st1 st2 ∧ InvokeOnTheData St data st2 st3 := by
+  simp at h1
+  replace h1 := h1 data
+  match meq1: h1 with
+  | MTr.stepL hd tl =>
+    rename St => st1_2
+    simp at hd
+    simp [←Cslib.LTS.MTr.single_iff] at tl
+    obtain ⟨hd1, hd2⟩ := hd
+    obtain ⟨tl1, tl2⟩ := tl
+    constructor
+    case w => exact st1_2
+    case h =>
+      constructor <;> constructor <;> simp_all
+    --unfold WriteTheProgram at cont
+
+
+    --constructor <;> constructor
+    --simp_all
+
+protected theorem proof
+  : (M.lts St) |> DoesNotDoAnyProcessing St := by
+  constructor
+  case takeAsInput_spec =>
+    intro prog data st1 st3 h1
+    obtain ⟨st2, st2_p⟩ := proof_aux1 St prog st1 st3 h1 data
+    obtain ⟨⟨st2_p1, st2_p2⟩,⟨st2_p3,st2_p4⟩⟩ := st2_p
+    constructor <;> simp_all
+  case produceOutput_spec =>
+    intro st1 st2 h1
+    simp [←Cslib.LTS.MTr.single_iff] at h1
+    exact h1
+  case main_spec =>
+    intro prog st1 st2 st3 h1 h2
+    obtain ⟨st2, st2_p⟩ := proof_aux1 St prog st1 st2 h1 (0: Data.T St)
+    obtain ⟨⟨st2_p1, st2_p2⟩,⟨st2_p3,st2_p4⟩⟩ := st2_p
+    constructor <;> simp_all
+
+end DoesNotDoAnyProcessing
 
 
 
