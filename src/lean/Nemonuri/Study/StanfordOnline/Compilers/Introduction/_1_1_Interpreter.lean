@@ -5,7 +5,7 @@ public import Nemonuri.Study.StanfordOnline.Compilers.Introduction.Basic
 public import Cslib.Foundations.Semantics.LTS.Basic
 public import Cslib.Foundations.Semantics.LTS.Relation
 public import Cslib.Foundations.Semantics.LTS.LTSCat.Basic
---public import Mathlib.Data.Set.Defs
+public import Mathlib.Computability.Language
 
 public section public_s
 @[expose] section expose_s
@@ -99,12 +99,13 @@ structure ProduceOutput (st1 st2: St) : Prop where
 namespace ProduceOutput
 
 inductive Directly.Label where
+  | other
   | produceOutput
   deriving DecidableEq
 
-def Directly (lts: Cslib.LTS St (Option Directly.Label)) : Prop :=
+def Directly (lts: Cslib.LTS St (Directly.Label)) : Prop :=
   ∀st1 st2,
-    (lts.Tr st1 (.some .produceOutput) st2) →
+    (lts.Tr st1 (.produceOutput) st2) →
     (ProduceOutput St st1 st2)
 
 end ProduceOutput
@@ -116,12 +117,12 @@ inductive DoesNotDoAnyProcessing.Label where
   | takeAsInput (prog: Program.T St)
   | produceOutput
 
-structure DoesNotDoAnyProcessing (lts: Cslib.LTS St (Option (DoesNotDoAnyProcessing.Label St))) : Prop where
-  takeAsInput_spec prog data st1 st2 : (lts.Tr st1 (.some (.takeAsInput prog)) st2) → (TakeAsInput St prog data st1 st2)
-  produceOutput_spec st1 st2 : (lts.Tr st1 (.some .produceOutput) st2) → (ProduceOutput St st1 st2)
+structure DoesNotDoAnyProcessing (lts: Cslib.LTS St (DoesNotDoAnyProcessing.Label St)) : Prop where
+  takeAsInput_spec prog data st1 st2 : (lts.Tr st1 (.takeAsInput prog) st2) → (TakeAsInput St prog data st1 st2)
+  produceOutput_spec st1 st2 : (lts.Tr st1 .produceOutput st2) → (ProduceOutput St st1 st2)
   main_spec prog (st1 st2 st3: St) :
-    (lts.Tr st1 (.some (.takeAsInput prog)) st2) →
-    (lts.Tr st2 (.some .produceOutput) st3) →
+    (lts.Tr st1 ((.takeAsInput prog)) st2) →
+    (lts.Tr st2 .produceOutput st3) →
     ((prog = (Program.v st2)) ∧ ((Program.v st2) = (Program.v st3)))
 
 /-!
@@ -188,26 +189,67 @@ inductive Label where
   | takeAsInput (prog: Program.T St) (data: Data.T St)
   | produceOutput
 
+attribute [scoped simp] Singleton.singleton Set.singleton setOf Set funext_iff
 
-instance : LabelMorph (Option ProduceOutput.Directly.Label) (Label St) where
+instance : LabelMorph (ProduceOutput.Directly.Label) (Label St) where
   coe la :=
     match la with
-    | .some .produceOutput =>
-      setOf (fun x => match x with | [.some .produceOutput] => True | _ => False)
-    | .none =>
-      setOf (fun x => match x with | [.some .produceOutput] => False | [.some _] => True | _ => False)
+    | .produceOutput =>
+      { [.some .produceOutput] }
+    | .other =>
+      { x | (match x with | [.some .produceOutput] => False | [.some _] => True | _ => False) }
   coe_injective' := by
     intro la1 la2 h1
     simp at h1
     match meq1: la1, meq2: la2 with
-    | .none, .none => rfl
-    | .some la1s, .some la2s => congr
-    | .none, .some _ | .some _, .none =>
+    | .other, .other | .produceOutput, .produceOutput => rfl
+    | .other, .produceOutput | .produceOutput, .other =>
+      --unfold setOf Set at h1
       simp at h1
-      unfold setOf Set at h1
-      rewrite [funext_iff] at h1
+      --rewrite [funext_iff] at h1
       replace h1 := h1 [.some .produceOutput]
       simp at h1
+
+
+theorem forall_prop_congr_iff.{u} {α : Sort u} {p q : α → Prop} : (∀ a, p a = q a) ↔ (∀ a, p a) = (∀ a, q a) := by
+  constructor
+  case mp =>
+    intro h
+    exact (forall_congr h)
+  case mpr =>
+    intro h
+
+  --intro h
+  --exact (forall_congr h) |> propext_iff.mp
+
+
+instance : LabelMorph (DoesNotDoAnyProcessing.Label St) (Label St) where
+  coe (la: DoesNotDoAnyProcessing.Label St) :=
+    match la with
+    | .takeAsInput prog => { x | ∀data, [.some (.takeAsInput prog data)] = x }
+    | .produceOutput => { [.some .produceOutput] }
+  coe_injective' := by
+    intro la1 la2 h1
+    simp at h1
+    match meq1: la1, meq2: la2 with
+    | .produceOutput, .produceOutput => rfl
+    | .takeAsInput prog1, .takeAsInput prog2 =>
+      simp at h1
+      conv at h1 =>
+        arg 2
+        apply forall_prop_domain_congr
+        --apply propext_iff.mpr
+        --arg 2
+        --ext
+      --have lm1 (data: Data.T St) := h1 [.some (.takeAsInput prog1 data)]
+      --simp at lm1
+/-
+      by_cases h2: Nonempty (Data.T St)
+      case pos =>
+        replace lm1 := Classical.choice h2 |> lm1
+        simp at lm1
+-/
+
 
 
 /-
@@ -241,7 +283,7 @@ def mkLTS : Cslib.LTS St (Label St) where
 attribute [local simp] mkLTS Cslib.LTS.mapByLabelMorph
 
 protected theorem ProduceOutput.Directly.proof
-  : (mkLTS St).mapByLabelMorph (Option ProduceOutput.Directly.Label) |> ProduceOutput.Directly St := by
+  : (mkLTS St).mapByLabelMorph (ProduceOutput.Directly.Label) |> ProduceOutput.Directly St := by
     simp [ProduceOutput.Directly]
     intro st1 st2 h1
     replace h1 := h1 [.some .produceOutput]
@@ -249,7 +291,7 @@ protected theorem ProduceOutput.Directly.proof
     simp [Membership.mem, Set.Mem, SetLike.coe, setOf] at h1
     exact h1
 
-#print ProduceOutput.Directly.proof
+
 
 
 
