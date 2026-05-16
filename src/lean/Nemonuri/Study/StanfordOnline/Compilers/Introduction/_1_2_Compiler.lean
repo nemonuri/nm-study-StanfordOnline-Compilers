@@ -57,8 +57,21 @@ structure ProduceExecutable (st1 st2: St) : Prop where
 -/
 class ExecutableIsProgram where
   embedding: Function.Embedding (Executable.T St) (Program.T St)
-  embedding_zero (st: St) : (embedding 0 = 0)
+  embedding_zero : (embedding 0 = 0)
   another_program (st: St) : (Executable.v st) ≠ 0 → embedding (Executable.v st) ≠ (Program.v st)
+
+omit [Data St] [Zero (Data.T St)] in
+open ExecutableIsProgram Function in
+theorem ExecutableIsProgram.zero_iff [ExecutableIsProgram St] (st: St)
+  : ((Executable.v st) = 0) ↔ (embedding (Executable.v st) = 0) := by
+  constructor
+  · intro h
+    rw [h]
+    exact embedding_zero
+  · intro h
+    rewrite [← embedding_zero] at h
+    apply embedding.injective
+    exact h
 
 /-
 open ExecutableIsProgram Function in
@@ -161,7 +174,6 @@ protected structure TakeData (data: Data.T St) (st1 st2: St) where
   pre: (data ≠ 0) ∧ (IsExecutableRunning _ st1 |> Not) ∧ (IsYourProgramRunning _ st1 |> Not)
   post: (Data.v st2 = data) ∧ (Executable.v st1 = Executable.v st2) ∧ (Program.v st1 = Program.v st2)
 
-@[ext]
 protected structure BeginRun (st1 st2: St) where
   pre: (Data.v st1 ≠ 0) ∧ (Executable.v st1 ≠ 0) ∧ (IsExecutableRunning _ st1 |> Not)
   post: (Data.v st2 = Data.v st1) ∧ (IsExecutableRunning _ st1)
@@ -209,13 +221,42 @@ example (data: Data.T St) (st1 st2: St) (h: RunSeparately _ data st1 st2)
   obtain ⟨h_pre, h_post⟩ := h
   obtain ⟨h1, h2⟩ := h_pre
   obtain ⟨h3, h4, h5⟩ := h_post
-  simp at *
+  simp_all
+  obtain ⟨h2_1, h2_2⟩ := h2
+  obtain ⟨h5_1, h5_2⟩ := h5
   by_cases h6: Executable.v st1 = 0
-  · have lm1 := (ExecutableIsProgram.embedding_zero _).mp h6
-    simp [lm1] at *
-    clear lm1
-    exists [.takeData data]
-  ·
+  · --rewrite [ExecutableIsProgram.zero_iff] at h6
+    have lm1 : (instLTS _).image st1 .produceExecutable = ∅ := by
+      open Classical in
+      simp [instLTS, image, setOf, EmptyCollection.emptyCollection]
+      funext st_x
+      by_contra cont
+      simp at cont
+      obtain ⟨⟨h7_1, h7_2⟩, ⟨h8_1, h8_2⟩⟩ := cont
+      simp_all
+      sorry
+    sorry
+  · sorry
+      --by_contra cont
+      --simp at cont
+
+/-
+    exists [.produceExecutable, .takeData data, .beginRun]
+    have lm1 : (instLTS _).image st1 .produceExecutable |> Set.Nonempty := by
+      simp [instLTS, image, Set.Nonempty]
+      constructor
+      · constructor <;> constructor
+        · exact h2.left
+        · exact h6
+        ·
+-/
+    --rw [← List.singleton_append]
+    --rw [MTr.split_iff]
+    --let (eq := h7) image1 := (instLTS _).image st1 .produceExecutable
+    --simp [instLTS, image, setOf] at h7
+
+
+
 /-
     let w : List (Label St) := [.takeData data, .beginRun]
     exists w

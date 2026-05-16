@@ -1,7 +1,7 @@
 name = "Nemonuri-Study-StanfordOnline-Compilers"
 version = "0.1.0"
 keywords = ["math"]
-defaultTargets = ["Nemonuri.Study.StanfordOnline.Compilers"]
+defaultTargets = ["Nemonuri", "Nemonuri.Study.StanfordOnline.Compilers"]
 
 
 [leanOptions]
@@ -16,6 +16,9 @@ rev = "v4.30.0-rc2"
 name = "cslib"
 scope = "leanprover"
 rev = "v4.30.0-rc2"
+
+[[lean_lib]]
+name = "Nemonuri"
 
 [[lean_lib]]
 name = "Nemonuri.Study.StanfordOnline.Compilers"
