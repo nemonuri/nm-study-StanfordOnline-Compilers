@@ -59,11 +59,12 @@ def Cslib.LTS.mapByLabelMap {St La1} (lts: Cslib.LTS St La1) La2 [LabelMap La1 L
       ∀(la1: La1), ((LabelMap.labelMap la1) = la2?) → (la2?.isSome) → (lts.Tr st1 la1 st2) }
 -/
 
-
+/-
 theorem Cslib.LTS.MTr.single_iff.{u, v}
   {State : Type u} {Label : Type v} (lts : LTS State Label) (s1 : State) (μ : Label) (s2 : State)
   : lts.Tr s1 μ s2 ↔ lts.MTr s1 [μ] s2 :=
   Iff.intro (Cslib.LTS.MTr.single lts) (Cslib.LTS.MTr.single_invert lts s1 μ s2)
+-/
 
 end expose_s
 end public_s

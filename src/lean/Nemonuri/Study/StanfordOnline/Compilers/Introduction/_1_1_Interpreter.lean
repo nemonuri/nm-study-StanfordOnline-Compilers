@@ -2,6 +2,7 @@ module
 
 --public import Std.Data.ExtDHashMap
 public import Nemonuri.Study.StanfordOnline.Compilers.Introduction.Basic
+public import Nemonuri.Study.StanfordOnline.Compilers.Lemma
 public import Cslib.Foundations.Semantics.LTS.Basic
 public import Cslib.Foundations.Semantics.LTS.Relation
 public import Cslib.Foundations.Semantics.LTS.LTSCat.Basic
@@ -284,7 +285,7 @@ instance : LabelMorph (IsOnline.Label) (Label St) where
 
 
 
-attribute [scoped simp] Cslib.LTS.mapTo_iff Cslib.LTS.withIdle
+attribute [scoped simp] Cslib.LTS.mapTo_iff Cslib.LTS.withIdle Cslib.LTS.MTr.single_iff
 --attribute [scoped simp ←]
 
 protected theorem ProduceOutput.Directly.proof
@@ -292,7 +293,7 @@ protected theorem ProduceOutput.Directly.proof
   simp [ProduceOutput.Directly]
   intro st1 st2 h1
   replace h1 := h1 [.some .produceOutput]
-  simp [←Cslib.LTS.MTr.single_iff, SetLike.coe, setOf] at h1
+  simp [SetLike.coe, setOf] at h1
   exact h1
 
 
@@ -314,7 +315,7 @@ private theorem proof_aux1
   | MTr.stepL hd tl =>
     rename St => st1_2
     simp at hd
-    simp [←Cslib.LTS.MTr.single_iff] at tl
+    simp at tl
     obtain ⟨hd1, hd2⟩ := hd
     obtain ⟨⟨tl1, tl2⟩, _⟩ := tl
     constructor
@@ -333,7 +334,7 @@ protected theorem proof
     constructor <;> simp_all
   case produceOutput_spec =>
     intro st1 st2 h1
-    simp [←Cslib.LTS.MTr.single_iff] at h1
+    simp at h1
     exact h1
   case main_spec =>
     intro prog st1 st2 st3 h1 h2
@@ -352,13 +353,12 @@ protected theorem proof
   : (instLTS St).mapTo (ImmediatelyBeginsRunning.Label) |> ImmediatelyBeginsRunning St := by
   constructor
   · intro st1 st2 data h1
-    simp [←Cslib.LTS.MTr.single_iff] at h1
+    simp at h1
     specialize h1 data
     simp [instLTS] at h1
     exact h1.left
   · intro st1 st2 h1
     simp [instLTS] at h1
-    simp [←Cslib.LTS.MTr.single_iff] at h1
     specialize h1 0
     exact h1.right
 
@@ -369,7 +369,6 @@ end ImmediatelyBeginsRunning
 namespace IsOnline
 
 attribute [scoped simp] Membership.mem Set.Mem SetLike.coe
-attribute [scoped simp ←] Cslib.LTS.MTr.single_iff
 
 protected theorem proof
   : (instLTS St).mapTo (IsOnline.Label) |> IsOnline St := by
