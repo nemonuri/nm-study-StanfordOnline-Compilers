@@ -18,6 +18,7 @@ class ZeroEq {σ T: Type u} [Zero σ] [Zero T] (f: σ → T) : Prop where
 
 variable {σ T: Type u} [Zero σ] [Zero T] (f: σ → T)
 
+@[simp]
 theorem zeroEq_iff : (ZeroEq f) ↔ (f 0 = 0) := by
   constructor
   · intro h
@@ -28,7 +29,9 @@ theorem zeroEq_iff : (ZeroEq f) ↔ (f 0 = 0) := by
 class SourceExists : Prop where
   source_exists (v: T) (h: v ≠ 0) : ∃(s: σ), (f s = v)
 
+
 omit [Zero σ] in
+@[simp]
 theorem sourceExists_iff : (SourceExists f) ↔ ((v: T) → (v ≠ 0) → ∃(s: σ), (f s = v)) := by
   constructor
   · intro h
@@ -38,6 +41,16 @@ theorem sourceExists_iff : (SourceExists f) ↔ ((v: T) → (v ≠ 0) → ∃(s:
 
 
 class abbrev IsProperty : Prop := ZeroEq f, SourceExists f
+
+@[simp]
+theorem isProperty_iff : (IsProperty f) ↔ (ZeroEq f) ∧ (SourceExists f) := by
+  constructor
+  · intro h
+    obtain ⟨_,_⟩ := h
+    trivial
+  · intro h
+    have lm1 : IsProperty f := @IsProperty.mk _ _ _ _ f h.left h.right
+    exact lm1
 
 
 

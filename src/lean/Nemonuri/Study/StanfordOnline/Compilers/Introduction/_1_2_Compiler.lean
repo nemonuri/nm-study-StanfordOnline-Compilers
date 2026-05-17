@@ -29,10 +29,10 @@ Now a compiler is structured differently.
 -/
 export Interpreter (Program Program.T Program.v Data Data.T Data.v)
 
-variable
-  (St: Type us)
-  [Program St] [Zero (Program.T St)]
-  [Data St] [Zero (Data.T St)]
+
+variable (St: Type us) [Zero St]
+variable [Program St] [Zero (Program.T St)] [IsProperty (@Program.v St _)]
+variable [Data St] [Zero (Data.T St)] [IsProperty (@Data.v St _)]
 
 structure TakeAsInput (prog: Program.T St) (_ st2: St) : Prop where
   pre: (prog ≠ 0)
@@ -41,11 +41,11 @@ structure TakeAsInput (prog: Program.T St) (_ st2: St) : Prop where
 /-!
 2. And then it produces an **Executable**(*exec*).
 -/
-class Executable (St: Type us) where
+class Executable where
   protected T: Type us
-  protected v: (st: St) → T
+  protected v: St → T
 
-variable [Executable St] [Zero (Executable.T St)]
+variable [Executable St] [Zero (Executable.T St)] [IsProperty (@Executable.v St _)]
 
 structure ProduceExecutable (st1 st2: St) : Prop where
   pre: (Program.v st1 ≠ 0) ∧ (Executable.v st1 = 0)
@@ -60,7 +60,7 @@ class ExecutableIsProgram where
   embedding_zero : (embedding 0 = 0)
   another_program (st: St) : (Executable.v st) ≠ 0 → embedding (Executable.v st) ≠ (Program.v st)
 
-omit [Data St] [Zero (Data.T St)] in
+omit [Data St] [Zero (Data.T St)] [Zero St] [IsProperty (@Program.v St _)] [IsProperty (@Executable.v St _)] in
 open ExecutableIsProgram Function in
 theorem ExecutableIsProgram.zero_iff [ExecutableIsProgram St] (st: St)
   : ((Executable.v st) = 0) ↔ (embedding (Executable.v st) = 0) := by
@@ -184,15 +184,17 @@ end spec_s
 
 section def_s
 
-protected class abbrev State.Executable (St: Type us) := Executable St, Zero (Executable.T St)
+variable (St: Type us) [Zero St]
 
-class State (St: Type us) extends
+protected class abbrev State.Executable := Executable St, Zero (Executable.T St), IsProperty (@Executable.v St _)
+
+class State extends
   toInterpreterState: Interpreter.State St,
   toStateExecutable: State.Executable St,
   ExecutableIsProgram St,
   Language St
 
-variable (St: Type us) [State St]
+variable [State St]
 
 inductive Label where
   | takeAsInput (prog: Program.T St)
@@ -218,6 +220,11 @@ open Cslib LTS in
 attribute [simp] CanReach IsNonZeroRunning IsYourProgramRunning IsExecutableRunning in
 example (data: Data.T St) (st1 st2: St) (h: RunSeparately _ data st1 st2)
   : (instLTS _).CanReach st1 st2 := by
+  rename (State St) => st
+  obtain ⟨lm_prog1, lm_prog2⟩ := st.toStateProgram.toIsProperty |> (isProperty_iff _).mp
+  obtain ⟨lm_data1, lm_data2⟩ := st.toStateData.toIsProperty |> (isProperty_iff _).mp
+  obtain ⟨lm_exe1, lm_exe2⟩ := st.toStateExecutable.toIsProperty |> (isProperty_iff _).mp
+  simp at *
   obtain ⟨h_pre, h_post⟩ := h
   obtain ⟨h1, h2⟩ := h_pre
   obtain ⟨h3, h4, h5⟩ := h_post
@@ -225,17 +232,23 @@ example (data: Data.T St) (st1 st2: St) (h: RunSeparately _ data st1 st2)
   obtain ⟨h2_1, h2_2⟩ := h2
   obtain ⟨h5_1, h5_2⟩ := h5
   by_cases h6: Executable.v st1 = 0
-  · --rewrite [ExecutableIsProgram.zero_iff] at h6
-    have lm1 : (instLTS _).image st1 .produceExecutable = ∅ := by
-      open Classical in
-      simp [instLTS, image, setOf, EmptyCollection.emptyCollection]
-      funext st_x
+  · have lm1 : (instLTS _).image st1 .produceExecutable |> Set.Nonempty := by
+      simp [instLTS, image, Set.Nonempty]
       by_contra cont
-      simp at cont
-      obtain ⟨⟨h7_1, h7_2⟩, ⟨h8_1, h8_2⟩⟩ := cont
-      simp_all
-      sorry
-    sorry
+      simp [*] at cont
+      specialize lm_prog2 (Program.v st1) h2_1
+      obtain ⟨w, w_prop⟩ := lm_prog2
+      specialize cont w
+      suffices ProduceExecutable St st1 w from by contradiction
+      constructor <;> constructor
+      · trivial
+      · trivial
+      · trivial
+      · trivial
+    obtain ⟨lm1_st, lm1_p⟩ := lm1
+    have lm2 : (instLTS _).Tr st1 .produceExecutable lm1_st := by
+      simp [Membership.mem, Set.Mem] at lm1_p
+
   · sorry
       --by_contra cont
       --simp at cont
