@@ -7,6 +7,7 @@ public import Cslib.Foundations.Semantics.LTS.Basic
 public import Cslib.Foundations.Semantics.LTS.Relation
 public import Cslib.Foundations.Semantics.LTS.LTSCat.Basic
 public import Mathlib.Computability.Language
+public import Nemonuri
 
 public section public_s
 @[expose] section expose_s
@@ -21,6 +22,9 @@ universe us ul
 namespace Interpreter
 section _1
 
+variable
+  (St: Type us) [Zero St]
+
 /-!
 
 #### 1.1. Interpreter
@@ -29,9 +33,10 @@ So, what does an interpreter do?
 
 1. You wrote a **Program**(*prog*).
 -/
-class Program (St: Type us) where
-  protected T: Type us
-  protected v: (st: St) → T
+class Program where --extends PartialProperty St
+  protected p: PartialProperty St
+--  protected T: Type us
+--  protected v: (st: St) → T
 --variable (TProgram: Type u) (prog: TProgram)
 
 --protected def prog := @Spec.Program.v
@@ -40,9 +45,8 @@ class Program (St: Type us) where
 /-!
 2. You have a **Data**(*data*), whatever you want to run the program on.
 -/
-class Data (St: Type us) where
-  protected T: Type us
-  protected v: (st: St) → T
+class Data where --extends PartialProperty St
+  protected p: PartialProperty St
 --variable (TData: Type u) (data: TData)
 
 --protected def data := @Spec.Data.v
@@ -51,16 +55,15 @@ class Data (St: Type us) where
 3. An **Interpreter**(*self*) takes as input, your program(*prog*) and your data(*data*).
 -/
 variable
-  (St: Type us)
-  [Program St] [Zero (Program.T St)]
-  [Data St] [Zero (Data.T St)]
+  [p_prog: Program St] --[Zero (Program.T St)]
+  [p_data: Data St] --[Zero (Data.T St)]
 
-structure TakeAsInput (prog: Program.T St) (data: Data.T St) (_ st2: St) : Prop where
+structure TakeAsInput (prog: p_prog.p.T) (data: p_data.p.T) (_ st2: St) : Prop where
   pre: (prog ≠ 0) ∧ (data ≠ 0)
-  post: (Program.v st2 = prog) ∧ (Data.v st2 = data)
+  post: (p_prog.p.v st2 = prog) ∧ (p_data.p.v st2 = data)
   --(prog ≠ 0) ∧ (Program.v st2 = prog) ∧ (data ≠ 0) ∧ (Data.v st2 = data)
 
-variable [DecidableEq (Program.T St)] [DecidableEq (Data.T St)]
+--variable [DecidableEq (Program.T St)] [DecidableEq (Data.T St)]
 /-
 namespace TakeAsInput
 
@@ -85,16 +88,15 @@ end TakeAsInput
 /-!
 4. It(*self*) produces the **Output**(*output*) directly.
 -/
-class Output (St: Type us) where
-  protected T: Type us
-  protected v: (st: St) → T
+class Output where
+  protected p: PartialProperty St
 
 variable
-  [Output St] [DecidableEq (Output.T St)] [Zero (Output.T St)]
+  [p_output: Output St] --[DecidableEq (Output.T St)] [Zero (Output.T St)]
 
 structure ProduceOutput (st1 st2: St) : Prop where
-  pre: (Program.v st1 ≠ 0) ∧ (Data.v st1 ≠ 0)
-  post: (Output.v st2 ≠ 0)
+  pre: (p_prog.p.v st1 ≠ 0) ∧ (p_data.p.v st1 ≠ 0)
+  post: (p_output.p.v st2 ≠ 0)
   --(Program.v st1 ≠ 0) ∧ (Data.v st1 ≠ 0) ∧ (Output.v st2 ≠ 0)
 
 namespace ProduceOutput
@@ -115,7 +117,7 @@ end ProduceOutput
 5. Meaning that it(*self*) doesn't do any processing of the program(*prog*) before it executes it on the input.
 -/
 inductive DoesNotDoAnyProcessing.Label where
-  | takeAsInput (prog: Program.T St)
+  | takeAsInput (prog: p_prog.p.T)
   | produceOutput
 
 structure DoesNotDoAnyProcessing (lts: Cslib.LTS St (DoesNotDoAnyProcessing.Label St)) : Prop where
@@ -124,19 +126,19 @@ structure DoesNotDoAnyProcessing (lts: Cslib.LTS St (DoesNotDoAnyProcessing.Labe
   main_spec prog (st1 st2 st3: St) :
     (lts.Tr st1 ((.takeAsInput prog)) st2) →
     (lts.Tr st2 .produceOutput st3) →
-    ((prog = (Program.v st2)) ∧ ((Program.v st2) = (Program.v st3)))
+    ((prog = (p_prog.p.v st2)) ∧ ((p_prog.p.v st2) = (p_prog.p.v st3)))
 
 /-!
 6. So you just **write the program**(*prog*), and you **invoke~** the interpreter(*self*) **~on the data**(*data*), and the program(*prog*) immediately begins running.
 -/
-structure WriteTheProgram (prog: Program.T St) (st1 st2: St) : Prop where
-  pre: (Program.v st1 = 0) ∧ (prog ≠ 0)
-  post: (Program.v st2 = prog)
+structure WriteTheProgram (prog: p_prog.p.T) (st1 st2: St) : Prop where
+  pre: (p_prog.p.v st1 = 0) ∧ (prog ≠ 0)
+  post: (p_prog.p.v st2 = prog)
 
 
-structure InvokeOnTheData (data: Data.T St) (st1 st2: St) : Prop where
-  pre: (Program.v st1 ≠ 0) ∧ (data ≠ 0)
-  post: (Program.v st2 = Program.v st1) ∧ (Data.v st2 = data)
+structure InvokeOnTheData (data: p_data.p.T) (st1 st2: St) : Prop where
+  pre: (p_prog.p.v st1 ≠ 0) ∧ (data ≠ 0)
+  post: (p_prog.p.v st2 = p_prog.p.v st1) ∧ (p_data.p.v st2 = data)
 
 
 inductive ImmediatelyBeginsRunning.Label where
@@ -145,15 +147,15 @@ inductive ImmediatelyBeginsRunning.Label where
   deriving DecidableEq
 
 class IsRunning where
-  isRunning: (Program.T St) → Bool
+  isRunning: (p_prog.p.T) → Bool
 
 variable [IsRunning St]
 
 abbrev ImmediatelyBeginsRunning.MainEns (st1 st2: St) : Prop :=
-  (IsRunning.isRunning (Program.v st1) = false ∧ IsRunning.isRunning (Program.v st2) = true)
+  (IsRunning.isRunning (p_prog.p.v st1) = false ∧ IsRunning.isRunning (p_prog.p.v st2) = true)
 
 structure ImmediatelyBeginsRunning (lts: Cslib.LTS St (ImmediatelyBeginsRunning.Label)) : Prop where
-  lts_spec (st1 st2: St) (data: Data.T St) : (lts.Tr st1 (.invokeOnTheData) st2) → (InvokeOnTheData St data st1 st2)
+  lts_spec (st1 st2: St) (data: p_data.p.T) : (lts.Tr st1 (.invokeOnTheData) st2) → (InvokeOnTheData St data st1 st2)
   main_spec (st1 st2: St) :
     (lts.Tr st1 (.invokeOnTheData) st2) →
     (ImmediatelyBeginsRunning.MainEns St st1 st2)
@@ -174,26 +176,30 @@ end _1
 
 section def_s
 
-protected class abbrev State.Program (St: Type us) := Program St, Zero (Program.T St)
+variable (St: Type us) [Zero St]
 
-protected class abbrev State.Data (St: Type us) := Data St, Zero (Data.T St)
+protected class abbrev State.Program := Program St
 
-protected class abbrev State.Output (St: Type us) := Output St, Zero (Output.T St)
+protected class abbrev State.Data := Data St
 
-class State (St: Type us) extends
-  toStateProgram: State.Program St,
+protected class abbrev State.Output := Output St
+
+class State extends
+  toStateProgram: Program St,
   toStateData: State.Data St,
   toStateOutput: State.Output St,
   toIsRunning: IsRunning St
 
+#print State
+
 --abbrev LawfulState (St: Type us) [State St] [Zero (Program.T St)] [Zero (Data.T St)] [Zero (Output.T St)] := State St
 
 
-variable (St: Type us) [State St]
+variable [p_st: State St]
 
 inductive Label where
-  | writeTheProgram (prog: Program.T St)
-  | invokeOnTheData (data: Data.T St)
+  | writeTheProgram (prog: p_st.toStateProgram.p.T)
+  | invokeOnTheData (data: p_st.toData.p.T)
 --  | takeAsInput (prog: Program.T St) (data: Data.T St)
   | produceOutput
 
@@ -240,12 +246,12 @@ instance : LabelMorph (DoesNotDoAnyProcessing.Label St) (Label St) where
     | .produceOutput, .produceOutput => rfl
     | .takeAsInput prog1, .takeAsInput prog2 =>
       simp at h1
-      have lm1 (data: Data.T St) := h1 [.some (.writeTheProgram prog1), .some (.invokeOnTheData data)]
+      have lm1 (data: p_st.toData.p.T) := h1 [.some (.writeTheProgram prog1), .some (.invokeOnTheData data)]
       simp at lm1
       simp [lm1]
     | .produceOutput, .takeAsInput prog | .takeAsInput prog, .produceOutput =>
       simp at h1
-      have lm1 (data: Data.T St) := h1 [.some (.writeTheProgram prog), .some (.invokeOnTheData data)]
+      have lm1 (data: p_st.toData.p.T) := h1 [.some (.writeTheProgram prog), .some (.invokeOnTheData data)]
       simp at lm1
 
 
@@ -263,7 +269,7 @@ instance : LabelMorph (ImmediatelyBeginsRunning.Label) (Label St) where
     | .other, .other | .invokeOnTheData, .invokeOnTheData => rfl
     | .other, .invokeOnTheData | .invokeOnTheData, .other =>
       simp at h1
-      have lm1 (data: Data.T St) := h1 [.some (.invokeOnTheData data)]
+      have lm1 (data: p_st.toData.p.T) := h1 [.some (.invokeOnTheData data)]
       simp at lm1
 
 instance : LabelMorph (IsOnline.Label) (Label St) where
@@ -318,10 +324,18 @@ private theorem proof_aux1
     simp at tl
     obtain ⟨hd1, hd2⟩ := hd
     obtain ⟨⟨tl1, tl2⟩, _⟩ := tl
-    constructor
+    exists st1_2
+    constructor <;> constructor <;> simp_all
+/-
     case w => exact st1_2
     case h =>
       constructor <;> constructor <;> simp_all
+      · subst_eqs
+        simp_all
+        obtain ⟨h2, h3⟩ := hd1
+        obtain ⟨h4, h5⟩ := tl2
+        unfold Property
+-/
 
 
 protected theorem proof
@@ -338,7 +352,7 @@ protected theorem proof
     exact h1
   case main_spec =>
     intro prog st1 st2 st3 h1 h2
-    obtain ⟨st2, st2_p⟩ := proof_aux1 St prog st1 st2 h1 (0: Data.T St)
+    obtain ⟨st2, st2_p⟩ := proof_aux1 St prog st1 st2 h1 (0: p_st.toData.T)
     obtain ⟨⟨st2_p1, st2_p2⟩,⟨st2_p3,st2_p4⟩⟩ := st2_p
     constructor <;> simp_all
 
