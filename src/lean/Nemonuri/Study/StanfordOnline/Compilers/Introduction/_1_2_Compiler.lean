@@ -6,6 +6,7 @@ public import Mathlib.Logic.Embedding.Basic
 public import Cslib.Foundations.Semantics.LTS.Execution
 public import Mathlib.Tactic.MkIffOfInductiveProp
 public import Mathlib.Logic.Basic
+public import Cslib.Foundations.Semantics.LTS.Relation
 
 
 public section public_s
@@ -173,8 +174,8 @@ end CanRunSeparately
 open CanRunSeparately in
 def CanRunSeparately {La} (lts: Cslib.LTS St La) : Prop :=
   ∀(data: Data.T St) (st1: St), (ReqPre _ data st1) →
-  (h: ∃(st2: St), ReqPost _ data st1 st2) →
-  lts.CanReach st1 h.choose
+  ∃(st2: St), (ReqPost _ data st1 st2) ∧
+  lts.CanReach st1 st2
 
 
 export Interpreter (Output Output.T Output.v)
@@ -215,9 +216,9 @@ end IsOffline
 open IsOffline in
 def IsOffline {La} (lts: Cslib.LTS St La) : Prop :=
   ∀(st1: St), (ReqPre _ st1) →
-  (h1: ∃(st2: St), (ReqPost _ st2)) →
-  (h2: ∃sts μs, (List.Forall (ReqAll _ st1) sts) ∧ (lts.Execution st1 μs h1.choose sts)) →
-  List.Forall (EnsAll _) h2.choose
+  ∃(st2: St), (ReqPost _ st2) ∧
+  ∃sts μs, (List.Forall (ReqAll _ st1) sts) ∧ (lts.Execution st1 μs st2 sts) ∧
+    List.Forall (EnsAll _) sts
 
 /-!
 7. The compiler is essentially a pre-processing step that produces the executable,
@@ -240,10 +241,10 @@ end CanRunSameMany
 open CanRunSameMany in
 def CanRunSameMany {La} (lts: Cslib.LTS St La) : Prop :=
   ∀(st1: St), (ReqPre _ st1) →
-  (h1: ∃(st2: St), (ReqPost _ st2)) →
+  ∃(st2: St), (ReqPost _ st2) ∧
   ∃sts μs, (List.Forall (ReqAll _ st1) sts) ∧
-            (∃stX ∈ sts, ReqAny _ h1.choose stX) ∧
-            (lts.Execution st1 μs h1.choose sts)
+            (∃stX ∈ sts, ReqAny _ st2 stX) ∧
+            (lts.Execution st1 μs st2 sts)
 
 
 /-
@@ -271,25 +272,22 @@ structure TakeData where
   run (data: Data.T St) (st1: St) (req: Req _ data) : { st2: St // Ens _ data st1 st2 }
 
 
-namespace RunSeparately
+namespace BeginRun
 
-/-
-@[mk_iff]
-protected structure TakeData (data: Data.T St) (st1 st2: St) : Prop where
-  pre: (data ≠ 0) --∧ (IsExecutableRunning _ st1 |> Not) ∧ (IsYourProgramRunning _ st1 |> Not)
-  post: (Data.v st2 = data) ∧
-        (Executable.v st1 = Executable.v st2) ∧
-        (Program.v st1 = Program.v st2) ∧
-        (IsExecutableRunning _ st1 |> Not) ∧ (IsYourProgramRunning _ st1 |> Not)
-        --(RunningStateEq _ st1 st2)
--/
+def Req (st1: St) : Prop := (Data.v st1 ≠ 0) ∧ (Executable.v st1 ≠ 0) ∧ (Not <| IsExecutableRunning _ st1)
 
-@[mk_iff]
-protected structure BeginRun (st1 st2: St) : Prop where
-  pre: (Data.v st1 ≠ 0) ∧ (Executable.v st1 ≠ 0) ∧ (IsExecutableRunning _ st1 |> Not)
-  post: (Data.v st2 = Data.v st1) ∧ (IsExecutableRunning _ st1)
+def Ens (st1 st2: St) : Prop :=
+  (Data.v st1 = Data.v st2) ∧
+  (Program.v st1 = Program.v st2) ∧
+  (Executable.v st1 = Executable.v st2) ∧
+  (IsExecutableRunning _ st1)
 
-end RunSeparately
+end BeginRun
+
+open BeginRun in
+structure BeginRun where
+  run (st1: St) (req: Req _ st1) : { st2: St // Ens _ st1 st2 }
+
 
 end spec_s
 
@@ -320,11 +318,15 @@ protected structure Ability.WillProduceTheOutput extends WillProduceTheOutput St
 protected structure Ability.TakeData extends TakeData St where
   dreq (data: Data.T St) : Decidable (TakeData.Req _ data)
 
+protected structure Ability.BeginRun extends BeginRun St where
+  dreq (st: St) : Decidable (BeginRun.Req _ st)
+
 class Ability where
   toTakeAsInput: Ability.TakeAsInput St
   toProduceExecutable : Ability.ProduceExecutable St
   toWillProduceTheOutput : Ability.WillProduceTheOutput St
   toTakeData : Ability.TakeData St
+  toBeginRun : Ability.BeginRun St
 
 variable [Ability St]
 
@@ -333,16 +335,18 @@ inductive Label where
   | produceExecutable
   | willProduceTheOutput --InvokeOnTheData
   | takeData (data: Data.T St)
-  --| takeData (data: Data.T St)
-  --| beginRun
+  | beginRun
+
 
 
 instance instLTS : Cslib.LTS St (Label St) where
   Tr st1 l st2 :=
     match l with
     | .takeAsInput prog =>
-      match Ability.toTakeAsInput.dreq prog st1 with
-      | .isTrue req => Ability.toTakeAsInput.run prog st1 req = st2 | _ => False
+      (Ability.toTakeAsInput.dreq prog st1).byCases
+        (fun req => Ability.toTakeAsInput.run prog st1 req = st2) (fun _ => False)
+      --match Ability.toTakeAsInput.dreq prog st1 with
+      --| .isTrue req => Ability.toTakeAsInput.run prog st1 req = st2 | _ => False
     | .produceExecutable => --(ProduceExecutable _ st1 st2) ∧ (Not <| IsExecutableRunning _ st2)
       match Ability.toProduceExecutable.dreq st1 with
       | .isTrue req => Ability.toProduceExecutable.run st1 req = st2 | _ => False
@@ -350,32 +354,78 @@ instance instLTS : Cslib.LTS St (Label St) where
       match Ability.toWillProduceTheOutput.dreq st1 with
       | .isTrue req => Ability.toWillProduceTheOutput.run st1 req = st2 | _ => False
     | .takeData data => --RunSeparately.TakeData _ data st1 st2
-      match Ability.toTakeData.dreq data with
-      | .isTrue req => Ability.toTakeData.run data st1 req = st2 | _ => False
+      (Ability.toTakeData.dreq data).byCases
+        (fun req => Ability.toTakeData.run data st1 req = st2) (fun _ => False)
+    | .beginRun =>
+      (Ability.toBeginRun.dreq st1).byCases
+        (fun req => Ability.toBeginRun.run st1 req = st2) (fun _ => False)
+      --match Ability.toTakeData.dreq data with
+      --| .isTrue req => Ability.toTakeData.run data st1 req = st2 | _ => False
     --| .beginRun => RunSeparately.BeginRun _ st1 st2
 
---#print ProduceExecutable.post
+open Cslib LTS
 
---attribute [ext] Cslib.LTS.MTr.split
+attribute [scoped simp] isImageNonempty_iff
+
+theorem TakeData.req_iff (data: Data.T St) (st1: St)
+  : TakeData.Req St data ↔ (instLTS _).IsImageNonempty st1 (.takeData data) := by
+  simp [instLTS, Decidable.byCases]
+  match Ability.toTakeData.dreq data with
+  | .isTrue req => simp [req]
+  | .isFalse h => simp [h, exists_const]
 
 set_option pp.proofs true in
-open Cslib LTS in
+theorem TakeData.Req.imp_ens (data: Data.T St) (st1: St) (req: TakeData.Req St data)
+  : ∃st2, TakeData.Ens St data st1 st2 := by
+  obtain ⟨st2, st2_p⟩ := Ability.toTakeData.run data st1 req
+  exists st2
+  --have (eq := lm1) req := h |> (TakeData.req_iff _ data st1).mpr
+  --let (eq := lm2) st2E := Ability.toTakeData.run data st1 req
+  --apply @Exists.choose_spec _ (fun x => Ens St data st1 x)
+  --subst lm1
+  --rw [Classical.choose_eq st2]
+  --rewrite [← TakeData.req_iff] at *
+  --rename_i h2
+  --have lm1 :
+  --have lm1 := TakeData.req_iff _ data st1
+  --change TakeData.Req St data at h
+  --have lm1 := isImageNonempty_iff.mpr ⟨st2, h⟩ |> (TakeData.req_iff _ data st1).mpr
+  --let _ := Ability.toTakeData.run data st1 lm1
+
+
+
+theorem BeginRun.req_iff (st1: St)
+  : BeginRun.Req _ st1 ↔ (instLTS _).IsImageNonempty st1 (.beginRun) := by
+  simp [instLTS, Decidable.byCases]
+  match Ability.toBeginRun.dreq st1 with
+  | .isTrue req => simp [req]
+  | .isFalse h => simp [h, exists_const]
+
+set_option pp.proofs true in
 example : CanRunSeparately St (instLTS _) := by
   simp [CanRunSeparately]
   intro data st1 req stX h
   simp [CanRunSeparately.ReqPre] at req
   simp [CanRunSeparately.ReqPost] at h
-  simp [IsYourProgramRunning, IsNonZeroRunning] at req h
-  have lm1 : (instLTS _).IsImageNonempty st1 (.takeData data) := by
-    simp [isImageNonempty_iff, instLTS]
+  --simp [IsYourProgramRunning, IsNonZeroRunning] at req
+  have lm1 := TakeData.req_iff _ data st1
+  simp [TakeData.Req] at lm1
+  obtain ⟨st2, st2_tr⟩ := lm1.mp req.left ; clear lm1
+  have lm2 := BeginRun.req_iff _ st2
+  simp [BeginRun.Req] at lm2
+
+  --have lm1 : (instLTS _).IsImageNonempty st1 (.takeData data) := by
+  --  simp [isImageNonempty_iff, instLTS]
+/-
     match h1: Ability.toTakeData.dreq data with
     | .isTrue _ => simp
     | .isFalse cont =>
       simp [TakeData.Req] at cont
       have := req.left
       contradiction
+-/
   --simp [isImageNonempty_iff] at lm1
-  obtain ⟨st2, st2_p⟩ := isImageNonempty_iff.mp lm1
+  --obtain ⟨st2, st2_p⟩ := isImageNonempty_iff.mp lm1
 /-
     have req1 : TakeData.Req St data := by simp [TakeData.Req] ; exact req.left
     exists (Ability.toTakeData.run data st1 req1).val
