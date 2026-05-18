@@ -144,12 +144,13 @@ inductive ImmediatelyBeginsRunning.Label where
   deriving DecidableEq
 
 class IsRunning where
-  isRunning: (Program.T St) → Bool
+  isRunning: St → (Program.T St) → Bool
 
 variable [IsRunning St]
 
+open IsRunning in
 abbrev ImmediatelyBeginsRunning.MainEns (st1 st2: St) : Prop :=
-  (IsRunning.isRunning (Program.v st1) = false ∧ IsRunning.isRunning (Program.v st2) = true)
+  (isRunning st1 (Program.v st1) = false ∧ isRunning st2 (Program.v st2) = true)
 
 structure ImmediatelyBeginsRunning (lts: Cslib.LTS St (ImmediatelyBeginsRunning.Label)) : Prop where
   lts_spec (st1 st2: St) (data: Data.T St) : (lts.Tr st1 (.invokeOnTheData) st2) → (InvokeOnTheData St data st1 st2)
