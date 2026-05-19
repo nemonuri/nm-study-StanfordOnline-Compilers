@@ -77,6 +77,21 @@ theorem sourceExists_iff : (SourceExists f) ↔ ((v: T) → (v ≠ 0) → ∃(s:
 --@[mk_iff]
 class abbrev Property := Zero T, ZeroEq f, LawfulAppEqBEq f--, SourceExists f
 
+abbrev PropertyOf (σ: Type u) [Zero σ] {T : Type u} (v: σ → T) := Property v
+
+namespace Property
+
+structure Context (σ: Type u) [Zero σ] where
+  protected T: Type u
+  protected v: σ → T
+  protected zero: Zero T
+  protected zeroEq: @ZeroEq σ T _ zero v
+  protected lawfulAppEqBEq: LawfulAppEqBEq v
+
+instance Context.instProperty {σ: Type u} [Zero σ] {ctx: Context σ} : Property ctx.v :=
+  @Property.mk σ ctx.T _ ctx.v ctx.zero ctx.zeroEq ctx.lawfulAppEqBEq
+
+end Property
 
 
 --theorem IsProperty.imp_and (self: IsProperty f) : ZeroEq f ∧ SourceExists f := (isProperty_iff f).mp self

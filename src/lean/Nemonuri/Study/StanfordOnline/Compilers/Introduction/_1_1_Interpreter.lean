@@ -144,9 +144,9 @@ inductive ImmediatelyBeginsRunning.Label where
   | invokeOnTheData
   deriving DecidableEq
 
-class IsRunning {α} (f: St → α) [Property f] where
+class IsRunning (v: St → Program.T St) [Property v] where
   isRunning: St → Bool
-  isRunning_imp_ne_zero (st: St) : (isRunning st) → (f st ≠ 0)
+  isRunning_imp_ne_zero (st: St) : (isRunning st) → (v st ≠ 0)
 
 variable [IsRunning St (Program.v)]
 
@@ -178,18 +178,34 @@ section def_s
 
 variable (St: Type us) [Zero St]
 
-protected class abbrev State.Program := Program St, Property (@Program.v St _), IsRunning St Program.v
 
-protected class abbrev State.Data := Data St, Property (@Data.v St _)
+class State.Context where
+  protected Program: Property.Context St
+  protected Data: Property.Context St
+  protected Output: Property.Context St
 
-protected class abbrev State.Output := Output St, Property (@Output.v St _)
+section ctx_s
 
-class State extends
-  toStateProgram: State.Program St,
-  toStateData: State.Data St,
-  toStateOutput: State.Output St
-  --toIsRunning: IsRunning St
+variable [ctx: State.Context St]
 
+instance : Program St := ⟨ctx.Program.T, ctx.Program.v⟩
+
+instance : PropertyOf St (Program.v) := (inferInstanceAs (Property ctx.Program.v))
+
+instance : Data St := ⟨ctx.Data.T, ctx.Data.v⟩
+
+instance : PropertyOf St (Data.v) := (inferInstanceAs (Property ctx.Data.v))
+
+instance : Output St := ⟨ctx.Output.T, ctx.Output.v⟩
+
+instance : PropertyOf St (Output.v) := (inferInstanceAs (Property ctx.Output.v))
+
+end ctx_s
+
+class State extends State.Context St where
+  protected isYourProgramRunning : IsRunning St (Interpreter.Program.v)
+
+instance [State St] : IsRunning St (Program.v) := State.isYourProgramRunning
 
 variable [State St]
 
@@ -200,7 +216,6 @@ inductive Label where
   | produceOutput
 
 instance Label.instNonempty : Nonempty (Label St) := .intro (.produceOutput)
-
 
 instance instLTS : Cslib.LTS St (Label St) where
   Tr st1 μ st2 :=
