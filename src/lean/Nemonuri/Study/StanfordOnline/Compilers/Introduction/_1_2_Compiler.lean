@@ -7,6 +7,7 @@ public import Cslib.Foundations.Semantics.LTS.Execution
 public import Mathlib.Tactic.MkIffOfInductiveProp
 public import Mathlib.Logic.Basic
 public import Cslib.Foundations.Semantics.LTS.Relation
+public import Mathlib.Data.Subtype
 
 
 public section public_s
@@ -337,16 +338,14 @@ inductive Label where
   | takeData (data: Data.T St)
   | beginRun
 
-
+#print Set.coe_setOf
 
 instance instLTS : Cslib.LTS St (Label St) where
   Tr st1 l st2 :=
     match l with
     | .takeAsInput prog =>
-      (Ability.toTakeAsInput.dreq prog st1).byCases
-        (fun req => Ability.toTakeAsInput.run prog st1 req = st2) (fun _ => False)
-      --match Ability.toTakeAsInput.dreq prog st1 with
-      --| .isTrue req => Ability.toTakeAsInput.run prog st1 req = st2 | _ => False
+      match Ability.toTakeAsInput.dreq prog st1 with
+      | .isTrue req => Ability.toTakeAsInput.run prog st1 req = st2 | _ => False
     | .produceExecutable => --(ProduceExecutable _ st1 st2) ∧ (Not <| IsExecutableRunning _ st2)
       match Ability.toProduceExecutable.dreq st1 with
       | .isTrue req => Ability.toProduceExecutable.run st1 req = st2 | _ => False
@@ -359,8 +358,7 @@ instance instLTS : Cslib.LTS St (Label St) where
     | .beginRun =>
       (Ability.toBeginRun.dreq st1).byCases
         (fun req => Ability.toBeginRun.run st1 req = st2) (fun _ => False)
-      --match Ability.toTakeData.dreq data with
-      --| .isTrue req => Ability.toTakeData.run data st1 req = st2 | _ => False
+
     --| .beginRun => RunSeparately.BeginRun _ st1 st2
 
 open Cslib LTS
@@ -368,17 +366,21 @@ open Cslib LTS
 attribute [scoped simp] isImageNonempty_iff
 
 theorem TakeData.req_iff (data: Data.T St) (st1: St)
-  : TakeData.Req St data ↔ (instLTS _).IsImageNonempty st1 (.takeData data) := by
+  : TakeData.Req St data ↔ ∃st2, ((instLTS _).Tr st1 (.takeData data) st2 ∧ TakeData.Ens _ data st1 st2) := by
   simp [instLTS, Decidable.byCases]
   match Ability.toTakeData.dreq data with
-  | .isTrue req => simp [req]
+  | .isTrue req =>
+    simp [req]
+    exact (Ability.toTakeData.run data st1 req).property
   | .isFalse h => simp [h, exists_const]
 
+/-
 set_option pp.proofs true in
 theorem TakeData.Req.imp_ens (data: Data.T St) (st1: St) (req: TakeData.Req St data)
   : ∃st2, TakeData.Ens St data st1 st2 := by
   obtain ⟨st2, st2_p⟩ := Ability.toTakeData.run data st1 req
   exists st2
+-/
   --have (eq := lm1) req := h |> (TakeData.req_iff _ data st1).mpr
   --let (eq := lm2) st2E := Ability.toTakeData.run data st1 req
   --apply @Exists.choose_spec _ (fun x => Ens St data st1 x)
@@ -392,27 +394,63 @@ theorem TakeData.Req.imp_ens (data: Data.T St) (st1: St) (req: TakeData.Req St d
   --have lm1 := isImageNonempty_iff.mpr ⟨st2, h⟩ |> (TakeData.req_iff _ data st1).mpr
   --let _ := Ability.toTakeData.run data st1 lm1
 
-
+theorem ProduceExecutable.req_iff (st1: St)
+  : ProduceExecutable.Req _ st1 ↔ ∃st2, ((instLTS _).Tr st1 (.produceExecutable) st2 ∧ ProduceExecutable.Ens _ st1 st2) := by
+  simp [instLTS]
+  match Ability.toProduceExecutable.dreq st1 with
+  | .isTrue req =>
+    simp [req]
+    exact (Ability.toProduceExecutable.run st1 req).property
+  | .isFalse h => simp [h, exists_const]
 
 theorem BeginRun.req_iff (st1: St)
-  : BeginRun.Req _ st1 ↔ (instLTS _).IsImageNonempty st1 (.beginRun) := by
+  : BeginRun.Req _ st1 ↔ ∃st2, ((instLTS _).Tr st1 (.beginRun) st2 ∧ BeginRun.Ens _ st1 st2) := by
   simp [instLTS, Decidable.byCases]
   match Ability.toBeginRun.dreq st1 with
-  | .isTrue req => simp [req]
+  | .isTrue req =>
+    simp [req]
+    exact (Ability.toBeginRun.run st1 req).property
   | .isFalse h => simp [h, exists_const]
 
 set_option pp.proofs true in
 example : CanRunSeparately St (instLTS _) := by
   simp [CanRunSeparately]
-  intro data st1 req stX h
+  intro data st1 req
+  simp [CanReach]
   simp [CanRunSeparately.ReqPre] at req
-  simp [CanRunSeparately.ReqPost] at h
-  --simp [IsYourProgramRunning, IsNonZeroRunning] at req
-  have lm1 := TakeData.req_iff _ data st1
-  simp [TakeData.Req] at lm1
-  obtain ⟨st2, st2_tr⟩ := lm1.mp req.left ; clear lm1
-  have lm2 := BeginRun.req_iff _ st2
-  simp [BeginRun.Req] at lm2
+  simp [CanRunSeparately.ReqPost]
+  obtain ⟨st2, ⟨st2_tr, st2_ens⟩⟩ := (TakeData.req_iff _ data st1).mp req.left
+  simp [TakeData.Ens] at st2_ens
+  have lm_st3_1 (h: Executable.v st2 = 0) := (ProduceExecutable.req_iff _ st2).mp (by
+    obtain ⟨h1_1, h1_2, h1_3⟩ := req
+    obtain ⟨h2_1, h2_2, h2_3⟩ := st2_ens
+    simp [ProduceExecutable.Req] ; rw [← h2_2] ; simp only [h1_2]
+    simp [IsYourProgramRunning, IsNonZeroRunning] at h1_3
+    simp_all
+  )
+/-
+    if h: (Executable.v st2 = 0) then
+      st2
+    else
+      st2
+-/
+/-
+  have lm_st3 := (BeginRun.req_iff _ st2).mp (by
+    simp [BeginRun.Req]
+    constructor
+    · rw [← st2_ens.left] ; exact req.left
+    · constructor
+      · simp [IsYourProgramRunning, IsNonZeroRunning] at req
+  )
+-/
+
+
+    --simp [BeginRun.Req]
+    --conv => arg 1; rw [eq_self_iff_true]; tactic => have := And.intro req.left st2_ens.left;
+  --obtain ⟨st3, ⟨st3_tr, st3_ens⟩⟩ := (BeginRun.req_iff _ st1).mp req.left
+  --obtain ⟨st2, st2_tr⟩ := (TakeData.req_iff _ data st1).mp req.left |> isImageNonempty_iff.mp
+
+
 
   --have lm1 : (instLTS _).IsImageNonempty st1 (.takeData data) := by
   --  simp [isImageNonempty_iff, instLTS]
