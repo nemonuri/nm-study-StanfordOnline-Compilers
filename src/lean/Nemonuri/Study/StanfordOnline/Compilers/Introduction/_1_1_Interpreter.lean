@@ -37,7 +37,7 @@ class Program where
   protected T: Type us
   protected v: St → T
 
-variable [Program St] [Zero (Program.T St)] [IsProperty (@Program.v St _)]
+variable [Program St] [Property (@Program.v St _)]
 
 
 
@@ -49,7 +49,7 @@ class Data where
   protected T: Type us
   protected v: St → T
 
-variable [Data St] [Zero (Data.T St)] [IsProperty (@Data.v St _)]
+variable [Data St] [Property (@Data.v St _)]
 
 /-!
 3. An **Interpreter**(*self*) takes as input, your program(*prog*) and your data(*data*).
@@ -89,7 +89,8 @@ class Output where
   protected T: Type us
   protected v: St → T
 
-variable [Output St] [Zero (Output.T St)] [IsProperty (@Output.v St _)]
+
+variable [Output St] [Property (@Output.v St _)]
 
 structure ProduceOutput (st1 st2: St) : Prop where
   pre: (Program.v st1 ≠ 0) ∧ (Data.v st1 ≠ 0)
@@ -176,11 +177,11 @@ section def_s
 
 variable (St: Type us) [Zero St]
 
-protected class abbrev State.Program := Program St, Zero (Program.T St), IsProperty (@Program.v St _)
+protected class abbrev State.Program := Program St, Property (@Program.v St _)
 
-protected class abbrev State.Data := Data St, Zero (Data.T St), IsProperty (@Data.v St _)
+protected class abbrev State.Data := Data St, Property (@Data.v St _)
 
-protected class abbrev State.Output := Output St, Zero (Output.T St), IsProperty (@Output.v St _)
+protected class abbrev State.Output := Output St, Property (@Output.v St _)
 
 class State extends
   toStateProgram: State.Program St,
@@ -196,6 +197,8 @@ inductive Label where
   | invokeOnTheData (data: Data.T St)
 --  | takeAsInput (prog: Program.T St) (data: Data.T St)
   | produceOutput
+
+instance Label.instNonempty : Nonempty (Label St) := .intro (.produceOutput)
 
 
 instance instLTS : Cslib.LTS St (Label St) where

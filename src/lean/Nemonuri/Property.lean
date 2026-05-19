@@ -22,12 +22,11 @@ class ZeroEq [Zero σ] [Zero T] (f: σ → T) : Prop where
 
 def AppEq (f: σ → T) (s1 s2: σ) : Prop := (f s1) = (f s2)
 
-@[defeq]
-theorem appEq_def {f: σ → T} {s1 s2: σ} : (AppEq f s1 s2) = ((f s1) = (f s2)) := by rfl
+theorem appEq_iff {f: σ → T} {s1 s2: σ} : (AppEq f s1 s2) ↔ ((f s1) = (f s2)) := by rfl
 
 abbrev DecidableAppEq (f: σ → T) := (s1: σ) → (s2: σ) → Decidable (AppEq f s1 s2)
 
-instance (f: σ → T) [DecidableEq T] : DecidableAppEq f :=
+instance (priority := low) (f: σ → T) [DecidableEq T] : DecidableAppEq f :=
   fun s1 s2 => (inferInstanceAs (Decidable ((f s1) = (f s2))) : Decidable (AppEq f s1 s2))
 
 class LawfulAppEqBEq (f: σ → T) extends BEq T where
@@ -43,7 +42,7 @@ instance LawfulAppEqBEq.instDecidableAppEq (f: σ → T) [LawfulAppEqBEq f] : De
       .isFalse (by simp at h ; exact h)
 
 instance (priority := low) (f: σ → T) [DecidableEq T] : LawfulAppEqBEq f where
-  beq_iff_appEq s1 s2 := by simp [appEq_def]
+  beq_iff_appEq s1 s2 := by simp [appEq_iff]
 
 
 variable [Zero σ] [Zero T] (f: σ → T)
