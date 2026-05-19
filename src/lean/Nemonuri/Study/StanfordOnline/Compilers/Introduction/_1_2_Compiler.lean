@@ -36,9 +36,9 @@ export Interpreter (IsRunning IsRunning.isRunning)
 
 
 variable (St: Type us) [Zero St]
-variable [Program St] [Zero (Program.T St)] [IsProperty (@Program.v St _)]
-variable [Data St] [Zero (Data.T St)] [IsProperty (@Data.v St _)]
-variable [IsRunning St]
+variable [Program St] [Property (@Program.v St _)]
+variable [Data St] [Property (@Data.v St _)]
+variable [IsRunning St Program.v]
 
 /-
 def TakeAsInput.Req (prog: Program.T St) (st1: St) : Prop :=
@@ -57,10 +57,10 @@ def TakeAsInput : Prop :=
 namespace TakeAsInput
 
 def Req (prog: Program.T St) (st1: St) : Prop :=
-  (prog ≠ 0) ∧ (Program.v st1 ≠ 0 → ¬IsRunning.isRunning st1 (Program.v st1))
+  (prog ≠ 0) ∧ (Program.v st1 ≠ 0 → ¬IsRunning.isRunning Program.v st1)
 
 def Ens (prog: Program.T St) (st2: St) : Prop :=
-  (Program.v st2 = prog) ∧ (¬IsRunning.isRunning st2 (Program.v st2))
+  (Program.v st2 = prog) ∧ (¬IsRunning.isRunning Program.v st2)
 
 end TakeAsInput
 
@@ -78,13 +78,13 @@ class Executable where
   protected T: Type us
   protected v: St → T
 
-variable [Executable St] [Zero (Executable.T St)] [IsProperty (@Executable.v St _)]
+variable [Executable St] [Property (@Executable.v St _)]
 
 namespace ProduceExecutable
 
-def Req (st1: St) : Prop := (Program.v st1 ≠ 0) ∧ (¬IsRunning.isRunning st1 (Program.v st1))
+def Req (st1: St) : Prop := (Program.v st1 ≠ 0) ∧ (¬IsRunning.isRunning Program.v st1)
 
-def Ens (st1 st2: St) : Prop := (Program.v st1 = Program.v st2) ∧ (Executable.v st2 ≠ 0) ∧ (¬IsRunning.isRunning st1 (Program.v st1))
+def Ens (st1 st2: St) : Prop := (AppEq Program.v st1 st2) ∧ (Executable.v st2 ≠ 0) ∧ (¬IsRunning.isRunning Program.v st1)
 
 end ProduceExecutable
 
@@ -97,11 +97,29 @@ structure ProduceExecutable where
 3. And this executable(*exec*) is another **Program**, might be assembly language, it might be bytecode.
 4. It could be in any number of different implementation languages.
 -/
+class ExecutableToProgram where
+  executabletoProgram : Executable.T St → Program.T St
+  another_program (st: St) : (Executable.v st) ≠ 0 → ((executabletoProgram ∘ Executable.v) st ≠ Program.v st)
+
+variable [ExecutableToProgram St]
+
+abbrev Program.ofExecutable (st: St) : Program.T St := (ExecutableToProgram.executabletoProgram ∘ Executable.v) st
+
+variable [Property (Program.ofExecutable St)] [IsRunning _ (Program.ofExecutable St)]
+
+--#print programOfExecutable
+
+--[Property (@ExecutableIsProgram.toProgram St _ _ _ _ _)]
+--def programOfExecutable [Proper] := --Program.v (Executable.v st)
+
+/-
 class ExecutableIsProgram where
   embedding: Function.Embedding (Executable.T St) (Program.T St)
   embedding_zero : (embedding 0 = 0)
   another_program (st: St) : (Executable.v st) ≠ 0 → embedding (Executable.v st) ≠ (Program.v st)
+-/
 
+/-
 omit [Data St] [Zero (Data.T St)] [Zero St] [IsProperty (@Program.v St _)] [IsProperty (@Executable.v St _)] [IsRunning St] in
 open ExecutableIsProgram Function in
 theorem ExecutableIsProgram.zero_iff [ExecutableIsProgram St] (st: St)
@@ -114,6 +132,7 @@ theorem ExecutableIsProgram.zero_iff [ExecutableIsProgram St] (st: St)
     rewrite [← embedding_zero] at h
     apply embedding.injective
     exact h
+-/
 
 /-
 open ExecutableIsProgram Function in
@@ -129,8 +148,6 @@ def ExecutableIsProgram.embedding_zero_iff [ExecutableIsProgram St] (st: St)
 
     )
 -/
-
-variable [ExecutableIsProgram St]
 
 inductive Language.MightBe (α: Type _) where
   | assembly
@@ -150,25 +167,32 @@ variable [Language (Program.T St)]
 
 --namespace IsRunning
 
-def IsNonZeroRunning (st: St) (v: St → Program.T St) : Prop := (v st) ≠ 0 ∧ IsRunning.isRunning st (v st)
+--def IsNonZeroRunning (st: St) (v: St → Program.T St) : Prop := (v st) ≠ 0 ∧ IsRunning.isRunning st (v st)
 
 --end IsRunning
 
-def IsYourProgramRunning (st: St) : Prop := IsNonZeroRunning _ st (Program.v)
+--def IsYourProgramRunning (st: St) : Prop := IsNonZeroRunning _ st (Program.v)
 
-def IsExecutableRunning (st: St) : Prop := IsNonZeroRunning _ st (Executable.v · |> ExecutableIsProgram.embedding)
+--def IsExecutableRunning (st: St) : Prop := IsNonZeroRunning _ st (Executable.v · |> ExecutableIsProgram.embedding)
 
-
+/-
 def RunningStateEq (st1 st2: St) : Prop :=
   (IsYourProgramRunning _ st1 = IsYourProgramRunning _ st2) ∧
   (IsExecutableRunning _ st1 = IsExecutableRunning _ st2)
+-/
+
+def IsYourProgramRunning (st: St) : Prop := IsRunning.isRunning Program.v st
+
+def IsExecutableRunning (st: St) : Prop := IsRunning.isRunning (Program.ofExecutable _) st
 
 namespace CanRunSeparately
 
-def ReqPre (data: Data.T St) (st1: St) : Prop := (data ≠ 0) ∧ (Program.v st1 ≠ 0) ∧ (Not <| IsYourProgramRunning _ st1)
+
+def ReqPre (data: Data.T St) (st1: St) : Prop :=
+  (data ≠ 0) ∧ (Program.v st1 ≠ 0) ∧ (¬IsYourProgramRunning _ st1)
 
 def ReqPost (data: Data.T St) (st1 st2: St) : Prop :=
-  (Data.v st2 = data) ∧ (Program.v st2 = Program.v st1) ∧ (st2 |> IsYourProgramRunning _ |> Not) ∧ (st2 |> IsExecutableRunning _)
+  (Data.v st2 = data) ∧ (Program.v st2 = Program.v st1) ∧ (¬IsYourProgramRunning _ st2) ∧ (IsExecutableRunning _ st2)
 
 end CanRunSeparately
 
@@ -188,7 +212,7 @@ namespace WillProduceTheOutput
 
 def Req (st1: St) : Prop := (IsExecutableRunning _ st1) ∧ (Output.v st1 = 0)
 
-def Ens (st1 st2: St) : Prop := (Executable.v st1 = Executable.v st2) ∧ (Output.v st2 ≠ 0)
+def Ens (st1 st2: St) : Prop := (AppEq Executable.v st1 st2) ∧ (Output.v st2 ≠ 0)
 
 end WillProduceTheOutput
 
@@ -204,13 +228,14 @@ namespace IsOffline
 
 def ReqPre (st1: St) : Prop :=
   (Program.v st1 ≠ 0) ∧ (Executable.v st1 = 0) ∧
-  (¬IsRunning.isRunning st1 (Executable.v st1 |> ExecutableIsProgram.embedding))
+  (¬IsYourProgramRunning _ st1) ∧ (¬IsExecutableRunning _ st1)
 
-def ReqAll (st1 stX: St) : Prop := (Program.v st1 = Program.v stX)
+def ReqAll (st1 stX: St) : Prop := (AppEq Program.v st1 stX)
 
-def ReqPost (st2: St) : Prop := IsRunning.isRunning st2 (Executable.v st2 |> ExecutableIsProgram.embedding)
+def ReqPost (st2: St) : Prop := IsExecutableRunning _ st2
 
-def EnsAll (stX: St) : Prop := ¬(Executable.v stX = 0) ∧ (IsRunning.isRunning stX (Executable.v stX |> ExecutableIsProgram.embedding))
+def EnsAll (stX: St) : Prop :=
+  ¬(Executable.v stX = 0) ∧ (IsExecutableRunning _ stX)
 
 end IsOffline
 
@@ -296,7 +321,9 @@ section def_s
 
 variable (St: Type us) [Zero St]
 
-protected class abbrev State.Executable := Executable St, Zero (Executable.T St), IsProperty (@Executable.v St _)
+--[Property (Program.ofExecutable St)] [IsRunning St (Program.ofExecutable St)]
+
+protected class abbrev State.Executable := Executable St, Property (@Executable.v St _)
 
 class State extends
   toInterpreterState: Interpreter.State St,

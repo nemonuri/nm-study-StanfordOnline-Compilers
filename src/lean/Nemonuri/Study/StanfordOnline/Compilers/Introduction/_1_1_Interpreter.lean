@@ -144,14 +144,15 @@ inductive ImmediatelyBeginsRunning.Label where
   | invokeOnTheData
   deriving DecidableEq
 
-class IsRunning where
-  isRunning: St → (Program.T St) → Bool
+class IsRunning {α} (f: St → α) [Property f] where
+  isRunning: St → Bool
+  isRunning_imp_ne_zero (st: St) : (isRunning st) → (f st ≠ 0)
 
-variable [IsRunning St]
+variable [IsRunning St (Program.v)]
 
 open IsRunning in
 abbrev ImmediatelyBeginsRunning.MainEns (st1 st2: St) : Prop :=
-  (isRunning st1 (Program.v st1) = false ∧ isRunning st2 (Program.v st2) = true)
+  (isRunning Program.v st1 = false) ∧ (isRunning Program.v st2 = true)
 
 structure ImmediatelyBeginsRunning (lts: Cslib.LTS St (ImmediatelyBeginsRunning.Label)) : Prop where
   lts_spec (st1 st2: St) (data: Data.T St) : (lts.Tr st1 (.invokeOnTheData) st2) → (InvokeOnTheData St data st1 st2)
@@ -177,7 +178,7 @@ section def_s
 
 variable (St: Type us) [Zero St]
 
-protected class abbrev State.Program := Program St, Property (@Program.v St _)
+protected class abbrev State.Program := Program St, Property (@Program.v St _), IsRunning St Program.v
 
 protected class abbrev State.Data := Data St, Property (@Data.v St _)
 
@@ -186,8 +187,8 @@ protected class abbrev State.Output := Output St, Property (@Output.v St _)
 class State extends
   toStateProgram: State.Program St,
   toStateData: State.Data St,
-  toStateOutput: State.Output St,
-  toIsRunning: IsRunning St
+  toStateOutput: State.Output St
+  --toIsRunning: IsRunning St
 
 
 variable [State St]
