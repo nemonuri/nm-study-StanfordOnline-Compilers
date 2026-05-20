@@ -180,32 +180,33 @@ variable (St: Type us) [Zero St]
 
 
 class State.Context where
-  protected Program: Property.Context St
-  protected Data: Property.Context St
-  protected Output: Property.Context St
+  protected program: Property.Context St
+  protected data: Property.Context St
+  protected output: Property.Context St
 
 section ctx_s
 
 variable [ctx: State.Context St]
 
-instance : Program St := ⟨ctx.Program.T, ctx.Program.v⟩
+instance : Program St := ⟨ctx.program.T, ctx.program.v⟩
 
-instance : PropertyOf St (Program.v) := (inferInstanceAs (Property ctx.Program.v))
+instance : PropertyOf St (Program.v) := (inferInstanceAs (Property ctx.program.v))
 
-instance : Data St := ⟨ctx.Data.T, ctx.Data.v⟩
+instance : Data St := ⟨ctx.data.T, ctx.data.v⟩
 
-instance : PropertyOf St (Data.v) := (inferInstanceAs (Property ctx.Data.v))
+instance : PropertyOf St (Data.v) := (inferInstanceAs (Property ctx.data.v))
 
-instance : Output St := ⟨ctx.Output.T, ctx.Output.v⟩
+instance : Output St := ⟨ctx.output.T, ctx.output.v⟩
 
-instance : PropertyOf St (Output.v) := (inferInstanceAs (Property ctx.Output.v))
+instance : PropertyOf St (Output.v) := (inferInstanceAs (Property ctx.output.v))
 
 end ctx_s
 
-class State extends State.Context St where
-  protected isYourProgramRunning : IsRunning St (Interpreter.Program.v)
 
-instance [State St] : IsRunning St (Program.v) := State.isYourProgramRunning
+class State extends State.Context St, IsRunning St (Program.v)
+  --protected isYourProgramRunning : IsRunning St (Program.v)
+
+--instance [State St] : IsRunning St (Program.v) := State.isYourProgramRunning
 
 variable [State St]
 

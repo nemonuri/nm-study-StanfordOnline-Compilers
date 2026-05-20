@@ -36,8 +36,8 @@ export Interpreter (IsRunning IsRunning.isRunning)
 
 
 variable (St: Type us) [Zero St]
-variable [Program St] [Property (@Program.v St _)]
-variable [Data St] [Property (@Data.v St _)]
+variable [Program St] [PropertyOf St (Program.v)]
+variable [Data St] [PropertyOf St (Data.v)]
 variable [IsRunning St Program.v]
 
 /-
@@ -78,7 +78,7 @@ class Executable where
   protected T: Type us
   protected v: St → T
 
-variable [Executable St] [Property (@Executable.v St _)]
+variable [Executable St] [PropertyOf St (Executable.v)]
 
 namespace ProduceExecutable
 
@@ -98,12 +98,52 @@ structure ProduceExecutable where
 4. It could be in any number of different implementation languages.
 -/
 class ExecutableToProgram where
-  executabletoProgram : Executable.T St → Program.T St
-  another_program (st: St) : (Executable.v st) ≠ 0 → ((executabletoProgram ∘ Executable.v) st ≠ Program.v st)
+  executabletoProgram (exe: Executable.T St) (req: ∃st, Executable.v st = exe): Program.T St
+  another_program exe req (st: St) : (st = req.choose) → (executabletoProgram exe req ≠ Program.v st)
+    --(st: St) :
+    --(Executable.v st) ≠ 0 →
+    --(executabletoProgram (Executable.v st) ⟨st, by rfl⟩ ≠ Program.v st)
+
+
+namespace ExecutableToProgram
+
+/-
+instance [etp: ExecutableToProgram St] : PropertyOf (Executable.T St) (ExecutableToProgram.executabletoProgram) where
+  zero_eq := etp.zero_eq
+  beq_iff_appEq e1 e2 := by
+-/
+-- (req: ∃st, Executable.v st = exe)
+--instance : PropertyOf (Executable.T St) (ExecutableToProgram.executabletoProgram) := ExecutableToProgram.property
 
 variable [ExecutableToProgram St]
 
-abbrev Program.ofExecutable (st: St) : Program.T St := (ExecutableToProgram.executabletoProgram ∘ Executable.v) st
+protected def v (st: St) : Program.T St := executabletoProgram (Executable.v st) ⟨st, by rfl⟩
+
+instance : PropertyAt St (Program.T St) (ExecutableToProgram.v St) where
+  zero := (0: Program.T St)
+  zero_eq := by
+    simp [ExecutableToProgram.v, Function.comp]
+    rename (ExecutableToProgram St) => inst1
+    suffices goal: Executable.v (0: St) = 0 from by
+      simp [goal]
+      have lm1 := inst1.property.zero_eq
+      exact lm1
+    --inst.
+    --rename (ExecutableToProgram St) => inst1
+    --have lm1 := inst1.property.zero_eq
+
+  beq_iff_appEq := by sorry
+    --cbv
+    --rename (ExecutableToProgram St) => sss
+    --have lm1 : executabletoProgram (0: Executable.T St) = (0: Program.T St) := ExecutableToProgram.property.zero_eq
+    --simp
+    --have lm1 := ExecutableToProgram.another_program (0: St)
+    --simp at lm1
+-/
+
+end ExecutableToProgram
+
+--abbrev Program.ofExecutable (st: St) : Program.T St := (ExecutableToProgram.executabletoProgram ∘ Executable.v) st
 
 variable [Property (Program.ofExecutable St)] [IsRunning _ (Program.ofExecutable St)]
 
@@ -321,15 +361,34 @@ section def_s
 
 variable (St: Type us) [Zero St]
 
---[Property (Program.ofExecutable St)] [IsRunning St (Program.ofExecutable St)]
+class State.Context
+  extends
+    toInterpreterStateContext: Interpreter.State.Context St
+  where
+  protected executable : Property.Context St
 
-protected class abbrev State.Executable := Executable St, Property (@Executable.v St _)
+section ctx_s
 
-class State extends
-  toInterpreterState: Interpreter.State St,
-  toStateExecutable: State.Executable St,
-  ExecutableIsProgram St,
-  Language St
+variable [ctx: State.Context St]
+
+instance : Executable St := ⟨ctx.executable.T, ctx.executable.v⟩
+
+instance : PropertyOf St (Executable.v) := (inferInstanceAs (Property ctx.executable.v))
+
+end ctx_s
+
+--protected class abbrev State.Executable := Executable St, Property (@Executable.v St _)
+
+open Interpreter in
+class State
+  extends
+    State.Context St,
+    Language (Program.T St),
+    ExecutableToProgram St
+  where
+  protected isYourProgramRunning : IsRunning St (Program.v)
+  protected isExecutableRunning : IsRunning St (Program.ofExecutable St)
+  --protected isYourProgramRunning : IsRunning St (Program.v)
 
 variable [State St]
 

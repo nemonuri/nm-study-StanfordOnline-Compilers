@@ -75,9 +75,11 @@ theorem sourceExists_iff : (SourceExists f) ↔ ((v: T) → (v ≠ 0) → ∃(s:
 -/
 
 --@[mk_iff]
-class abbrev Property := Zero T, ZeroEq f, LawfulAppEqBEq f--, SourceExists f
+class Property extends Zero T, ZeroEq f, LawfulAppEqBEq f--, SourceExists f
 
 abbrev PropertyOf (σ: Type u) [Zero σ] {T : Type u} (v: σ → T) := Property v
+
+abbrev PropertyAt (σ: Type u) [Zero σ] (T : Type u) (v: σ → T) := Property v
 
 namespace Property
 
