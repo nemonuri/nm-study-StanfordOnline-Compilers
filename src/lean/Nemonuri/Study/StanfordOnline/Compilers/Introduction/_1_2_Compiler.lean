@@ -8,6 +8,7 @@ public import Mathlib.Tactic.MkIffOfInductiveProp
 public import Mathlib.Logic.Basic
 public import Cslib.Foundations.Semantics.LTS.Relation
 public import Mathlib.Data.Subtype
+public import Mathlib.Logic.ExistsUnique
 
 
 public section public_s
@@ -99,7 +100,8 @@ structure ProduceExecutable where
 -/
 class ExecutableToProgram where
   executabletoProgram (exe: Executable.T St) (req: ∃st, Executable.v st = exe): Program.T St
-  another_program exe req (st: St) : (st = req.choose) → (executabletoProgram exe req ≠ Program.v st)
+  executabletoProgram_inj exe1 exe2 : (∃req1 req2, (executabletoProgram exe1 req1) = (executabletoProgram exe2 req2)) → exe1 = exe2
+  another_program exe req : ∀(st: St), (Program.v st ≠ 0) → (executabletoProgram exe req ≠ Program.v st)
     --(st: St) :
     --(Executable.v st) ≠ 0 →
     --(executabletoProgram (Executable.v st) ⟨st, by rfl⟩ ≠ Program.v st)
@@ -117,20 +119,31 @@ instance [etp: ExecutableToProgram St] : PropertyOf (Executable.T St) (Executabl
 
 variable [ExecutableToProgram St]
 
+set_option pp.proofs true in
+theorem zero_zero : executabletoProgram (0: Executable.T St) ⟨0, Property.toZeroEq.zero_eq⟩ = 0 := by
+  have lm1 : Executable.v (0: St) = (0: Executable.T St) := Property.toZeroEq.zero_eq
+  have lm2 : Program.v (0: St) = (0: Program.T St) := Property.toZeroEq.zero_eq
+
+--theorem zero_unique : ∃!(exe: Executable.T St), ∃req, executabletoProgram exe req = (0: Program.T St) := by
+
 protected def v (st: St) : Program.T St := executabletoProgram (Executable.v st) ⟨st, by rfl⟩
 
+/-
+set_option pp.proofs true in
 instance : PropertyAt St (Program.T St) (ExecutableToProgram.v St) where
   zero := (0: Program.T St)
   zero_eq := by
-    simp [ExecutableToProgram.v, Function.comp]
-    rename (ExecutableToProgram St) => inst1
-    suffices goal: Executable.v (0: St) = 0 from by
-      simp [goal]
-      have lm1 := inst1.property.zero_eq
-      exact lm1
-    --inst.
-    --rename (ExecutableToProgram St) => inst1
-    --have lm1 := inst1.property.zero_eq
+    simp [ExecutableToProgram.v]
+    --have lm1 : Executable.v (0: St) = (0: Executable.T St) := Property.toZeroEq.zero_eq
+    --have lm2 : Program.v (0: St) = (0: Program.T St) := Property.toZeroEq.zero_eq
+    --simp [ExecutableToProgram.v]
+    --simp [lm1, ← lm2]
+    --have lm3 :=
+    --obtain ⟨st, st_p⟩ := ExecutableToProgram.another_program (0: Executable.T St) ⟨0, lm1⟩ --(Exists.choose_spec _) --(Classical.choose_eq 0 lm1)
+    --obtain ⟨_,_,_⟩ := st_p
+
+
+    --have lm1 : ∃ st, Executable.v st = Executable.v (0: St) := by simp only [exists_apply_eq_apply]
 
   beq_iff_appEq := by sorry
     --cbv
