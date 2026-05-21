@@ -10,6 +10,7 @@ public import Cslib.Foundations.Semantics.LTS.Relation
 public import Mathlib.Data.Subtype
 public import Mathlib.Logic.ExistsUnique
 public import Mathlib.Tactic.Lift
+public import Nemonuri.Function
 
 
 public section public_s
@@ -99,136 +100,25 @@ structure ProduceExecutable where
 3. And this executable(*exec*) is another **Program**, might be assembly language, it might be bytecode.
 4. It could be in any number of different implementation languages.
 -/
-class ExecutableToProgram where
-  toProgram : Executable.T St → Program.T St
-  toProgram_zero_eq: toProgram 0 = 0
-  toExecutable? : Program.T St → Option (Executable.T St)
-  is_partial_inv : Function.IsPartialInv toProgram toExecutable?
---  zero_some : (toExecutable? 0).isSome
---  executabletoProgram_inj : Function.Injective executabletoProgram
-  another_program (st: St) : (Program.v st ≠ 0) → (toProgram (Executable.v st) ≠ (Program.v st))
-    --(st: St) :
-    --(Executable.v st) ≠ 0 →
-    --(executabletoProgram (Executable.v st) ⟨st, by rfl⟩ ≠ Program.v st)
+open Nemonuri Function in
+protected class Program.Extend where
+  protected T: Type us
+  ofProgram : { t: Program.T St // IsInRange Program.v t } → T --(s: Program.T St) (req: IsInRange Program.v s)
+  ofExecutable : { t: Executable.T St // IsInRange Executable.v t } → T
 
-namespace ExecutableToProgram
+variable [Program.Extend St] [Zero (Program.Extend.T St)]
 
 
-protected abbrev Property [ExecutableToProgram St] := PropertyAt (Executable.T St) (Program.T St) toProgram
+namespace Program.Extend
 
-variable [ExecutableToProgram St]
-
-instance : ExecutableToProgram.Property St where
-  zero_eq := ExecutableToProgram.toProgram_zero_eq
-  beq_iff_appEq e1 e2 := by
-    simp only [beq_iff_eq]
-    rw [appEq_iff]
-  sur := by
-    intro t
-    rename (ExecutableToProgram St) => etp
-    rename (PropertyOf St Program.v) => pprog
-    --rename (PropertyOf St Executable.v) => pexe
-
-    obtain ⟨st1, st1_p⟩ := @pprog.sur t
-    exists (Executable.v st1)
-    simp only [← st1_p]
-    have lm1 := etp.is_partial_inv.injective --_ (Executable.v st1)
-    have := @lm1 (Executable.v st1)
-    -- toProgram (Executable.v st1) = Program.v st1
+instance : ZeroEq ofProgram where
 
 
 
+end Program.Extend
 
-/-
---variable [ExecutableToProgram St]
-@[reducible]
-protected def toProperty
-  (etp: ExecutableToProgram St)
-  (req: )
-  --(zeroEq: ZeroEq etp.executabletoProgram)
-  --(decAppEq: DecidableAppEq etp.executabletoProgram)
-  : ExecutableToProgram.Property St where
-  toBEq := { beq a b := }
-  zero_eq := zeroEq.zero_eq
--/
-
---protected def CanLiftToProperty (etp: ExecutableToProgram St) : Prop :=
-
---variable {St : Type us} [Zero St] [Program St] [PropertyOf St Program.v] [Executable St] [PropertyOf St Executable.v]
---variable [ExecutableToProgram St] [ToProperty St]
-
-/-
-instance [etp: ExecutableToProgram St] : PropertyOf (Executable.T St) (ExecutableToProgram.executabletoProgram) where
-  zero_eq := etp.zero_eq
-  beq_iff_appEq e1 e2 := by
--/
--- (req: ∃st, Executable.v st = exe)
---instance : PropertyOf (Executable.T St) (ExecutableToProgram.executabletoProgram) := ExecutableToProgram.property
-
-
-
-/-
-set_option pp.proofs true in
-theorem zero_zero : executabletoProgram 0 = 0 := by
-  have lm1 : Executable.v (0: St) = (0: Executable.T St) := Property.toZeroEq.zero_eq
-  have lm2 : Program.v (0: St) = (0: Program.T St) := Property.toZeroEq.zero_eq
--/
-
---def IsZero (st: St) : Prop := ExecutableToProgram.v st = 0
-
-/-
-theorem isZero_subsingleton_executable
-  : Subsingleton { exe: Executable.T St // ∀(st: St), (IsZero st) → (Executable.v st = exe) } := by
-  simp [IsZero]
-  constructor
-  intro sub1 sub2
-  obtain ⟨exe1, exe1_spec⟩ := sub1
-  obtain ⟨exe2, exe2_spec⟩ := sub2
-  simp
-  specialize exe1_spec 0
-  specialize exe2_spec 0
--/
-
-  --simp [ExistsUnique, IsZero]
-
-/-
-omit [Data St] [PropertyOf St Data.v] [IsRunning St Program.v] [PropertyOf St Executable.v] in
-theorem zero_unique (st: St) (_: executabletoProgram (Executable.v st) = 0) : ∃!(exe: Executable.T St), Executable.v st = exe := by
-  simp?
--/
-
-
-/-
-set_option pp.proofs true in
-instance : PropertyAt St (Program.T St) (ExecutableToProgram.v St) where
-  zero := (0: Program.T St)
-  zero_eq := by
-    simp [ExecutableToProgram.v]
-    --have lm1 : Executable.v (0: St) = (0: Executable.T St) := Property.toZeroEq.zero_eq
-    --have lm2 : Program.v (0: St) = (0: Program.T St) := Property.toZeroEq.zero_eq
-    --simp [ExecutableToProgram.v]
-    --simp [lm1, ← lm2]
-    --have lm3 :=
-    --obtain ⟨st, st_p⟩ := ExecutableToProgram.another_program (0: Executable.T St) ⟨0, lm1⟩ --(Exists.choose_spec _) --(Classical.choose_eq 0 lm1)
-    --obtain ⟨_,_,_⟩ := st_p
-
-
-    --have lm1 : ∃ st, Executable.v st = Executable.v (0: St) := by simp only [exists_apply_eq_apply]
-
-  beq_iff_appEq := by sorry
-    --cbv
-    --rename (ExecutableToProgram St) => sss
-    --have lm1 : executabletoProgram (0: Executable.T St) = (0: Program.T St) := ExecutableToProgram.property.zero_eq
-    --simp
-    --have lm1 := ExecutableToProgram.another_program (0: St)
-    --simp at lm1
--/
-
-end ExecutableToProgram
-
---abbrev Program.ofExecutable (st: St) : Program.T St := (ExecutableToProgram.executabletoProgram ∘ Executable.v) st
-
-variable [Property (Program.ofExecutable St)] [IsRunning _ (Program.ofExecutable St)]
+  --[ZeroEq (@Program.Extend.ofProgram St _ _ _)]
+  --[ZeroEq (@Program.Extend.ofExecutable St _ _ _)]
 
 --#print programOfExecutable
 
@@ -281,7 +171,7 @@ class Language.{u} (P: Type u) where
   protected TLanguage: Type u
   protected language: (p: P) → (Language.MightBe TLanguage)
 
-variable [Language (Program.T St)]
+variable [Language (Program.Extend.T St)]
 
 
 /-!
@@ -303,6 +193,7 @@ def RunningStateEq (st1 st2: St) : Prop :=
   (IsYourProgramRunning _ st1 = IsYourProgramRunning _ st2) ∧
   (IsExecutableRunning _ st1 = IsExecutableRunning _ st2)
 -/
+--variable [IsRu]
 
 def IsYourProgramRunning (st: St) : Prop := IsRunning.isRunning Program.v st
 

@@ -1,8 +1,10 @@
 module
 
+public import Nemonuri.Function
 public import Mathlib.Tactic.MkIffOfInductiveProp
 public import Mathlib.Logic.Basic
 public import Mathlib.Logic.Relation
+
 
 @[expose] public section public_s
 
@@ -22,11 +24,47 @@ variable {σ T: Type u}
 class ZeroEq [Zero σ] [Zero T] (v: σ → T) : Prop where
   zero_eq: (v 0 = 0)
 
+abbrev ZeroEqOf (σ: Type u) {T: Type u} [Zero σ] [Zero T] (v: σ → T) := ZeroEq v
+
+open Function in
+theorem zeroEq_isInRange [Zero σ] [Zero T] (v: σ → T) [ZeroEq v] : IsInRange v 0 := by
+  simp only [IsInRange, range]
+  have lm1 := @Set.mem_range_self _ _ v 0
+  have lm2 := (inferInstance : ZeroEq v).zero_eq
+  rw [← lm2]
+  exact lm1
+
+namespace ZeroEq
+
+open Function
+
+instance [Zero σ] [Zero T] (v: σ → T) [ZeroEq v] : Zero { t: T // IsInRange v t } where
+  zero := ⟨0, zeroEq_isInRange v⟩
+
+theorem isInRange_zero_def
+   [Zero σ] [Zero T] {v: σ → T} [ZeroEq v]
+   : (0: { t: T // IsInRange v t }) = ⟨0, zeroEq_isInRange v⟩ := by
+   rfl
+
+
+instance [Zero σ] [Zero T] (v: σ → T) [ZeroEq v] : ZeroEq (rangeFactorization v) where
+  zero_eq := by
+    rename (ZeroEq v) => zeroEq
+    simp only [rangeFactorization, Set.rangeFactorization]
+    have lm1 := zeroEq.zero_eq
+    simp only [lm1]
+    rfl
+
+
+
+end ZeroEq
+
+
 def AppEq (v: σ → T) (s1 s2: σ) : Prop := (v s1) = (v s2)
 
 theorem appEq_iff {v: σ → T} {s1 s2: σ} : (AppEq v s1 s2) ↔ ((v s1) = (v s2)) := by rfl
 
-open Function in
+open _root_.Function in
 theorem appEq_iff_onFun {v: σ → T} {s1 s2: σ}
   : (AppEq v s1 s2) ↔ ((Eq on v) s1 s2) := by
   simp only [Function.onFun]
@@ -117,8 +155,8 @@ theorem sourceExists_iff : (SourceExists f) ↔ ((v: T) → (v ≠ 0) → ∃(s:
 -/
 
 --@[mk_iff]
-class Property extends Zero T, ZeroEq v, LawfulAppEqBEq v where--, SourceExists f
-  protected sur : Function.Surjective v
+class Property extends Zero T, ZeroEq v, LawfulAppEqBEq v --where--, SourceExists f
+  --protected sur : Function.Surjective v
 
 abbrev PropertyOf (σ: Type u) [Zero σ] {T : Type u} (v: σ → T) := Property v
 
@@ -126,22 +164,30 @@ abbrev PropertyAt (σ: Type u) [Zero σ] (T : Type u) (v: σ → T) := Property 
 
 namespace Property
 
+--protected def range [Property v] : Set T := Set.range v
+
+--def InRange [Property v] (t: T) : Prop := t ∈ Property.range v
+
+--protected def rangeFactorization
+
+--theorem InRange.surjective [Property v] (t: T) (in_range: InRange v t) : Function.Surjective
+
 structure Context (σ: Type u) [Zero σ] where
   protected T: Type u
   protected v: σ → T
   protected zero: Zero T
   protected zeroEq: @ZeroEq σ T _ zero v
   protected lawfulAppEqBEq: LawfulAppEqBEq v
-  protected sur : Function.Surjective v
+  --protected sur : Function.Surjective v
 
 instance Context.instProperty {σ: Type u} [Zero σ] {ctx: Context σ} : Property ctx.v :=
-  @Property.mk σ ctx.T _ ctx.v ctx.zero ctx.zeroEq ctx.lawfulAppEqBEq ctx.sur
+  @Property.mk σ ctx.T _ ctx.v ctx.zero ctx.zeroEq ctx.lawfulAppEqBEq --ctx.sur
 
-instance instLawfulBEq [Property v] : LawfulBEq T where
+instance (priority := low) instLawfulBEq [Property v] (sur : Function.Surjective v) : LawfulBEq T where
   rfl := by
     rename (Property v) => pty
     intro t
-    obtain ⟨w1, w1_p⟩ := @pty.sur t
+    obtain ⟨w1, w1_p⟩ := @sur t
     have lm1 := pty.beq_iff_appEq ; simp only [appEq_iff] at lm1
     rw [← w1_p]
     specialize lm1 w1 w1
@@ -149,8 +195,8 @@ instance instLawfulBEq [Property v] : LawfulBEq T where
   eq_of_beq := by
     rename (Property v) => pty
     intro t1 t2 h
-    obtain ⟨w1, w1_p⟩ := @pty.sur t1
-    obtain ⟨w2, w2_p⟩ := @pty.sur t2
+    obtain ⟨w1, w1_p⟩ := @sur t1
+    obtain ⟨w2, w2_p⟩ := @sur t2
     have lm1 := pty.beq_iff_appEq ; simp only [appEq_iff] at lm1
     specialize lm1 w1 w2
     subst_eqs
