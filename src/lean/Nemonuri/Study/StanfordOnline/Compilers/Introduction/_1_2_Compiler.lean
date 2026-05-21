@@ -9,6 +9,7 @@ public import Mathlib.Logic.Basic
 public import Cslib.Foundations.Semantics.LTS.Relation
 public import Mathlib.Data.Subtype
 public import Mathlib.Logic.ExistsUnique
+public import Mathlib.Tactic.Lift
 
 
 public section public_s
@@ -99,15 +100,46 @@ structure ProduceExecutable where
 4. It could be in any number of different implementation languages.
 -/
 class ExecutableToProgram where
-  executabletoProgram (exe: Executable.T St) (req: ∃st, Executable.v st = exe): Program.T St
-  executabletoProgram_inj exe1 exe2 : (∃req1 req2, (executabletoProgram exe1 req1) = (executabletoProgram exe2 req2)) → exe1 = exe2
-  another_program exe req : ∀(st: St), (Program.v st ≠ 0) → (executabletoProgram exe req ≠ Program.v st)
+  toProgram : Executable.T St → Program.T St
+  toProgram_zero_eq: toProgram 0 = 0
+  toExecutable? : Program.T St → Option (Executable.T St)
+  is_partial_inv : Function.IsPartialInv toProgram toExecutable?
+--  zero_some : (toExecutable? 0).isSome
+--  executabletoProgram_inj : Function.Injective executabletoProgram
+  another_program (st: St) : (Program.v st ≠ 0) → (toProgram (Executable.v st) ≠ (Program.v st))
     --(st: St) :
     --(Executable.v st) ≠ 0 →
     --(executabletoProgram (Executable.v st) ⟨st, by rfl⟩ ≠ Program.v st)
 
-
 namespace ExecutableToProgram
+
+
+protected abbrev Property [ExecutableToProgram St] := PropertyAt (Executable.T St) (Program.T St) toProgram
+
+variable [ExecutableToProgram St]
+
+instance : ExecutableToProgram.Property St where
+  zero_eq := ExecutableToProgram.toProgram_zero_eq
+
+
+
+/-
+--variable [ExecutableToProgram St]
+@[reducible]
+protected def toProperty
+  (etp: ExecutableToProgram St)
+  (req: )
+  --(zeroEq: ZeroEq etp.executabletoProgram)
+  --(decAppEq: DecidableAppEq etp.executabletoProgram)
+  : ExecutableToProgram.Property St where
+  toBEq := { beq a b := }
+  zero_eq := zeroEq.zero_eq
+-/
+
+--protected def CanLiftToProperty (etp: ExecutableToProgram St) : Prop :=
+
+--variable {St : Type us} [Zero St] [Program St] [PropertyOf St Program.v] [Executable St] [PropertyOf St Executable.v]
+--variable [ExecutableToProgram St] [ToProperty St]
 
 /-
 instance [etp: ExecutableToProgram St] : PropertyOf (Executable.T St) (ExecutableToProgram.executabletoProgram) where
@@ -117,16 +149,38 @@ instance [etp: ExecutableToProgram St] : PropertyOf (Executable.T St) (Executabl
 -- (req: ∃st, Executable.v st = exe)
 --instance : PropertyOf (Executable.T St) (ExecutableToProgram.executabletoProgram) := ExecutableToProgram.property
 
-variable [ExecutableToProgram St]
 
+
+/-
 set_option pp.proofs true in
-theorem zero_zero : executabletoProgram (0: Executable.T St) ⟨0, Property.toZeroEq.zero_eq⟩ = 0 := by
+theorem zero_zero : executabletoProgram 0 = 0 := by
   have lm1 : Executable.v (0: St) = (0: Executable.T St) := Property.toZeroEq.zero_eq
   have lm2 : Program.v (0: St) = (0: Program.T St) := Property.toZeroEq.zero_eq
+-/
 
---theorem zero_unique : ∃!(exe: Executable.T St), ∃req, executabletoProgram exe req = (0: Program.T St) := by
+--def IsZero (st: St) : Prop := ExecutableToProgram.v st = 0
 
-protected def v (st: St) : Program.T St := executabletoProgram (Executable.v st) ⟨st, by rfl⟩
+/-
+theorem isZero_subsingleton_executable
+  : Subsingleton { exe: Executable.T St // ∀(st: St), (IsZero st) → (Executable.v st = exe) } := by
+  simp [IsZero]
+  constructor
+  intro sub1 sub2
+  obtain ⟨exe1, exe1_spec⟩ := sub1
+  obtain ⟨exe2, exe2_spec⟩ := sub2
+  simp
+  specialize exe1_spec 0
+  specialize exe2_spec 0
+-/
+
+  --simp [ExistsUnique, IsZero]
+
+/-
+omit [Data St] [PropertyOf St Data.v] [IsRunning St Program.v] [PropertyOf St Executable.v] in
+theorem zero_unique (st: St) (_: executabletoProgram (Executable.v st) = 0) : ∃!(exe: Executable.T St), Executable.v st = exe := by
+  simp?
+-/
+
 
 /-
 set_option pp.proofs true in
