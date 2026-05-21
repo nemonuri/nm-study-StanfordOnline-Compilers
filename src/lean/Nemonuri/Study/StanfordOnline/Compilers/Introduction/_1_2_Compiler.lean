@@ -120,6 +120,14 @@ variable [ExecutableToProgram St]
 
 instance : ExecutableToProgram.Property St where
   zero_eq := ExecutableToProgram.toProgram_zero_eq
+  beq_iff_appEq e1 e2 := by
+    rename (PropertyOf St Program.v) => pprog
+    rename (PropertyOf St Executable.v) => pexe
+    rename (ExecutableToProgram St) => exe
+    rw [appEq_iff]
+    have lm1 := pprog.beq_iff_appEq
+    have lm2 := pexe.beq_iff_appEq
+    simp only [appEq_iff] at lm1 lm2
 
 
 
