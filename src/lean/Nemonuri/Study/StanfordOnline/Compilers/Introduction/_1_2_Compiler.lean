@@ -121,13 +121,21 @@ variable [ExecutableToProgram St]
 instance : ExecutableToProgram.Property St where
   zero_eq := ExecutableToProgram.toProgram_zero_eq
   beq_iff_appEq e1 e2 := by
-    rename (PropertyOf St Program.v) => pprog
-    rename (PropertyOf St Executable.v) => pexe
-    rename (ExecutableToProgram St) => exe
+    simp only [beq_iff_eq]
     rw [appEq_iff]
-    have lm1 := pprog.beq_iff_appEq
-    have lm2 := pexe.beq_iff_appEq
-    simp only [appEq_iff] at lm1 lm2
+  sur := by
+    intro t
+    rename (ExecutableToProgram St) => etp
+    rename (PropertyOf St Program.v) => pprog
+    --rename (PropertyOf St Executable.v) => pexe
+
+    obtain ⟨st1, st1_p⟩ := @pprog.sur t
+    exists (Executable.v st1)
+    simp only [← st1_p]
+    have lm1 := etp.is_partial_inv.injective --_ (Executable.v st1)
+    have := @lm1 (Executable.v st1)
+    -- toProgram (Executable.v st1) = Program.v st1
+
 
 
 
