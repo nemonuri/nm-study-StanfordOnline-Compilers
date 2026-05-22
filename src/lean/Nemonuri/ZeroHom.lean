@@ -59,28 +59,13 @@ protected def zeroHom (bd: Builder.ZeroHom M N) : @ZeroHom M N _ bd.zeroN :=
   match bd with
   | @mk _ _ _ _ zeroHom => zeroHom
 
-/-
-protected theorem ext_iff {bd1 bd2: Builder.ZeroHom M N}
-  : (bd1 = bd2) ↔ (bd1.zeroN = bd2.zeroN ∧ bd1.zeroHom ≍ bd2.zeroHom) := by
-  constructor
-  · intro h ; rw [h]; simp only [heq_eq_eq, and_self]
-  · rintro ⟨h1, h2⟩
-    match lm1: bd1, lm2: bd2 with
-    | @mk M _ N zeroN1 zeroHom1, @mk M _ N zeroN2 zeroHom2 =>
-      unfold Builder.ZeroHom.zeroN at h1
--/
 
-
-
-set_option trace.Meta.synthInstance true in
-instance : FunLike (Builder.ZeroHom M N) M N where
+instance instFunLike : FunLike (Builder.ZeroHom M N) M N where
   coe bd := bd.zeroHom
   coe_injective' := by
     intro bd1 bd2 h1
     simp [Builder.ZeroHom.zeroHom] at h1
     simp only [← ZeroHom.toFun_eq_coe] at h1
-    --have lm1 := @bd1.zeroHom.map_zero
-    --have lm2 := @bd2.zeroHom.map_zero
     simp_all
     match bd1, bd2 with
     | @mk M _ N zeroN1 zeroHom1, @mk M _ N zeroN2 zeroHom2 =>
@@ -92,7 +77,6 @@ instance : FunLike (Builder.ZeroHom M N) M N where
         simp only [OfNat.ofNat] at h1
         match zeroN1, zeroN2 with
         | .mk _, .mk _ => simp_all
-      --revert h1 zeroHom2 ; rw [← lm4] ; intro zeroHom2 h1
       subst lm4
       simp
       match zeroHom1, zeroHom2 with
@@ -102,38 +86,6 @@ instance : FunLike (Builder.ZeroHom M N) M N where
         ext x
         exact h1 x
 
-
-
-      --have lm5 : type_of% zeroHom1 = type_of% zeroHom2 := by rw [lm4]
-      --apply (heq_of_cast_eq lm5)
-      --have := cast_eq (lm4 ▸ lm5) zeroHom1
-/-
-      ext x
-      specialize h1 x
-      rw [← h1]
--/
-
-
-
-      --apply heq_of_eq_cast
-      --conv => rhs; simp [lm4]
-
-
-      --simp [← ZeroHom.toFun_eq_coe] at h1
-
-    --have _ := (inferInstance : FunLike (type_of% bd1.zeroHom) M N).coe_injective
-/-
-  coe ctx := ctx.zeroHom
-  coe_injective' := by
-    intro a1 a2 h
-    simp at h
-    simp only [DFunLike.coe] at h
-    have lm1 : a1.zeroHom = a2.zeroHom := by
-    --simp only [← ZeroHom.toFun_eq_coe] at h
-    --simp [DFunLike.coe_fn_eq] at h
-    --simp only [DFunLike.coe] at h
-    --simp only [ZeroHom.Context.ext_iff]
--/
 
 
 end Builder.ZeroHom
