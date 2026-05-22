@@ -94,6 +94,12 @@ instance instFunLike : FunLike (PropertyBuilder M N) M N where
       specialize lm1 dn1 dn2
       constructor <;> assumption
 
+@[reducible]
+protected def zeroN (bd: PropertyBuilder M N) : Zero N := bd.zeroHomBuilder.zeroN
+
+@[reducible]
+protected def zero (bd: PropertyBuilder M N) : N := bd.zeroN.zero
+
 
 end PropertyBuilder
 

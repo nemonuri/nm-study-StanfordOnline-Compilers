@@ -10,7 +10,7 @@ public import Cslib.Foundations.Semantics.LTS.Relation
 public import Mathlib.Data.Subtype
 public import Mathlib.Logic.ExistsUnique
 public import Mathlib.Tactic.Lift
-public import Nemonuri.Function
+public import Nemonuri.Builder
 
 
 public section public_s
@@ -34,42 +34,33 @@ Now a compiler is structured differently.
 
 1. The **Compiler**(*self*) takes as input just **Your Program**(*yourProg*).
 -/
-export Interpreter (Program Program.T Program.v Data Data.T Data.v)
-export Interpreter (IsRunning IsRunning.isRunning)
-
-
 variable (St: Type us) [Zero St]
-variable [Program St] [PropertyOf St (Program.v)]
-variable [Data St] [PropertyOf St (Data.v)]
-variable [IsRunning St Program.v]
 
-/-
-def TakeAsInput.Req (prog: Program.T St) (st1: St) : Prop :=
-  (prog ≠ 0) ∧ (Program.v st1 = 0)
+class YourProgram where
+  protected T: Type us
+  protected v: PropertyBuilder St T
 
-@[mk_iff]
-structure TakeAsInput.Ens (prog: Program.T St) (st1 st2: St) : Prop where
-  pre: TakeAsInput.Req _ prog st1
-  post: (Program.v st2 = prog) ∧ (Data.v st2 = Data.v st1)
+variable [YourProgram St]
 
-def TakeAsInput : Prop :=
-  (h: ∃(prog: Program.T St) (st1: St), TakeAsInput.Req _ prog st1) →
-  (∃st2, TakeAsInput.Ens _ h.choose h.choose_spec.choose st2)
--/
+instance : DecidableEq (YourProgram.T St) := YourProgram.v.decN
+instance : Zero (YourProgram.T St) := YourProgram.v.zeroHomBuilder.zeroN
+
 
 namespace TakeAsInput
 
-def Req (prog: Program.T St) (st1: St) : Prop :=
-  (prog ≠ 0) ∧ (Program.v st1 ≠ 0 → ¬IsRunning.isRunning Program.v st1)
+@[reducible]
+def Req (prog: YourProgram.T St) (st1: St) : Prop :=
+  (prog ≠ 0) ∧ (YourProgram.v st1 ≠ 0) -- → ¬IsRunning.isRunning Program.v st1
 
-def Ens (prog: Program.T St) (st2: St) : Prop :=
-  (Program.v st2 = prog) ∧ (¬IsRunning.isRunning Program.v st2)
+
+def Ens (prog: YourProgram.T St) (st2: St) : Prop :=
+  (YourProgram.v st2 = prog) --∧ (¬IsRunning.isRunning Program.v st2)
 
 end TakeAsInput
 
 open TakeAsInput in
 structure TakeAsInput where
-  run (prog: Program.T St) (st1: St) (req: Req _ prog st1)
+  run (prog: YourProgram.T St) (st1: St) (req: Req _ prog st1)
     : { st2: St // Ens _ prog st2 }
 
 --#print TakeAsInput
@@ -79,15 +70,20 @@ structure TakeAsInput where
 -/
 class Executable where
   protected T: Type us
-  protected v: St → T
+  protected v: PropertyBuilder St T
 
-variable [Executable St] [PropertyOf St (Executable.v)]
+variable [Executable St]
+
+instance : DecidableEq (Executable.T St) := Executable.v.decN
+instance : Zero (Executable.T St) := Executable.v.zeroHomBuilder.zeroN
+
 
 namespace ProduceExecutable
 
-def Req (st1: St) : Prop := (Program.v st1 ≠ 0) ∧ (¬IsRunning.isRunning Program.v st1)
+@[reducible]
+def Req (st1: St) : Prop := (YourProgram.v st1 ≠ 0) --∧ (¬IsRunning.isRunning Program.v st1)
 
-def Ens (st1 st2: St) : Prop := (AppEq Program.v st1 st2) ∧ (Executable.v st2 ≠ 0) ∧ (¬IsRunning.isRunning Program.v st1)
+def Ens (st1 st2: St) : Prop := (AppEq YourProgram.v st1 st2) ∧ (Executable.v st2 ≠ 0) --∧ (¬IsRunning.isRunning Program.v st1)
 
 end ProduceExecutable
 
@@ -100,78 +96,30 @@ structure ProduceExecutable where
 3. And this executable(*exec*) is another **Program**, might be assembly language, it might be bytecode.
 4. It could be in any number of different implementation languages.
 -/
-open Nemonuri Function in
-protected class Program.Extend where
+class Program where
   protected T: Type us
-  ofProgram : { t: Program.T St // IsInRange Program.v t } → T --(s: Program.T St) (req: IsInRange Program.v s)
-  ofExecutable : { t: Executable.T St // IsInRange Executable.v t } → T
-
-variable [Program.Extend St] [Zero (Program.Extend.T St)]
-
-
-namespace Program.Extend
-
-instance : ZeroEq ofProgram where
+  ofYourProgram: PropertyBuilder (YourProgram.T St) T
+  ofExecutable: PropertyBuilder (Executable.T St) T
+  zero_unique: ∃!x, (x ∈ [ofYourProgram.zero, ofExecutable.zero])
+  another_program (prog: YourProgram.T St) (exe: Executable.T St) : (ofYourProgram prog ≠ ofYourProgram.zero) → (ofYourProgram prog) ≠ (ofExecutable exe)
 
 
+variable [Program St]
 
-end Program.Extend
+instance : DecidableEq (Program.T St) := Program.ofYourProgram.decN
+instance : Zero (Program.T St) := Program.ofYourProgram.zeroN
 
-  --[ZeroEq (@Program.Extend.ofProgram St _ _ _)]
-  --[ZeroEq (@Program.Extend.ofExecutable St _ _ _)]
-
---#print programOfExecutable
-
---[Property (@ExecutableIsProgram.toProgram St _ _ _ _ _)]
---def programOfExecutable [Proper] := --Program.v (Executable.v st)
-
-/-
-class ExecutableIsProgram where
-  embedding: Function.Embedding (Executable.T St) (Program.T St)
-  embedding_zero : (embedding 0 = 0)
-  another_program (st: St) : (Executable.v st) ≠ 0 → embedding (Executable.v st) ≠ (Program.v st)
--/
-
-/-
-omit [Data St] [Zero (Data.T St)] [Zero St] [IsProperty (@Program.v St _)] [IsProperty (@Executable.v St _)] [IsRunning St] in
-open ExecutableIsProgram Function in
-theorem ExecutableIsProgram.zero_iff [ExecutableIsProgram St] (st: St)
-  : ((Executable.v st) = 0) ↔ (embedding (Executable.v st) = 0) := by
-  constructor
-  · intro h
-    rw [h]
-    exact embedding_zero
-  · intro h
-    rewrite [← embedding_zero] at h
-    apply embedding.injective
-    exact h
--/
-
-/-
-open ExecutableIsProgram Function in
-def ExecutableIsProgram.embedding_zero_iff [ExecutableIsProgram St] (st: St)
-  : (Executable.v st) = 0 ↔ (embedding (Executable.v st) = 0) :=
-  Iff.intro (ExecutableIsProgram.embedding_zero st) (by
-    intro h
-    --have lm1 : Injective (embedding: Embedding (Executable.T St) (Program.T St)) := embedding.injective
-    --unfold Injective at lm1
-    rw [← Injective.eq_iff embedding.injective]
-    rw [h] -- 0 = embedding 0
-    symm
-
-    )
--/
 
 inductive Language.MightBe (α: Type _) where
   | assembly
   | bytecode
   | diffrent (a: α)
 
-class Language.{u} (P: Type u) where
+class Language.{u} (P: Type u) [Zero P] where
   protected TLanguage: Type u
-  protected language: (p: P) → (Language.MightBe TLanguage)
+  protected language: PropertyBuilder P TLanguage --(p: P) → (Language.MightBe TLanguage)
 
-variable [Language (Program.Extend.T St)]
+variable [Language (Program.T St)]
 
 
 /-!
@@ -193,20 +141,38 @@ def RunningStateEq (st1 st2: St) : Prop :=
   (IsYourProgramRunning _ st1 = IsYourProgramRunning _ st2) ∧
   (IsExecutableRunning _ st1 = IsExecutableRunning _ st2)
 -/
---variable [IsRu]
+class IsRunning where
+  isRunning: PropertyBuilder St (PropertyBuilder (Program.T St) (ULift Bool))
 
-def IsYourProgramRunning (st: St) : Prop := IsRunning.isRunning Program.v st
+variable [IsRunning St]
 
-def IsExecutableRunning (st: St) : Prop := IsRunning.isRunning (Program.ofExecutable _) st
+
+def IsYourProgramRunning (st: St) : Prop := IsRunning.isRunning st (Program.ofYourProgram (YourProgram.v st)) = ULift.up .true
+
+@[reducible]
+def IsExecutableRunning (st: St) : Prop := IsRunning.isRunning st (Program.ofExecutable (Executable.v st)) = ULift.up .true
+
+def IsProgramRunning (st: St) : Prop := IsYourProgramRunning _ st ∨ IsExecutableRunning _ st
+
+
+class Data where
+  protected T: Type us
+  protected v: PropertyBuilder St T
+
+variable [Data St]
+
+instance : DecidableEq (Data.T St) := Data.v.decN
+instance : Zero (Data.T St) := Data.v.zeroN
+
 
 namespace CanRunSeparately
 
 
 def ReqPre (data: Data.T St) (st1: St) : Prop :=
-  (data ≠ 0) ∧ (Program.v st1 ≠ 0) ∧ (¬IsYourProgramRunning _ st1)
+  (data ≠ 0) ∧ (YourProgram.v st1 ≠ 0) ∧ (¬IsYourProgramRunning _ st1)
 
 def ReqPost (data: Data.T St) (st1 st2: St) : Prop :=
-  (Data.v st2 = data) ∧ (Program.v st2 = Program.v st1) ∧ (¬IsYourProgramRunning _ st2) ∧ (IsExecutableRunning _ st2)
+  (Data.v st2 = data) ∧ (AppEq YourProgram.v st2 st1) ∧ (¬IsYourProgramRunning _ st2) ∧ (IsExecutableRunning _ st2)
 
 end CanRunSeparately
 
@@ -217,13 +183,19 @@ def CanRunSeparately {La} (lts: Cslib.LTS St La) : Prop :=
   lts.CanReach st1 st2
 
 
-export Interpreter (Output Output.T Output.v)
+class Output where
+  protected T: Type us
+  protected v: PropertyBuilder St T
 
-variable
-  [Output St] [Zero (Output.T St)]
+variable [Output St]
+
+instance : DecidableEq (Output.T St) := Output.v.decN
+instance : Zero (Output.T St) := Output.v.zeroN
+
 
 namespace WillProduceTheOutput
 
+@[reducible]
 def Req (st1: St) : Prop := (IsExecutableRunning _ st1) ∧ (Output.v st1 = 0)
 
 def Ens (st1 st2: St) : Prop := (AppEq Executable.v st1 st2) ∧ (Output.v st2 ≠ 0)
@@ -241,10 +213,10 @@ structure WillProduceTheOutput where
 namespace IsOffline
 
 def ReqPre (st1: St) : Prop :=
-  (Program.v st1 ≠ 0) ∧ (Executable.v st1 = 0) ∧
+  (YourProgram.v st1 ≠ 0) ∧ (Executable.v st1 = 0) ∧
   (¬IsYourProgramRunning _ st1) ∧ (¬IsExecutableRunning _ st1)
 
-def ReqAll (st1 stX: St) : Prop := (AppEq Program.v st1 stX)
+def ReqAll (st1 stX: St) : Prop := (AppEq YourProgram.v st1 stX)
 
 def ReqPost (st2: St) : Prop := IsExecutableRunning _ st2
 
@@ -298,11 +270,12 @@ def CanRunSameMany {La} (lts: Cslib.LTS St La) : Prop :=
 
 namespace TakeData
 
+@[reducible]
 def Req (data: Data.T St) : Prop := data ≠ 0
 
 def Ens (data: Data.T St) (st1 st2: St) : Prop :=
   (data = Data.v st2) ∧
-  (Program.v st1 = Program.v st2) ∧
+  (YourProgram.v st1 = YourProgram.v st2) ∧
   (Executable.v st1 = Executable.v st2)
 
 end TakeData
@@ -314,11 +287,12 @@ structure TakeData where
 
 namespace BeginRun
 
+@[reducible]
 def Req (st1: St) : Prop := (Data.v st1 ≠ 0) ∧ (Executable.v st1 ≠ 0) ∧ (Not <| IsExecutableRunning _ st1)
 
 def Ens (st1 st2: St) : Prop :=
   (Data.v st1 = Data.v st2) ∧
-  (Program.v st1 = Program.v st2) ∧
+  (YourProgram.v st1 = YourProgram.v st2) ∧
   (Executable.v st1 = Executable.v st2) ∧
   (IsExecutableRunning _ st1)
 
@@ -335,61 +309,38 @@ section def_s
 
 variable (St: Type us) [Zero St]
 
-class State.Context
-  extends
-    toInterpreterStateContext: Interpreter.State.Context St
-  where
-  protected executable : Property.Context St
+class State where
+  toYourProgram: YourProgram St
+  toExecutable: Executable St
+  toProgram: Program St
+  toLanguage: Language (Program.T St)
+  toIsRunning: IsRunning St
+  toData: Data St
+  toOutput: Output St
 
-section ctx_s
+attribute [instance_reducible, instance]
+  State.toYourProgram State.toExecutable State.toProgram State.toLanguage
+  State.toIsRunning State.toData State.toOutput
 
-variable [ctx: State.Context St]
-
-instance : Executable St := ⟨ctx.executable.T, ctx.executable.v⟩
-
-instance : PropertyOf St (Executable.v) := (inferInstanceAs (Property ctx.executable.v))
-
-end ctx_s
-
---protected class abbrev State.Executable := Executable St, Property (@Executable.v St _)
-
-open Interpreter in
-class State
-  extends
-    State.Context St,
-    Language (Program.T St),
-    ExecutableToProgram St
-  where
-  protected isYourProgramRunning : IsRunning St (Program.v)
-  protected isExecutableRunning : IsRunning St (Program.ofExecutable St)
-  --protected isYourProgramRunning : IsRunning St (Program.v)
 
 variable [State St]
 
+section dec_s
+set_option trace.Meta.synthInstance true
 
-protected structure Ability.TakeAsInput extends TakeAsInput St where
-  dreq (prog: Program.T St) (st: St) : Decidable (TakeAsInput.Req _ prog st)
+instance (prog: YourProgram.T St) (st: St) : Decidable (TakeAsInput.Req _ prog st) := inferInstance
 
-protected structure Ability.ProduceExecutable extends ProduceExecutable St where
-  dreq (st: St) : Decidable (ProduceExecutable.Req _ st)
+instance (st: St) : Decidable (ProduceExecutable.Req _ st) := inferInstance
 
-protected structure Ability.WillProduceTheOutput extends WillProduceTheOutput St where
-  dreq (st: St) : Decidable (WillProduceTheOutput.Req _ st)
+instance (st: St) : Decidable (IsExecutableRunning _ st) := inferInstance
 
-protected structure Ability.TakeData extends TakeData St where
-  dreq (data: Data.T St) : Decidable (TakeData.Req _ data)
+instance (st: St) : Decidable (WillProduceTheOutput.Req _ st) := inferInstance
 
-protected structure Ability.BeginRun extends BeginRun St where
-  dreq (st: St) : Decidable (BeginRun.Req _ st)
+instance (data: Data.T St) : Decidable (TakeData.Req _ data) := inferInstance
 
-class Ability where
-  toTakeAsInput: Ability.TakeAsInput St
-  toProduceExecutable : Ability.ProduceExecutable St
-  toWillProduceTheOutput : Ability.WillProduceTheOutput St
-  toTakeData : Ability.TakeData St
-  toBeginRun : Ability.BeginRun St
+instance (st: St) : Decidable (BeginRun.Req _ st) := inferInstance
 
-variable [Ability St]
+end dec_s
 
 inductive Label where
   | takeAsInput (prog: Program.T St)
@@ -398,7 +349,43 @@ inductive Label where
   | takeData (data: Data.T St)
   | beginRun
 
-#print Set.coe_setOf
+
+#print Label.ctorIdx
+
+section dec_s
+
+--set_option trace.Meta.synthInstance true
+
+--theorem aux1 : ((Label.produceExecutable: Label St) ≠ Label.beginRun) := by simp only [ne_eq, reduceCtorEq, not_false_eq_true]
+
+--#print aux1
+
+--(inferInstance : Decidable (p1 = p2)) |>
+--instance {p1 p2: Program.T St} : Decidable (Label.takeAsInput p1 = .takeAsInput p2) := decidable_of_iff
+
+#print decidable_of_iff
+
+instance : DecidableEq (Label St) := fun l1 l2 =>
+  if h: l1.ctorIdx = l2.ctorIdx then
+    match l1, l2 with
+    | .takeAsInput p1, .takeAsInput p2 => decidable_of_iff (p1 = p2) (by simp)
+    | .takeData d1, .takeData d2 => decidable_of_iff (d1 = d2) (by simp)
+    | .produceExecutable, .produceExecutable
+    | .willProduceTheOutput, .willProduceTheOutput
+    | .beginRun, .beginRun => decidable_of_iff True (by simp)
+  else
+    decidable_of_iff False (by
+      simp
+      revert h
+      contrapose
+      intro h2
+      rw [h2]
+    )
+
+
+end dec_s
+
+
 
 instance instLTS : Cslib.LTS St (Label St) where
   Tr st1 l st2 :=
