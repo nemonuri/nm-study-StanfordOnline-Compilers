@@ -92,10 +92,21 @@ instance : FunLike (Builder.ZeroHom M N) M N where
         simp only [OfNat.ofNat] at h1
         match zeroN1, zeroN2 with
         | .mk _, .mk _ => simp_all
-      rewrite [lm4] at *
-      --simp [lm4]
+      --revert h1 zeroHom2 ; rw [← lm4] ; intro zeroHom2 h1
+      subst lm4
+      simp
+      match zeroHom1, zeroHom2 with
+      | ⟨_,_⟩, ⟨_,_⟩ =>
+        simp
+        simp at h1
+        ext x
+        exact h1 x
+
+
+
       --have lm5 : type_of% zeroHom1 = type_of% zeroHom2 := by rw [lm4]
       --apply (heq_of_cast_eq lm5)
+      --have := cast_eq (lm4 ▸ lm5) zeroHom1
 /-
       ext x
       specialize h1 x
