@@ -9,62 +9,35 @@ universe u
 
 namespace Nemonuri
 
-/-
-structure Zero.Context : Type (u + 1) where
-  protected N: Type u
-  protected zero: Zero N
--/
-
---set_option trace.Meta.synthInstance true in
---structure ZeroHomContext (M N: Type u) extends ZeroContext M N where
---  zeroHom: ZeroHom M N
-
---structure ZeroHom.Builder (M: Type u) [Zero M] where
---  toZeroHom (N: Type u) [Zero N] : ZeroHom M N
-
-/-
-structure ZeroHom.Context (M: Type u) [Zero M] where
-  protected T: Type u
-  protected v [Zero T] : ZeroHom M T
--/
 
 
-protected inductive Builder.ZeroHom (M: Type u) [Zero M] : (N: Type u) → Type u where
-  | mk (N: Type u) [Zero N] (zeroHom: ZeroHom M N) : Builder.ZeroHom M N
+inductive ZeroHomBuilder (M: Type u) [Zero M] : (N: Type u) → Type u where
+  | mk (N: Type u) [Zero N] (zeroHom: ZeroHom M N) : ZeroHomBuilder M N
 
 
 
---def ZeroHom.Context.zeroHom {M} [Zero M] (ctx: ZeroHom.Context M) [Zero ctx.T] : ZeroHom M ctx.T :=
---  ctx.toZeroHom ctx.T
-
-/-
-@[ext]
-structure ZeroHom.Context (M N: Type u) [Zero M] extends Zero N where
-  zeroHom: ZeroHom M N
--/
-
-namespace Builder.ZeroHom
+namespace ZeroHomBuilder
 
 variable {M N: Type u} [Zero M]
 
 
 @[implicit_reducible]
-protected def zeroN (bd: Builder.ZeroHom M N) : Zero N where
+protected def zeroN (bd: ZeroHomBuilder M N) : Zero N where
   zero :=
     match bd with
     | @mk M _ N zeroN _ => zeroN.zero
 
 
-protected def zeroHom (bd: Builder.ZeroHom M N) : @ZeroHom M N _ bd.zeroN :=
+protected def zeroHom (bd: ZeroHomBuilder M N) : @ZeroHom M N _ bd.zeroN :=
   match bd with
   | @mk _ _ _ _ zeroHom => zeroHom
 
 
-instance instFunLike : FunLike (Builder.ZeroHom M N) M N where
+instance instFunLike : FunLike (ZeroHomBuilder M N) M N where
   coe bd := bd.zeroHom
   coe_injective' := by
     intro bd1 bd2 h1
-    simp [Builder.ZeroHom.zeroHom] at h1
+    simp [ZeroHomBuilder.zeroHom] at h1
     simp only [← ZeroHom.toFun_eq_coe] at h1
     simp_all
     match bd1, bd2 with
@@ -88,7 +61,41 @@ instance instFunLike : FunLike (Builder.ZeroHom M N) M N where
 
 
 
-end Builder.ZeroHom
+end ZeroHomBuilder
+
+
+inductive PropertyBuilder (M: Type u) [Zero M] : (N: Type u) → Type u where
+  | mk (N: Type u) (zeroHomBuilder: ZeroHomBuilder M N) [DecidableEq N] : PropertyBuilder M N
+
+namespace PropertyBuilder
+
+variable {M N: Type u} [Zero M]
+
+
+@[implicit_reducible]
+protected def decN (bd: PropertyBuilder M N) : DecidableEq N :=
+  match bd with | @mk M _ N _ decN => decN
+
+protected def zeroHomBuilder (bd: PropertyBuilder M N) : ZeroHomBuilder M N :=
+  match bd with | @mk M _ N zhb _ => zhb
+
+
+instance instFunLike : FunLike (PropertyBuilder M N) M N where
+  coe bd := bd.zeroHomBuilder
+  coe_injective' := by
+    intro bd1 bd2 h1
+    simp at h1
+    have lm1 : Subsingleton (DecidableEq N) := inferInstance
+    replace lm1 := lm1.allEq
+    match bd1, bd2 with
+    | @mk _ _ _ zhb1 dn1, @mk _ _ _ zhb2 dn2 =>
+      simp
+      simp only [PropertyBuilder.zeroHomBuilder] at h1
+      specialize lm1 dn1 dn2
+      constructor <;> assumption
+
+
+end PropertyBuilder
 
 
 end Nemonuri
