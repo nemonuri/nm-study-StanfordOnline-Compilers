@@ -141,17 +141,16 @@ def RunningStateEq (st1 st2: St) : Prop :=
   (IsYourProgramRunning _ st1 = IsYourProgramRunning _ st2) ∧
   (IsExecutableRunning _ st1 = IsExecutableRunning _ st2)
 -/
+
+/-
 structure RunningTester where
-  protected v : PropertyBuilder (Program.T St) (ULift Bool)
+  protected v : ZeroHom (Program.T St) (ULift Bool)
 
 namespace RunningTester
 
-instance : Zero (ULift Bool) where zero := ⟨false⟩
-
 instance : Zero (RunningTester St) where
   zero := {
-      v :=
-        .mk (ULift Bool) (.mk _ ⟨Function.const _ 0, (by simp only [Function.const_apply])⟩)
+      v := ⟨Function.const _ 0, (by simp only [Function.const_apply])⟩
     }
 
 instance : FunLike (RunningTester St) (Program.T St) Bool where
@@ -166,18 +165,29 @@ instance : FunLike (RunningTester St) (Program.T St) Bool where
       exact (DFunLike.ext v1 v2 h1)
 
 end RunningTester
+-/
+
+protected class IsRunning.State where
+  protected T: Type us
+  protected v: PropertyBuilder St T
+
+variable [IsRunning.State St]
+
+instance : DecidableEq (IsRunning.State.T St) := IsRunning.State.v.decN
+instance : Zero (IsRunning.State.T St) := IsRunning.State.v.zeroN
+instance : Zero Bool where zero := false
 
 class IsRunning where
-  protected v : PropertyBuilder St (RunningTester St)
+  protected v : ZeroHom (IsRunning.State.T St) (ZeroHom (Program.T St) Bool) --PropertyBuilder St (RunningTester St)
   --isRunning: PropertyBuilder St (PropertyBuilder (Program.T St) (ULift Bool))
 
 variable [IsRunning St]
 
 @[reducible]
-def IsYourProgramRunning (st: St) : Prop := IsRunning.v st (Program.ofYourProgram (YourProgram.v st))
+def IsYourProgramRunning (st: St) : Prop := IsRunning.v (IsRunning.State.v st) (Program.ofYourProgram (YourProgram.v st))
 
 @[reducible]
-def IsExecutableRunning (st: St) : Prop := IsRunning.v st (Program.ofExecutable (Executable.v st))
+def IsExecutableRunning (st: St) : Prop := IsRunning.v (IsRunning.State.v st) (Program.ofExecutable (Executable.v st))
 
 @[reducible]
 def IsAnyProgramRunning (st: St) : Prop := IsYourProgramRunning _ st ∨ IsExecutableRunning _ st
@@ -303,8 +313,9 @@ def Req (data: Data.T St) : Prop := data ≠ 0
 
 def Ens (data: Data.T St) (st1 st2: St) : Prop :=
   (data = Data.v st2) ∧
-  (YourProgram.v st1 = YourProgram.v st2) ∧
-  (Executable.v st1 = Executable.v st2)
+  (AppEq YourProgram.v st1 st2) ∧
+  (AppEq Executable.v st1 st2) ∧
+  (AppEq IsRunning.State.v st1 st2)
 
 end TakeData
 
@@ -343,13 +354,14 @@ class State where
   toExecutable: Executable St
   toProgram: Program St
   toLanguage: Language (Program.T St)
+  toIsRunningState: IsRunning.State St
   toIsRunning: IsRunning St
   toData: Data St
   toOutput: Output St
 
 attribute [instance_reducible, instance]
   State.toYourProgram State.toExecutable State.toProgram State.toLanguage
-  State.toIsRunning State.toData State.toOutput
+  State.toIsRunningState State.toIsRunning State.toData State.toOutput
 
 
 variable [State St]
@@ -386,8 +398,10 @@ inductive Label where
 
 class Ability where
   takeAsInput: TakeAsInput St
+  takeAsInput_spec: ∀prog st1 req, AppEq IsRunning.State.v st1 ↑(takeAsInput.run prog st1 req)
   takeData: TakeData St
   produceExecutable: ProduceExecutable St
+  produceExecutable_spec: ∀st1 req, AppEq IsRunning.State.v st1 ↑(produceExecutable.run st1 req)
   willProduceTheOutput: WillProduceTheOutput St
   beginRun: BeginRun St
 
@@ -410,9 +424,13 @@ instance instLTS : Cslib.LTS St (Label St) where
   Tr st1 l st2 :=
     match l with
     | .takeAsInput prog =>
-      if req: TakeAsInput.Req _ prog st1 then Ability.takeAsInput.run prog st1 req = st2 else False
+      if req: TakeAsInput.Req _ prog st1 then
+        (Ability.takeAsInput.run prog st1 req = st2) ∧ (AppEq IsRunning.State.v st1 st2)
+      else False
     | .produceExecutable =>
-      if req: ProduceExecutable.Req _ st1 then Ability.produceExecutable.run st1 req = st2 else False
+      if req: ProduceExecutable.Req _ st1 then
+        (Ability.produceExecutable.run st1 req = st2) ∧ (AppEq IsRunning.State.v st1 st2)
+      else False
     | .willProduceTheOutput =>
       if req: WillProduceTheOutput.Req _ st1 then Ability.willProduceTheOutput.run st1 req = st2 else False
     | .takeData data =>
@@ -482,11 +500,28 @@ example : CanRunSeparately St (instLTS _) := by
   intro data st1 req
   simp [CanReach]
   simp [CanRunSeparately.ReqPre] at req
+  --obtain ⟨req1, req2, req3, req4⟩ := req
   simp [CanRunSeparately.ReqPost]
-  have lm_st2 : ∃st2, (instLTS _).Tr st1 (.produceExecutable) st2 ∧ ProduceExecutable.Ens _ st1 st2 := by
-    simp [instLTS]
+  have lm_st2 : ∃st2, (instLTS _).Tr st1 (.produceExecutable) st2 ∧ ProduceExecutable.Ens _ st1 st2 ∧ (AppEq IsRunning.State.v st1 st2) := by
+    simp [instLTS, appEq_iff]
     exists req.2.1
-    apply Subtype.property
+    have lm1 := Ability.produceExecutable_spec st1
+    have lm2 req0 : ProduceExecutable.Ens St st1 (Ability.produceExecutable.run st1 req0) := by
+      apply Subtype.property
+    simp [lm2]
+    congr
+    simp [ProduceExecutable.Ens, forall_and, appEq_iff] at lm2
+
+    --rotate_right
+    /-
+    have lm1 req0 : Ability.produceExecutable.run st1 req0 = Ability.produceExecutable.run st1 req.2.1 := by simp
+    simp [lm1]
+    -/
+
+    --constructor
+    --· congr ; simp [Subtype.val_injective]
+
+    --apply Subtype.property
   obtain ⟨st2, ⟨st2_tr, st2_ens⟩⟩ := lm_st2
   simp [ProduceExecutable.Ens, appEq_iff] at st2_ens
   --simp only [appEq_iff] at st2_ens
@@ -503,7 +538,7 @@ example : CanRunSeparately St (instLTS _) := by
       constructorm* _ ∧ _
       · rw [← st3_ens.1] ; exact req.1
       · rw [← st3_ens.2.2] ; exact st2_ens.2
-      · rw [← st3_ens.2.1, ← st2_ens.1] ; exa
+      · rw [← st3_ens.2.1, ← st2_ens.1]
       --· rw [← st3_ens.1] ; exact req.1
       --· constructor
 --        · rw [← st3_ens.2.2] ; exact st2_ens.2
