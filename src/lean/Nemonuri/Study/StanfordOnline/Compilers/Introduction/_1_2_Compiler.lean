@@ -507,11 +507,35 @@ theorem CanRunSeparately.proof : CanRunSeparately St (instLTS _) := by
 
 theorem IsOffline.proof : IsOffline St (instLTS _) := by
   simp [IsOffline]
-  intro st1 req_pre data data_p sts sts_p st2 st2_p
+  intro st1 req_pre data data_p --sts sts_p st2 st2_p
   simp [IsOffline.ReqPre] at req_pre
   obtain ⟨_,_,_,_⟩ := req_pre
-  simp [List.forall_iff_forall_mem, IsOffline.ReqAll, appEq_iff] at sts_p
-  simp [List.forall_iff_forall_mem, IsOffline.EnsAll, IsExecutableRunning]
+  simp [IsOffline.ReqAll, appEq_iff]
+  simp [IsOffline.ReqPost, IsExecutableRunning]
+  simp [IsOffline.EnsAll, IsExecutableRunning]
+  obtain ⟨st2, ⟨st2_tr, st2_ens⟩⟩ := produceExecutable_exists _ st1 (by simp; trivial)
+  simp [ProduceExecutable.Ens, RunningStateEq, appEq_iff] at st2_ens
+  obtain ⟨⟨_,_⟩,⟨_,_⟩⟩ := st2_ens
+  obtain ⟨st3, ⟨st3_tr, st3_ens⟩⟩ := takeData_exists St data st2 (by simp; exact data_p)
+  simp [TakeData.Ens, appEq_iff] at st3_ens
+  obtain ⟨_,_,_,_⟩ := st3_ens
+  --simp [h2, h3, h4] at * ; clear h2 h3 h4
+  obtain ⟨st4, ⟨st4_tr, st4_ens⟩⟩ := beginRun_exists St st3 (by
+    subst data
+    simp_all
+    simp [BeginRun.Req]
+    constructorm* _ ∧ _ <;> trivial
+  )
+  simp [BeginRun.Ens, appEq_iff] at st4_ens
+  obtain ⟨_,_,_,_,_⟩ := st4_ens
+  --simp [h1, h2, h3] at * ; clear h1 h2 h3
+  have lm1 := Execution.refl (instLTS _) st4 |>.stepL st4_tr |>.stepL st3_tr |>.stepL st2_tr
+  exists [st1, st2, st3, st4]
+  simp_all
+  --MTr.single _ st2_tr |>.stepR _ st3_tr |>.stepR _ st4_tr
+  --subst_eqs
+  --simp [List.forall_iff_forall_mem, IsOffline.ReqAll, appEq_iff] at sts_p
+  --simp [List.forall_iff_forall_mem, IsOffline.EnsAll, IsExecutableRunning]
 /-
   simp [IsOffline.ReqPre] at req_pre
   obtain ⟨_,_,_,_⟩ := req_pre
