@@ -267,10 +267,12 @@ open IsOffline in
 def IsOffline {La} (lts: Cslib.LTS St La) : Prop :=
   ∀(st1: St), (ReqPre _ st1) →
   ∀(data: Data.T St), (data ≠ 0) →
-  ∃sts, (∀stX ∈ sts, ReqAll _ st1 stX) ∧
-  ∃(st2: St), (ReqPost _ st2) ∧
-  ∃μs, (lts.Execution st1 μs st2 sts) ∧
+  ∀(st2: St), (ReqPost _ st2) →
+  ∃sts μs,
+    (∀stX ∈ sts, ReqAll _ st1 stX) ∧
+    (lts.Execution st1 μs st2 sts) ∧
     (∀stX ∈ sts, EnsAll _ stX)
+  --∃μs, (lts.Execution st1 μs (sts.getLast h) sts)
 
 /-!
 7. The compiler is essentially a pre-processing step that produces the executable,
@@ -530,8 +532,10 @@ theorem IsOffline.proof : IsOffline St (instLTS _) := by
   obtain ⟨_,_,_,_,_⟩ := st4_ens
   --simp [h1, h2, h3] at * ; clear h1 h2 h3
   have lm1 := Execution.refl (instLTS _) st4 |>.stepL st4_tr |>.stepL st3_tr |>.stepL st2_tr
-  exists [st1, st2, st3, st4]
-  simp_all
+  intro sts sts_p st5 st5_p
+
+  --exists [st1, st2, st3, st4]
+  --simp_all
   --MTr.single _ st2_tr |>.stepR _ st3_tr |>.stepR _ st4_tr
   --subst_eqs
   --simp [List.forall_iff_forall_mem, IsOffline.ReqAll, appEq_iff] at sts_p
