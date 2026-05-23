@@ -446,83 +446,38 @@ instance instLTS : Cslib.LTS St (Label St) where
 
 open Cslib LTS
 
-attribute [scoped simp] isImageNonempty_iff
-
-/-
-theorem TakeData.req_iff (data: Data.T St) (st1: St)
-  : TakeData.Req St data ↔ ∃st2, ((instLTS _).Tr st1 (.takeData data) st2 ∧ TakeData.Ens _ data st1 st2) := by
-  simp [instLTS, Decidable.byCases]
-  match Ability.toTakeData.dreq data with
-  | .isTrue req =>
-    simp [req]
-    exact (Ability.toTakeData.run data st1 req).property
-  | .isFalse h => simp [h, exists_const]
--/
-/-
-set_option pp.proofs true in
-theorem TakeData.Req.imp_ens (data: Data.T St) (st1: St) (req: TakeData.Req St data)
-  : ∃st2, TakeData.Ens St data st1 st2 := by
-  obtain ⟨st2, st2_p⟩ := Ability.toTakeData.run data st1 req
-  exists st2
--/
-  --have (eq := lm1) req := h |> (TakeData.req_iff _ data st1).mpr
-  --let (eq := lm2) st2E := Ability.toTakeData.run data st1 req
-  --apply @Exists.choose_spec _ (fun x => Ens St data st1 x)
-  --subst lm1
-  --rw [Classical.choose_eq st2]
-  --rewrite [← TakeData.req_iff] at *
-  --rename_i h2
-  --have lm1 :
-  --have lm1 := TakeData.req_iff _ data st1
-  --change TakeData.Req St data at h
-  --have lm1 := isImageNonempty_iff.mpr ⟨st2, h⟩ |> (TakeData.req_iff _ data st1).mpr
-  --let _ := Ability.toTakeData.run data st1 lm1
-
-/-
-theorem ProduceExecutable.req_iff (st1: St)
-  : ProduceExecutable.Req _ st1 ↔ ∃st2, ((instLTS _).Tr st1 (.produceExecutable) st2 ∧ ProduceExecutable.Ens _ st1 st2) := by
+theorem produceExecutable_exists (st1: St) (req: ProduceExecutable.Req _ st1)
+  : ∃st2, (instLTS _).Tr st1 (.produceExecutable) st2 ∧ ProduceExecutable.Ens _ st1 st2 ∧ RunningStateEq _ st1 st2 := by
+  have lm1 := Ability.produceExecutable_spec st1
   simp [instLTS]
-  match Ability.toProduceExecutable.dreq st1 with
-  | .isTrue req =>
-    simp [req]
-    exact (Ability.toProduceExecutable.run st1 req).property
-  | .isFalse h => simp [h, exists_const]
+  exists req
+  simp [lm1]
+  apply Subtype.property
 
-theorem BeginRun.req_iff (st1: St)
-  : BeginRun.Req _ st1 ↔ ∃st2, ((instLTS _).Tr st1 (.beginRun) st2 ∧ BeginRun.Ens _ st1 st2) := by
-  simp [instLTS, Decidable.byCases]
-  match Ability.toBeginRun.dreq st1 with
-  | .isTrue req =>
-    simp [req]
-    exact (Ability.toBeginRun.run st1 req).property
-  | .isFalse h => simp [h, exists_const]
--/
+theorem takeData_exists (data) (st1: St) (req: TakeData.Req _ data)
+  : ∃st2, (instLTS _).Tr st1 (.takeData data) st2 ∧ TakeData.Ens _ data st1 st2 := by
+  simp [instLTS]
+  exists req
+  apply Subtype.property
+
+theorem beginRun_exists (st1: St) (req: BeginRun.Req _ st1)
+  : ∃st2, (instLTS _).Tr st1 (.beginRun) st2 ∧ BeginRun.Ens _ st1 st2 := by
+  simp [instLTS]
+  exists req
+  apply Subtype.property
 
 set_option pp.proofs true in
-example : CanRunSeparately St (instLTS _) := by
+theorem CanRunSeparately.proof : CanRunSeparately St (instLTS _) := by
   simp [CanRunSeparately]
   intro data st1 req
   simp [CanReach]
   simp [CanRunSeparately.ReqPre] at req
-  --obtain ⟨req1, req2, req3, req4⟩ := req
   simp [CanRunSeparately.ReqPost]
-  have lm_st2 : ∃st2, (instLTS _).Tr st1 (.produceExecutable) st2 ∧ ProduceExecutable.Ens _ st1 st2 ∧ (RunningStateEq _ st1 st2) := by
-    have lm1 := Ability.produceExecutable_spec st1 req.2.1--st1 req.2.1 |> appEq_iff.mp
-    simp [instLTS]
-    exists req.2.1
-    simp [lm1]
-    apply Subtype.property
-  obtain ⟨st2, ⟨st2_tr, st2_ens⟩⟩ := lm_st2
+  obtain ⟨st2, ⟨st2_tr, st2_ens⟩⟩ := produceExecutable_exists _ _ req.2.1
   simp [ProduceExecutable.Ens, appEq_iff, RunningStateEq] at st2_ens
-  have lm_st3 : ∃st3, (instLTS _).Tr st2 (.takeData data) st3 ∧ TakeData.Ens _ data st2 st3 := by
-    simp [instLTS] --exact req.left
-    exists req.1
-    apply Subtype.property
-  obtain ⟨st3, ⟨st3_tr, st3_ens⟩⟩ := lm_st3
+  obtain ⟨st3, ⟨st3_tr, st3_ens⟩⟩ := takeData_exists _ _ st2 req.1
   simp [TakeData.Ens, appEq_iff] at st3_ens
-  have lm_st4 : ∃st4, (instLTS _).Tr st3 (.beginRun) st4 ∧ BeginRun.Ens _ st3 st4 := by
-    simp [instLTS]
-    have lm1 : BeginRun.Req _ st3 := by
+  obtain ⟨st4, ⟨st4_tr, st4_ens⟩⟩ := beginRun_exists _ st3 (by
       simp [BeginRun.Req]
       constructorm* _ ∧ _
       · rw [← st3_ens.1] ; exact req.1
@@ -533,9 +488,7 @@ example : CanRunSeparately St (instLTS _) := by
       · rw [← st3_ens.2.2.1, ← st3_ens.2.2.2]
         simp only [← st2_ens.2.2]
         exact req.2.2.2
-    exists lm1
-    apply Subtype.property
-  obtain ⟨st4, ⟨st4_tr, st4_ens⟩⟩ := lm_st4
+  )
   simp [BeginRun.Ens, appEq_iff] at st4_ens
   exists st4
   simp [appEq_iff]
@@ -547,14 +500,7 @@ example : CanRunSeparately St (instLTS _) := by
   open Cslib LTS in
   have lm2 := MTr.single (instLTS _) st2_tr |>.stepR _ st3_tr |>.stepR _ st4_tr
   simp at lm2
-  match h: lm2 with
-  | @MTr.stepL _ _ _ _ l _ ls _ _ _ =>
-    exists l::ls
-    rename_i hls hl
-    rw [← hls, ← hl]
-    exact lm2
-
-
+  exact Exists.intro _ lm2
 
 
 
