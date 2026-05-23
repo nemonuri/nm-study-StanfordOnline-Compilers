@@ -266,9 +266,10 @@ end IsOffline
 open IsOffline in
 def IsOffline {La} (lts: Cslib.LTS St La) : Prop :=
   ∀(st1: St), (ReqPre _ st1) →
-  ∃(st2: St), (ReqPost _ st2) ∧
-  ∃sts μs, (List.Forall (ReqAll _ st1) sts) ∧ (lts.Execution st1 μs st2 sts) ∧
-    List.Forall (EnsAll _) sts
+  ∀(data: Data.T St), (data ≠ 0) →
+  ∀sts, (List.Forall (ReqAll _ st1) sts) →
+  ∀(st2: St), (ReqPost _ st2) →
+  ∃μs, (lts.Execution st1 μs st2 sts) ∧ List.Forall (EnsAll _) sts
 
 /-!
 7. The compiler is essentially a pre-processing step that produces the executable,
@@ -503,7 +504,16 @@ theorem CanRunSeparately.proof : CanRunSeparately St (instLTS _) := by
   exact Exists.intro _ lm2
 
 
-
+theorem IsOffline.proof : IsOffline St (instLTS _) := by
+  simp [IsOffline]
+  intro st1 req_pre
+  simp [IsOffline.ReqPre] at req_pre
+  obtain ⟨_,_,_,_⟩ := req_pre
+  simp [IsOffline.ReqPost, IsExecutableRunning]
+  obtain ⟨st2, ⟨st2_tr, st2_ens⟩⟩ := produceExecutable_exists _ st1 (by simp; trivial)
+  simp [ProduceExecutable.Ens, RunningStateEq, appEq_iff] at st2_ens
+  obtain ⟨⟨_,_⟩,⟨_,_⟩⟩ := st2_ens
+  simp_all
 
 
 
