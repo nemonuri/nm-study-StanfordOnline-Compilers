@@ -396,12 +396,16 @@ inductive Label where
   | takeData (data: Data.T St)
   | beginRun
 
+def RunningStateEq (st1 st2: St) : Prop :=
+  (IsYourProgramRunning _ st1 = IsYourProgramRunning _ st2) ∧
+  (IsExecutableRunning _ st1 = IsExecutableRunning _ st2)
+
 class Ability where
   takeAsInput: TakeAsInput St
-  takeAsInput_spec: ∀prog st1 req, AppEq IsRunning.State.v st1 ↑(takeAsInput.run prog st1 req)
+  takeAsInput_spec: ∀prog st1 req, RunningStateEq _ st1 ↑(takeAsInput.run prog st1 req)
   takeData: TakeData St
   produceExecutable: ProduceExecutable St
-  produceExecutable_spec: ∀st1 req, AppEq IsRunning.State.v st1 ↑(produceExecutable.run st1 req)
+  produceExecutable_spec: ∀st1 req, RunningStateEq _ st1 ↑(produceExecutable.run st1 req)
   willProduceTheOutput: WillProduceTheOutput St
   beginRun: BeginRun St
 
@@ -425,11 +429,11 @@ instance instLTS : Cslib.LTS St (Label St) where
     match l with
     | .takeAsInput prog =>
       if req: TakeAsInput.Req _ prog st1 then
-        (Ability.takeAsInput.run prog st1 req = st2) ∧ (AppEq IsRunning.State.v st1 st2)
+        (Ability.takeAsInput.run prog st1 req = st2) ∧ (RunningStateEq _ st1 st2)
       else False
     | .produceExecutable =>
       if req: ProduceExecutable.Req _ st1 then
-        (Ability.produceExecutable.run st1 req = st2) ∧ (AppEq IsRunning.State.v st1 st2)
+        (Ability.produceExecutable.run st1 req = st2) ∧ (RunningStateEq _ st1 st2)
       else False
     | .willProduceTheOutput =>
       if req: WillProduceTheOutput.Req _ st1 then Ability.willProduceTheOutput.run st1 req = st2 else False
@@ -502,47 +506,61 @@ example : CanRunSeparately St (instLTS _) := by
   simp [CanRunSeparately.ReqPre] at req
   --obtain ⟨req1, req2, req3, req4⟩ := req
   simp [CanRunSeparately.ReqPost]
-  have lm_st2 : ∃st2, (instLTS _).Tr st1 (.produceExecutable) st2 ∧ ProduceExecutable.Ens _ st1 st2 ∧ (AppEq IsRunning.State.v st1 st2) := by
-    simp [instLTS, appEq_iff]
+  have lm_st2 : ∃st2, (instLTS _).Tr st1 (.produceExecutable) st2 ∧ ProduceExecutable.Ens _ st1 st2 ∧ (RunningStateEq _ st1 st2) := by
+    have lm1 := Ability.produceExecutable_spec st1 req.2.1--st1 req.2.1 |> appEq_iff.mp
+    simp [instLTS]
     exists req.2.1
-    have lm1 := Ability.produceExecutable_spec st1
-    have lm2 req0 : ProduceExecutable.Ens St st1 (Ability.produceExecutable.run st1 req0) := by
-      apply Subtype.property
-    simp [lm2]
-    congr
-    simp [ProduceExecutable.Ens, forall_and, appEq_iff] at lm2
-
-    --rotate_right
-    /-
-    have lm1 req0 : Ability.produceExecutable.run st1 req0 = Ability.produceExecutable.run st1 req.2.1 := by simp
     simp [lm1]
-    -/
-
-    --constructor
-    --· congr ; simp [Subtype.val_injective]
-
-    --apply Subtype.property
+    apply Subtype.property
   obtain ⟨st2, ⟨st2_tr, st2_ens⟩⟩ := lm_st2
-  simp [ProduceExecutable.Ens, appEq_iff] at st2_ens
-  --simp only [appEq_iff] at st2_ens
+  simp [ProduceExecutable.Ens, appEq_iff, RunningStateEq] at st2_ens
   have lm_st3 : ∃st3, (instLTS _).Tr st2 (.takeData data) st3 ∧ TakeData.Ens _ data st2 st3 := by
     simp [instLTS] --exact req.left
     exists req.1
     apply Subtype.property
   obtain ⟨st3, ⟨st3_tr, st3_ens⟩⟩ := lm_st3
-  simp [TakeData.Ens] at st3_ens
+  simp [TakeData.Ens, appEq_iff] at st3_ens
   have lm_st4 : ∃st4, (instLTS _).Tr st3 (.beginRun) st4 ∧ BeginRun.Ens _ st3 st4 := by
     simp [instLTS]
     have lm1 : BeginRun.Req _ st3 := by
       simp [BeginRun.Req]
       constructorm* _ ∧ _
       · rw [← st3_ens.1] ; exact req.1
-      · rw [← st3_ens.2.2] ; exact st2_ens.2
-      · rw [← st3_ens.2.1, ← st2_ens.1]
-      --· rw [← st3_ens.1] ; exact req.1
-      --· constructor
---        · rw [← st3_ens.2.2] ; exact st2_ens.2
-        --· constructor
+      · rw [← st3_ens.2.2.1] ; exact st2_ens.1.2
+      · rw [← st3_ens.2.2.2, ← st3_ens.2.1]
+        simp only [← st2_ens.2.1]
+        exact req.2.2.1
+      · rw [← st3_ens.2.2.1, ← st3_ens.2.2.2]
+        simp only [← st2_ens.2.2]
+        exact req.2.2.2
+    exists lm1
+    apply Subtype.property
+  obtain ⟨st4, ⟨st4_tr, st4_ens⟩⟩ := lm_st4
+  simp [BeginRun.Ens, appEq_iff] at st4_ens
+  exists st4
+  simp [appEq_iff]
+  obtain ⟨_,_,_,_⟩ := req
+  obtain ⟨⟨_,_⟩,_,_⟩ := st2_ens
+  obtain ⟨_,_,_,_⟩ := st3_ens
+  obtain ⟨_,_,_,_,_⟩ := st4_ens
+  simp_all [IsExecutableRunning]
+  open Cslib LTS in
+  have lm2 := MTr.single (instLTS _) st2_tr |>.stepR _ st3_tr |>.stepR _ st4_tr
+  simp at lm2
+  match h: lm2 with
+  | @MTr.stepL _ _ _ _ l _ ls _ _ _ =>
+    exists l::ls
+    rename_i hls hl
+    rw [← hls, ← hl]
+    exact lm2
+
+
+
+
+
+
+
+
 
 
   --obtain ⟨st2, ⟨st2_tr, st2_ens⟩⟩ := (TakeData.req_iff _ data st1).mp req.left
