@@ -125,48 +125,6 @@ variable [Language (Program.T St)]
 /-!
 5. But now this can be run separately on your data. And that will produce the output. Okay?
 -/
-
---namespace IsRunning
-
---def IsNonZeroRunning (st: St) (v: St → Program.T St) : Prop := (v st) ≠ 0 ∧ IsRunning.isRunning st (v st)
-
---end IsRunning
-
---def IsYourProgramRunning (st: St) : Prop := IsNonZeroRunning _ st (Program.v)
-
---def IsExecutableRunning (st: St) : Prop := IsNonZeroRunning _ st (Executable.v · |> ExecutableIsProgram.embedding)
-
-/-
-def RunningStateEq (st1 st2: St) : Prop :=
-  (IsYourProgramRunning _ st1 = IsYourProgramRunning _ st2) ∧
-  (IsExecutableRunning _ st1 = IsExecutableRunning _ st2)
--/
-
-/-
-structure RunningTester where
-  protected v : ZeroHom (Program.T St) (ULift Bool)
-
-namespace RunningTester
-
-instance : Zero (RunningTester St) where
-  zero := {
-      v := ⟨Function.const _ 0, (by simp only [Function.const_apply])⟩
-    }
-
-instance : FunLike (RunningTester St) (Program.T St) Bool where
-  coe rt p := (rt.v p).down
-  coe_injective' := by
-    intro rt1 rt2 h1
-    simp [funext_iff] at h1
-    match rt1, rt2 with
-    | ⟨v1⟩, ⟨v2⟩ =>
-      simp
-      simp at h1
-      exact (DFunLike.ext v1 v2 h1)
-
-end RunningTester
--/
-
 protected class IsRunning.State where
   protected T: Type us
   protected v: PropertyBuilder St T
@@ -206,19 +164,19 @@ instance : Zero (Data.T St) := Data.v.zeroN
 namespace CanRunSeparately
 
 
-def ReqPre (data: Data.T St) (st1: St) : Prop :=
-  (data ≠ 0) ∧ (YourProgram.v st1 ≠ 0) ∧ (¬IsAnyProgramRunning _ st1)
+def ReqFirst (data: Data.T St) (stF: St) : Prop :=
+  (data ≠ 0) ∧ (YourProgram.v stF ≠ 0) ∧ (¬IsAnyProgramRunning _ stF)
 
-def ReqPost (data: Data.T St) (st1 st2: St) : Prop :=
-  (Data.v st2 = data) ∧ (AppEq YourProgram.v st2 st1) ∧ (¬IsYourProgramRunning _ st2) ∧ (IsExecutableRunning _ st2)
+def EnsLast (data: Data.T St) (stF stL: St) : Prop :=
+  (Data.v stL = data) ∧ (AppEq YourProgram.v stL stF) ∧ (¬IsYourProgramRunning _ stL) ∧ (IsExecutableRunning _ stL)
 
 end CanRunSeparately
 
 open CanRunSeparately in
 def CanRunSeparately {La} (lts: Cslib.LTS St La) : Prop :=
-  ∀(data: Data.T St) (st1: St), (ReqPre _ data st1) →
-  ∃(st2: St), (ReqPost _ data st1 st2) ∧
-  lts.CanReach st1 st2
+  ∀(data: Data.T St) (stF: St), (ReqFirst _ data stF) →
+  ∃(stL: St), (lts.CanReach stF stL) ∧
+    (EnsLast _ data stF stL)
 
 
 class Output where
@@ -286,7 +244,7 @@ def ReqLast (stL: St) : Prop := IsExecutableRunning _ stL
 def ReqAll (stX1 stX2: St) : Prop := (AppEq YourProgram.v stX1 stX2)
 
 def EnsAll (stX: St) : Prop :=
-  ¬(Executable.v stX = 0) ∧ (IsExecutableRunning _ stX)
+  ¬((Executable.v stX = 0) ∧ (IsExecutableRunning _ stX))
 
 end IsOffline
 
@@ -295,12 +253,16 @@ def IsOffline {La} (lts: Cslib.LTS St La) : Prop :=
   ∀(data: Data.T St), (data ≠ 0) →
   ∀(stF: St), (ReqFirst _ stF) →
   ∀(stL: St), (ReqLast _ stL) →
-  ∀(sts: List St), (sts_ne: sts ≠ []) →
+  ∀(sts: List St), ∀(ls: List La), (lts.Execution stF ls stL sts) →
+  (sts.Pairwise (ReqAll St)) →
+  (∀stX ∈ sts, EnsAll _ stX)
+/-
+    (sts_ne: sts ≠ []) →
     (sts.head sts_ne = stF) →
     (sts.getLast sts_ne = stL) →
     (sts.Pairwise (ReqAll St)) →
   ∃ls, (lts.Execution stF ls stL sts) ∧ (∀stX ∈ sts, EnsAll _ stX)
-
+-/
 
 /-!
 7. The compiler is essentially a pre-processing step that produces the executable,
@@ -402,7 +364,7 @@ section dec_s
 
 --set_option pp.explicit true
 set_option trace.Meta.synthInstance true
-set_option allowUnsafeReducibility true
+--set_option allowUnsafeReducibility true
 
 instance (prog: YourProgram.T St) (st: St) : Decidable (TakeAsInput.Req _ prog st) := inferInstance
 
@@ -503,8 +465,8 @@ theorem CanRunSeparately.proof : CanRunSeparately St (instLTS _) := by
   simp [CanRunSeparately]
   intro data st1 req
   simp [CanReach]
-  simp [CanRunSeparately.ReqPre] at req
-  simp [CanRunSeparately.ReqPost]
+  simp [CanRunSeparately.ReqFirst] at req
+  simp [CanRunSeparately.EnsLast]
   obtain ⟨st2, ⟨st2_tr, st2_ens⟩⟩ := produceExecutable_exists _ _ req.2.1
   simp [ProduceExecutable.Ens, appEq_iff, RunningStateEq] at st2_ens
   obtain ⟨st3, ⟨st3_tr, st3_ens⟩⟩ := takeData_exists _ _ st2 req.1
