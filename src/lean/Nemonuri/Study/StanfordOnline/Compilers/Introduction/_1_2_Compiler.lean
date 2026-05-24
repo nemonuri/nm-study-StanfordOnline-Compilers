@@ -248,6 +248,7 @@ structure WillProduceTheOutput where
 /-!
 6. And so in this structure the compiler **is offline**, Meaning that we **pre-process** the program first.
 -/
+/-
 namespace IsOffline
 
 def ReqPre (st1: St) : Prop :=
@@ -272,7 +273,34 @@ def IsOffline {La} (lts: Cslib.LTS St La) : Prop :=
     (∀stX ∈ sts, ReqAll _ st1 stX) ∧
     (lts.Execution st1 μs st2 sts) ∧
     (∀stX ∈ sts, EnsAll _ stX)
-  --∃μs, (lts.Execution st1 μs (sts.getLast h) sts)
+-/
+
+namespace IsOffline
+
+def ReqFirst (stF: St) : Prop :=
+  (YourProgram.v stF ≠ 0) ∧ (Executable.v stF = 0) ∧ --(Data.v stF ≠ 0) ∧
+  (¬IsYourProgramRunning _ stF) ∧ (¬IsExecutableRunning _ stF)
+
+def ReqLast (stL: St) : Prop := IsExecutableRunning _ stL
+
+def ReqAll (stX1 stX2: St) : Prop := (AppEq YourProgram.v stX1 stX2)
+
+def EnsAll (stX: St) : Prop :=
+  ¬(Executable.v stX = 0) ∧ (IsExecutableRunning _ stX)
+
+end IsOffline
+
+open IsOffline in
+def IsOffline {La} (lts: Cslib.LTS St La) : Prop :=
+  ∀(data: Data.T St), (data ≠ 0) →
+  ∀(stF: St), (ReqFirst _ stF) →
+  ∀(stL: St), (ReqLast _ stL) →
+  ∀(sts: List St), (sts_ne: sts ≠ []) →
+    (sts.head sts_ne = stF) →
+    (sts.getLast sts_ne = stL) →
+    (sts.Pairwise (ReqAll St)) →
+  ∃ls, (lts.Execution stF ls stL sts) ∧ (∀stX ∈ sts, EnsAll _ stX)
+
 
 /-!
 7. The compiler is essentially a pre-processing step that produces the executable,
@@ -509,19 +537,42 @@ theorem CanRunSeparately.proof : CanRunSeparately St (instLTS _) := by
 
 theorem IsOffline.proof : IsOffline St (instLTS _) := by
   simp [IsOffline]
-  intro st1 req_pre data data_p --sts sts_p st2 st2_p
-  simp [IsOffline.ReqPre] at req_pre
+  intro data data_p st1 req_pre stL req_last sts sts_ne sts_head_eq sts_last_eq req_all --data data_p --sts sts_p st2 st2_p
+  --conv at req_all => rw [IsOffline.ReqAll]
+  --unfold IsOffline.ReqAll at req_all ; simp [appEq_iff] at req_all
+  simp [IsOffline.ReqFirst] at req_pre
+  simp [IsOffline.ReqLast, IsExecutableRunning] at req_last
+  --simp [IsOffline.ReqPre] at req_pre
   obtain ⟨_,_,_,_⟩ := req_pre
-  simp [IsOffline.ReqAll, appEq_iff]
-  simp [IsOffline.ReqPost, IsExecutableRunning]
-  simp [IsOffline.EnsAll, IsExecutableRunning]
+  --simp [IsOffline.ReqAll, appEq_iff]
+  --simp [IsOffline.ReqPost, IsExecutableRunning]
+  --simp [IsOffline.EnsAll, IsExecutableRunning]
   obtain ⟨st2, ⟨st2_tr, st2_ens⟩⟩ := produceExecutable_exists _ st1 (by simp; trivial)
   simp [ProduceExecutable.Ens, RunningStateEq, appEq_iff] at st2_ens
   obtain ⟨⟨_,_⟩,⟨_,_⟩⟩ := st2_ens
+  have st2_lm1 : IsOffline.ReqAll _ st1 st2 := by simp [IsOffline.ReqAll, appEq_iff, *]
   obtain ⟨st3, ⟨st3_tr, st3_ens⟩⟩ := takeData_exists St data st2 (by simp; exact data_p)
   simp [TakeData.Ens, appEq_iff] at st3_ens
   obtain ⟨_,_,_,_⟩ := st3_ens
-  --simp [h2, h3, h4] at * ; clear h2 h3 h4
+  have st3_lm1 : IsOffline.ReqAll _ st2 st3 := by simp [IsOffline.ReqAll, appEq_iff, *]
+  have stL_intro (req1: BeginRun.Req _ st3) (req2: IsOffline.ReqAll _ st3 stL)
+    : (instLTS _).Tr st3 (.beginRun) stL := by
+    simp [instLTS]
+    exists req1
+    simp only [Subtype.coe_eq_iff]
+    have lm1: BeginRun.Ens St st3 stL := by
+      simp [BeginRun.Ens, appEq_iff]
+      simp [BeginRun.Req] at req1
+      obtain ⟨_,_,_,_⟩ := req1
+      simp [IsOffline.ReqAll, appEq_iff] at req2
+      constructorm* _ ∧ _ <;> simp_all
+      --simp_all
+    --simp [BeginRun.Req] at req1
+    --obtain ⟨_,_,_,_⟩ := req1
+    --simp [IsOffline.ReqAll, appEq_iff] at req2
+    --simp_all [instLTS]
+
+/-
   obtain ⟨st4, ⟨st4_tr, st4_ens⟩⟩ := beginRun_exists St st3 (by
     subst data
     simp_all
@@ -531,10 +582,14 @@ theorem IsOffline.proof : IsOffline St (instLTS _) := by
   simp [BeginRun.Ens, appEq_iff] at st4_ens
   obtain ⟨_,_,_,_,_⟩ := st4_ens
   --simp [h1, h2, h3] at * ; clear h1 h2 h3
+-/
+/-
   have lm1 := Execution.refl (instLTS _) st4 |>.stepL st4_tr |>.stepL st3_tr |>.stepL st2_tr
-  intro sts sts_p st5 st5_p
+  obtain ⟨sts_head, sts_tail, sts_eq⟩ := List.ne_nil_iff_exists_cons.mp sts_ne
+  have lm2 : (∃ x, (instLTS St).Execution st1 x stL sts) := by
+    simp_all
+-/
 
-  --exists [st1, st2, st3, st4]
   --simp_all
   --MTr.single _ st2_tr |>.stepR _ st3_tr |>.stepR _ st4_tr
   --subst_eqs
