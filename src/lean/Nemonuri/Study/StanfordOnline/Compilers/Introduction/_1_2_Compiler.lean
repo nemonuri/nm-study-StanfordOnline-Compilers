@@ -250,7 +250,7 @@ end IsOffline
 
 open IsOffline in
 def IsOffline {La} (lts: Cslib.LTS St La) : Prop :=
-  ∀(data: Data.T St), (data ≠ 0) →
+  --∀(data: Data.T St), (data ≠ 0) →
   ∀(stF: St), (ReqFirst _ stF) →
   ∀(stL: St), (ReqLast _ stL) →
   ∀(sts: List St), ∀(ls: List La), (lts.Execution stF ls stL sts) →
@@ -499,6 +499,11 @@ theorem CanRunSeparately.proof : CanRunSeparately St (instLTS _) := by
 
 theorem IsOffline.proof : IsOffline St (instLTS _) := by
   simp [IsOffline]
+  intro stF stF_p stL stL_p sts ls exe exe_p sts_elem sts_mem
+  simp [EnsAll]
+  intro sts_elem_exe_zero
+  simp [sts_elem_exe_zero, ZeroHom.map_zero]
+/-
   intro data data_p st1 req_pre stL req_last sts sts_ne sts_head_eq sts_last_eq req_all --data data_p --sts sts_p st2 st2_p
   --conv at req_all => rw [IsOffline.ReqAll]
   --unfold IsOffline.ReqAll at req_all ; simp [appEq_iff] at req_all
@@ -533,6 +538,7 @@ theorem IsOffline.proof : IsOffline St (instLTS _) := by
     --obtain ⟨_,_,_,_⟩ := req1
     --simp [IsOffline.ReqAll, appEq_iff] at req2
     --simp_all [instLTS]
+-/
 
 /-
   obtain ⟨st4, ⟨st4_tr, st4_ens⟩⟩ := beginRun_exists St st3 (by
