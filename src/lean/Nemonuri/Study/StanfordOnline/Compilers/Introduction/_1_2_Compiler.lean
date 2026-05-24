@@ -38,12 +38,14 @@ variable (St: Type us) [Zero St]
 
 class YourProgram where
   protected T: Type us
+  protected z: Zero T
   protected v: PropertyBuilder St T
+
+attribute [reducible, instance] YourProgram.z
 
 variable [YourProgram St]
 
-instance : DecidableEq (YourProgram.T St) := YourProgram.v.decN
-instance : Zero (YourProgram.T St) := YourProgram.v.zeroHomBuilder.zeroN
+instance : DecidableEq (YourProgram.T St) := YourProgram.v.deq
 
 
 namespace TakeAsInput
@@ -70,12 +72,14 @@ structure TakeAsInput where
 -/
 class Executable where
   protected T: Type us
+  protected z: Zero T
   protected v: PropertyBuilder St T
+
+attribute [reducible, instance] Executable.z
 
 variable [Executable St]
 
-instance : DecidableEq (Executable.T St) := Executable.v.decN
-instance : Zero (Executable.T St) := Executable.v.zeroHomBuilder.zeroN
+instance : DecidableEq (Executable.T St) := Executable.v.deq
 
 
 namespace ProduceExecutable
@@ -98,16 +102,16 @@ structure ProduceExecutable where
 -/
 class Program where
   protected T: Type us
+  protected z: Zero T
   ofYourProgram: PropertyBuilder (YourProgram.T St) T
   ofExecutable: PropertyBuilder (Executable.T St) T
-  zero_unique: ∃!x, (x ∈ [ofYourProgram.zero, ofExecutable.zero])
-  another_program (prog: YourProgram.T St) (exe: Executable.T St) : (ofYourProgram prog ≠ ofYourProgram.zero) → (ofYourProgram prog) ≠ (ofExecutable exe)
+  another_program (prog: YourProgram.T St) (exe: Executable.T St) : (ofYourProgram prog ≠ 0) → (ofYourProgram prog) ≠ (ofExecutable exe)
 
+attribute [reducible, instance] Program.z
 
 variable [Program St]
 
-instance : DecidableEq (Program.T St) := Program.ofYourProgram.decN
-instance : Zero (Program.T St) := Program.ofYourProgram.zeroN
+instance : DecidableEq (Program.T St) := Program.ofYourProgram.deq
 
 
 inductive Language.MightBe (α: Type _) where
@@ -117,7 +121,10 @@ inductive Language.MightBe (α: Type _) where
 
 class Language.{u} (P: Type u) [Zero P] where
   protected TLanguage: Type u
+  protected toZero: Zero TLanguage
   protected language: PropertyBuilder P TLanguage --(p: P) → (Language.MightBe TLanguage)
+
+attribute [reducible, instance] Language.toZero
 
 variable [Language (Program.T St)]
 
@@ -127,12 +134,14 @@ variable [Language (Program.T St)]
 -/
 protected class IsRunning.State where
   protected T: Type us
+  protected z: Zero T
   protected v: PropertyBuilder St T
+
+attribute [reducible, instance] IsRunning.State.z
 
 variable [IsRunning.State St]
 
-instance : DecidableEq (IsRunning.State.T St) := IsRunning.State.v.decN
-instance : Zero (IsRunning.State.T St) := IsRunning.State.v.zeroN
+instance : DecidableEq (IsRunning.State.T St) := IsRunning.State.v.deq
 instance : Zero Bool where zero := false
 
 class IsRunning where
@@ -153,12 +162,14 @@ def IsAnyProgramRunning (st: St) : Prop := IsYourProgramRunning _ st ∨ IsExecu
 
 class Data where
   protected T: Type us
+  protected z: Zero T
   protected v: PropertyBuilder St T
+
+attribute [reducible, instance] Data.z
 
 variable [Data St]
 
-instance : DecidableEq (Data.T St) := Data.v.decN
-instance : Zero (Data.T St) := Data.v.zeroN
+instance : DecidableEq (Data.T St) := Data.v.deq
 
 
 namespace CanRunSeparately
@@ -181,12 +192,14 @@ def CanRunSeparately {La} (lts: Cslib.LTS St La) : Prop :=
 
 class Output where
   protected T: Type us
+  protected z: Zero T
   protected v: PropertyBuilder St T
+
+attribute [reducible, instance] Output.z
 
 variable [Output St]
 
-instance : DecidableEq (Output.T St) := Output.v.decN
-instance : Zero (Output.T St) := Output.v.zeroN
+instance : DecidableEq (Output.T St) := Output.v.deq
 
 
 namespace WillProduceTheOutput
@@ -502,7 +515,8 @@ theorem IsOffline.proof : IsOffline St (instLTS _) := by
   intro stF stF_p stL stL_p sts ls exe exe_p sts_elem sts_mem
   simp [EnsAll]
   intro sts_elem_exe_zero
-  simp [sts_elem_exe_zero, ZeroHom.map_zero]
+  simp [sts_elem_exe_zero]
+  rfl
 /-
   intro data data_p st1 req_pre stL req_last sts sts_ne sts_head_eq sts_last_eq req_all --data data_p --sts sts_p st2 st2_p
   --conv at req_all => rw [IsOffline.ReqAll]
@@ -740,6 +754,8 @@ example (data: Data.T St) (st1: St) (h: ∃st2, (RunSeparately _ data st1 st2))
 
 
     --apply (MTr.split_iff (instLTS _)).mpr
+
+
 
 
 end def_s
