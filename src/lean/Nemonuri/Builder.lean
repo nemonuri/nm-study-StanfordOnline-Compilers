@@ -12,6 +12,15 @@ universe u
 
 namespace Nemonuri
 
+section appeq_s
+
+variable {σ T: Type*}
+
+def AppEq (v: σ → T) (s1 s2: σ) : Prop := (v s1) = (v s2)
+
+theorem appEq_iff {v: σ → T} {s1 s2: σ} : (AppEq v s1 s2) ↔ ((v s1) = (v s2)) := by rfl
+
+end appeq_s
 /-
 structure ZeroVec where
   length: Nat
@@ -84,19 +93,23 @@ instance instZeroHomClass : ZeroHomClass (ZeroHomBuilder M N) M N where
 end ZeroHomBuilder
 -/
 
-structure PropertyBuilder (M N: Type*) [Zero M] [Zero N] where
+class PropertyContext (N: Type*) extends Zero N where
+  toDecidableEq: DecidableEq N
+
+instance PropertyContext.instDecidableEq {N: Type*} [PropertyContext N] : DecidableEq N := PropertyContext.toDecidableEq
+
+structure Property (M N: Type*) [Zero M] [Zero N] where
   zeroHom: ZeroHom M N
-  deq: DecidableEq N
 
 --inductive PropertyBuilder (M: Type u) [Zero M] : (N: Type u) → Type u where
 --  | mk (N: Type u) (zeroHomBuilder: ZeroHomBuilder M N) [DecidableEq N] : PropertyBuilderBuilder M N
 
-namespace PropertyBuilder
+namespace Property
 
 variable {M N: Type u} [Zero M] [Zero N]
 
 
-instance instFunLike : FunLike (PropertyBuilder M N) M N where
+instance instFunLike : FunLike (Property M N) M N where
   coe bd := bd.zeroHom
   coe_injective' := by
     intro bd1 bd2 h1
@@ -104,21 +117,20 @@ instance instFunLike : FunLike (PropertyBuilder M N) M N where
     have lm1 : Subsingleton (DecidableEq N) := inferInstance
     replace lm1 := lm1.allEq
     match bd1, bd2 with
-    | ⟨zhb1, dn1⟩, ⟨zhb2, dn2⟩ =>
+    | ⟨zhb1⟩, ⟨zhb2⟩ =>
       simp
       simp at h1
-      specialize lm1 dn1 dn2
-      constructor <;> assumption
+      exact h1
 
 
-theorem coe_eq (bd: PropertyBuilder M N) : ⇑bd = ⇑bd.zeroHom := by rfl
+theorem coe_eq (bd: Property M N) : ⇑bd = ⇑bd.zeroHom := by rfl
 
 
-instance : ZeroHomClass (PropertyBuilder M N) M N where
+instance : ZeroHomClass (Property M N) M N where
   map_zero bd := by simp only [coe_eq, map_zero]
 
 
-end PropertyBuilder
+end Property
 
 
 end Nemonuri

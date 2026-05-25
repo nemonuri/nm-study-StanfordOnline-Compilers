@@ -20,7 +20,7 @@ universe us ul
 
 
 namespace Interpreter
-section _1
+section spec_s
 
 variable
   (St: Type us) [Zero St]
@@ -35,10 +35,12 @@ So, what does an interpreter do?
 -/
 class Program where
   protected T: Type us
-  protected v: St → T
+  protected ctx: PropertyContext T
+  protected v: Property St T
 
-variable [Program St] [Property (@Program.v St _)]
+attribute [reducible, instance] Program.ctx
 
+variable [Program St]
 
 
 
@@ -47,56 +49,64 @@ variable [Program St] [Property (@Program.v St _)]
 -/
 class Data where
   protected T: Type us
-  protected v: St → T
+  protected ctx: PropertyContext T
+  protected v: Property St T
 
-variable [Data St] [Property (@Data.v St _)]
+attribute [reducible, instance] Data.ctx
+
+variable [Data St]
 
 /-!
 3. An **Interpreter**(*self*) takes as input, your program(*prog*) and your data(*data*).
 -/
-
-structure TakeAsInput (prog: Program.T St) (data: Data.T St) (_ st2: St) : Prop where
-  pre: (prog ≠ 0) ∧ (data ≠ 0)
-  post: (Program.v st2 = prog) ∧ (Data.v st2 = data)
-  --(prog ≠ 0) ∧ (Program.v st2 = prog) ∧ (data ≠ 0) ∧ (Data.v st2 = data)
-
---variable [DecidableEq (Program.T St)] [DecidableEq (Data.T St)]
-/-
 namespace TakeAsInput
 
-  structure Label [DecidableEq (Program.T St)] [DecidableEq (Data.T St)] where
-    prog: Program.T St
-    data: Data.T St
+set_option trace.Meta.synthInstance true
 
+abbrev Req (prog: Program.T St) (data: Data.T St) : Prop := (prog ≠ 0) ∧ (data ≠ 0)
 
-  instance Label.instDecidableEq : DecidableEq (Label St) :=
-    fun l1 l2 =>
-      if h: l1.prog = l2.prog ∧ l1.data = l2.data then
-        .isTrue (by simp [← Label.mk.injEq] at h; exact h)
-      else
-        .isFalse (by simp [← Label.mk.injEq] at h; exact h)
+instance {prog data} : Decidable (Req St prog data) := inferInstanceAs (Decidable (_ ∧ _))
 
-  def toLTS (l: Label St) : Cslib.LTS St (Label St) :=
-    Cslib.LTS.Relation.toLTS (TakeAsInput St l.prog l.data) l
+abbrev Ens (prog: Program.T St) (data: Data.T St) (st2: St) : Prop := (Program.v st2 = prog) ∧ (Data.v st2 = data)
+
+instance {prog data st2} : Decidable (Ens St prog data st2) := inferInstanceAs (Decidable (_ ∧ _))
 
 end TakeAsInput
--/
+
+open TakeAsInput in
+structure TakeAsInput where
+  run (prog: Program.T St) (data: Data.T St) (st1: St) (req: Req _ prog data) : { st2: St // Ens _ prog data st2 }
+
 
 /-!
 4. It(*self*) produces the **Output**(*output*) directly.
 -/
 class Output where
   protected T: Type us
-  protected v: St → T
+  protected ctx: PropertyContext T
+  protected v: Property St T
 
+attribute [reducible, instance] Output.ctx
 
-variable [Output St] [Property (@Output.v St _)]
+variable [Output St] --[Property (@Output.v St _)]
 
-structure ProduceOutput (st1 st2: St) : Prop where
-  pre: (Program.v st1 ≠ 0) ∧ (Data.v st1 ≠ 0)
-  post: (Output.v st2 ≠ 0)
-  --(Program.v st1 ≠ 0) ∧ (Data.v st1 ≠ 0) ∧ (Output.v st2 ≠ 0)
+namespace ProduceOutput
 
+abbrev Req (st1: St) : Prop := (Program.v st1 ≠ 0) ∧ (Data.v st1 ≠ 0)
+
+instance {st1} : Decidable (Req St st1) := inferInstanceAs (Decidable (_ ∧ _))
+
+def Ens (st2: St) : Prop := (Output.v st2 ≠ 0)
+
+--instance {st2} : Decidable (Ens St st2) := inferInstance
+
+end ProduceOutput
+
+open ProduceOutput in
+structure ProduceOutput where
+  run (st1: St) (req: Req _ st1) : { st2: St // Ens _ st2 }
+
+/-
 namespace ProduceOutput
 
 inductive Directly.Label where
@@ -110,10 +120,31 @@ def Directly (lts: Cslib.LTS St (Directly.Label)) : Prop :=
     (ProduceOutput St st1 st2)
 
 end ProduceOutput
+-/
 
 /-!
 5. Meaning that it(*self*) doesn't do any processing of the program(*prog*) before it executes it on the input.
 -/
+namespace ProduceOutputDirectly
+
+abbrev ReqFirst (stF: St) : Prop := ProduceOutput.Req _ stF
+
+abbrev EnsLast (stL: St) : Prop := ProduceOutput.Ens _ stL
+
+abbrev EnsAll (stX1 stX2: St) : Prop := AppEq Program.v stX1 stX2
+
+end ProduceOutputDirectly
+
+
+open ProduceOutputDirectly Cslib LTS in
+def ProduceOutputDirectly {La} (lts: LTS St La) : Prop :=
+  ∀(stF: St), (ReqFirst _ stF) →
+  ∃ls stL sts, (lts.Execution stF ls stL sts) ∧
+    (EnsLast _ stL) ∧
+    (sts.Pairwise (EnsAll _))
+
+
+/-
 inductive DoesNotDoAnyProcessing.Label where
   | takeAsInput (prog: Program.T St)
   | produceOutput
@@ -125,90 +156,117 @@ structure DoesNotDoAnyProcessing (lts: Cslib.LTS St (DoesNotDoAnyProcessing.Labe
     (lts.Tr st1 ((.takeAsInput prog)) st2) →
     (lts.Tr st2 .produceOutput st3) →
     ((prog = (Program.v st2)) ∧ ((Program.v st2) = (Program.v st3)))
+-/
 
 /-!
 6. So you just **write the program**(*prog*), and you **invoke~** the interpreter(*self*) **~on the data**(*data*), and the program(*prog*) immediately begins running.
 -/
-structure WriteTheProgram (prog: Program.T St) (st1 st2: St) : Prop where
-  pre: (Program.v st1 = 0) ∧ (prog ≠ 0)
-  post: (Program.v st2 = prog)
+protected class IsRunning.State where
+  protected T: Type us
+  protected ctx: PropertyContext T
+  protected v: Property St T
+
+attribute [reducible, instance] IsRunning.State.ctx
+
+instance : Zero Bool where zero := false
+
+variable [IsRunning.State St]
+
+class IsRunning where
+  protected v : ZeroHom (IsRunning.State.T St) (ZeroHom (Program.T St) Bool)
+
+variable [IsRunning St]
+
+abbrev IsProgramRunning (st: St) : Prop := IsRunning.v (IsRunning.State.v st) (Program.v st)
+
+namespace WriteTheProgram
+
+abbrev Req (prog: Program.T St) (_: St) : Prop := (prog ≠ 0)
+
+instance (prog: Program.T St) (st1: St) : Decidable (Req _ prog st1) := inferInstance
+
+abbrev Ens (prog: Program.T St) (st2: St) : Prop := (Program.v st2 = prog) ∧ (¬IsProgramRunning _ st2)
+
+end WriteTheProgram
+
+open WriteTheProgram in
+structure WriteTheProgram where
+  run (prog: Program.T St) (st1: St) (req: Req _ prog st1) : { st2: St // Ens _ prog st2 }
 
 
-structure InvokeOnTheData (data: Data.T St) (st1 st2: St) : Prop where
-  pre: (Program.v st1 ≠ 0) ∧ (data ≠ 0)
-  post: (Program.v st2 = Program.v st1) ∧ (Data.v st2 = data)
+namespace InvokeOnTheData
 
+abbrev Req (data: Data.T St) (st1: St) : Prop := (Program.v st1 ≠ 0) ∧ (data ≠ 0) ∧ (¬IsProgramRunning _ st1)
 
-inductive ImmediatelyBeginsRunning.Label where
-  | other
-  | invokeOnTheData
-  deriving DecidableEq
+instance {data st1} : Decidable (Req St data st1) := inferInstance
 
-class IsRunning (v: St → Program.T St) [Property v] where
-  isRunning: St → Bool
-  isRunning_imp_ne_zero (st: St) : (isRunning st) → (v st ≠ 0)
+abbrev Ens (data: Data.T St) (st1 st2: St) : Prop := (Program.v st2 = Program.v st1) ∧ (Data.v st2 = data) ∧ (IsProgramRunning _ st2)
 
-variable [IsRunning St (Program.v)]
+end InvokeOnTheData
 
-open IsRunning in
-abbrev ImmediatelyBeginsRunning.MainEns (st1 st2: St) : Prop :=
-  (isRunning Program.v st1 = false) ∧ (isRunning Program.v st2 = true)
+open InvokeOnTheData in
+structure InvokeOnTheData where
+  run (data: Data.T St) (st1: St) (req: Req _ data st1) : { st2: St // Ens _ data st1 st2 }
 
-structure ImmediatelyBeginsRunning (lts: Cslib.LTS St (ImmediatelyBeginsRunning.Label)) : Prop where
-  lts_spec (st1 st2: St) (data: Data.T St) : (lts.Tr st1 (.invokeOnTheData) st2) → (InvokeOnTheData St data st1 st2)
-  main_spec (st1 st2: St) :
-    (lts.Tr st1 (.invokeOnTheData) st2) →
-    (ImmediatelyBeginsRunning.MainEns St st1 st2)
+namespace ImmediatelyBeginsRunning
+
+abbrev ReqFirst (data: Data.T St) (stF: St) : Prop := InvokeOnTheData.Req _ data stF
+
+abbrev EnsLast (data: Data.T St) (stF stL: St) : Prop := InvokeOnTheData.Ens _ data stF stL
+
+abbrev EnsList (sts: List St) (stF stL: St) : Prop :=
+  ∃(h: sts.length = 2),
+    (sts.head (by apply List.ne_nil_of_length_pos; simp [h]) = stF) ∧
+    (sts.getLast (by apply List.ne_nil_of_length_pos; simp [h]) = stL)
+
+end ImmediatelyBeginsRunning
+
+open ImmediatelyBeginsRunning in
+def ImmediatelyBeginsRunning {La} (lts: Cslib.LTS St La) : Prop :=
+  ∀data (stF: St), (ReqFirst _ data stF) →
+  ∃ls sts stL, (lts.Execution stF ls stL sts) ∧
+    (EnsLast _ data stF stL) ∧
+    (EnsList _ sts stF stL)
+
 
 /-!
 7. we can say that the interpreter(*self*) is, *is online*, meaning it the work that it does is all part of running your program.
 -/
-inductive IsOnline.Label where
-  | other
-  | partOfRunningYourProgram
-  deriving DecidableEq
+def IsOnline (sts: List St) : Prop :=
+  (∀stX ∈ sts, Program.v stX ≠ 0) ∧ (sts.Pairwise (AppEq Program.v))
 
-def IsOnline (lts: Cslib.LTS St (IsOnline.Label)) : Prop :=
-  ∀st1 st2, (st1 ≠ st2) → ¬(lts.Tr st1 (.other) st2)
-
-
-end _1
+end spec_s
 
 section def_s
 
 variable (St: Type us) [Zero St]
 
 
-class State.Context where
-  protected program: Property.Context St
-  protected data: Property.Context St
-  protected output: Property.Context St
+class State where
+  toProgram: Program St
+  toData: Data St
+  toOutput: Output St
+  toIsRunningState: IsRunning.State St
+  toIsRunning: IsRunning St
 
-section ctx_s
-
-variable [ctx: State.Context St]
-
-instance : Program St := ⟨ctx.program.T, ctx.program.v⟩
-
-instance : PropertyOf St (Program.v) := (inferInstanceAs (Property ctx.program.v))
-
-instance : Data St := ⟨ctx.data.T, ctx.data.v⟩
-
-instance : PropertyOf St (Data.v) := (inferInstanceAs (Property ctx.data.v))
-
-instance : Output St := ⟨ctx.output.T, ctx.output.v⟩
-
-instance : PropertyOf St (Output.v) := (inferInstanceAs (Property ctx.output.v))
-
-end ctx_s
+attribute [reducible, instance]
+  State.toProgram State.toData State.toOutput State.toIsRunningState State.toIsRunning
 
 
-class State extends State.Context St, IsRunning St (Program.v)
+variable [State St]
+
+class Ability where
+  writeTheProgram: WriteTheProgram St
+  invokeOnTheData: InvokeOnTheData St
+  produceOutput: ProduceOutput St
+
+variable [Ability St]
+
+--class State extends State.Context St, IsRunning St (Program.v)
   --protected isYourProgramRunning : IsRunning St (Program.v)
 
 --instance [State St] : IsRunning St (Program.v) := State.isYourProgramRunning
 
-variable [State St]
 
 inductive Label where
   | writeTheProgram (prog: Program.T St)
@@ -216,201 +274,64 @@ inductive Label where
 --  | takeAsInput (prog: Program.T St) (data: Data.T St)
   | produceOutput
 
-instance Label.instNonempty : Nonempty (Label St) := .intro (.produceOutput)
+--instance Label.instNonempty : Nonempty (Label St) := .intro (.produceOutput)
 
 instance instLTS : Cslib.LTS St (Label St) where
   Tr st1 μ st2 :=
     match μ with
     --| .takeAsInput prog data => TakeAsInput St prog data st1 st2
-    | .produceOutput => ProduceOutput St st1 st2
-    | .writeTheProgram prog => WriteTheProgram St prog st1 st2
+    | .writeTheProgram prog => --WriteTheProgram St prog st1 st2
+      if req: WriteTheProgram.Req _ prog st1 then Ability.writeTheProgram.run prog st1 req = st2 else False
     | .invokeOnTheData data =>
-      (InvokeOnTheData St data st1 st2) ∧ (ImmediatelyBeginsRunning.MainEns St st1 st2)
+      if req: InvokeOnTheData.Req _ data st1 then Ability.invokeOnTheData.run data st1 req = st2 else False
+    | .produceOutput => --ProduceOutput St st1 st2
+      if req: ProduceOutput.Req _ st1 then Ability.produceOutput.run st1 req = st2 else False
 
-attribute [scoped simp] Singleton.singleton Set.singleton setOf Set funext_iff
+      --(InvokeOnTheData St data st1 st2) ∧ (ImmediatelyBeginsRunning.MainEns St st1 st2)
+theorem writeTheProgram_exists (prog: Program.T St) (st1: St) (req: WriteTheProgram.Req _ prog st1)
+  : ∃st2, ((instLTS _).Tr st1 (.writeTheProgram prog) st2) ∧ (WriteTheProgram.Ens _ prog st2) := by
+  simp [instLTS] ; exists req ; apply Subtype.property
 
-instance : LabelMorph (ProduceOutput.Directly.Label) (Label St) where
-  coe la :=
-    match la with
-    | .produceOutput =>
-      { [.some .produceOutput] }
-    | .other =>
-      { x | x.length = 1 ∧ (x ≠ [.some .produceOutput]) }
-  coe_injective' := by
-    intro la1 la2 h1
-    simp at h1
-    match meq1: la1, meq2: la2 with
-    | .other, .other | .produceOutput, .produceOutput => rfl
-    | .other, .produceOutput | .produceOutput, .other =>
-      --unfold setOf Set at h1
-      simp at h1
-      specialize h1 [.some .produceOutput]
-      simp at h1
+theorem invokeOnTheData_exists (data: Data.T St) (st1: St) (req: InvokeOnTheData.Req _ data st1)
+  : ∃st2, ((instLTS _).Tr st1 (.invokeOnTheData data) st2) ∧ (InvokeOnTheData.Ens _ data st1 st2) := by
+  simp [instLTS] ; exists req ; apply Subtype.property
 
+theorem produceOutput_exists (st1: St) (req: ProduceOutput.Req _ st1)
+  : ∃st2, ((instLTS _).Tr st1 (.produceOutput) st2) ∧ (ProduceOutput.Ens _ st2) := by
+  simp [instLTS] ; exists req ; apply Subtype.property
 
-instance : LabelMorph (DoesNotDoAnyProcessing.Label St) (Label St) where
-  coe (la: DoesNotDoAnyProcessing.Label St) :=
-    match la with
-    | .takeAsInput prog => { x | ∃data, [.some (.writeTheProgram prog), .some (.invokeOnTheData data)] = x }
-    | .produceOutput => { [.some .produceOutput] }
-  coe_injective' := by
-    intro la1 la2 h1
-    simp at h1
-    match meq1: la1, meq2: la2 with
-    | .produceOutput, .produceOutput => rfl
-    | .takeAsInput prog1, .takeAsInput prog2 =>
-      simp at h1
-      have lm1 (data: Data.T St) := h1 [.some (.writeTheProgram prog1), .some (.invokeOnTheData data)]
-      simp at lm1
-      simp [lm1]
-    | .produceOutput, .takeAsInput prog | .takeAsInput prog, .produceOutput =>
-      simp at h1
-      have lm1 (data: Data.T St) := h1 [.some (.writeTheProgram prog), .some (.invokeOnTheData data)]
-      simp at lm1
+theorem TakeAsInput.simulatable prog data (stF: St) (req: TakeAsInput.Req St prog data)
+  : ∃stL, TakeAsInput.Ens _ prog data stL := by
+  simp [TakeAsInput.Req] at req
+  obtain ⟨_,_⟩ := req
+  obtain ⟨st1,st1_tr,_,_⟩ := writeTheProgram_exists _ prog stF (by
+    simp [WriteTheProgram.Req] ; trivial
+  )
+  simp only [IsProgramRunning, Bool.not_eq_true] at *
+  obtain ⟨st2,st2_tr,_,_,_⟩ := invokeOnTheData_exists _ data st1 (by
+    simp [InvokeOnTheData.Req]
+    constructorm* _ ∧ _ <;> subst_eqs <;> trivial
+  )
+  exists st2
+  simp [TakeAsInput.Ens]
+  constructorm* _ ∧ _ <;> subst_eqs <;> trivial
 
 
-
-instance : LabelMorph (ImmediatelyBeginsRunning.Label) (Label St) where
-  coe la :=
-    let spec (x: List (Option (Label St))) : Prop := ∃data, [.some (.invokeOnTheData data)] = x
-    match la with
-    | .invokeOnTheData => { x | spec x }
-    | .other => { x | x.length = 1 ∧ ¬(spec x) }
-  coe_injective' := by
-    intro la1 la2 h1
-    simp at h1
-    match meq1: la1, meq2: la2 with
-    | .other, .other | .invokeOnTheData, .invokeOnTheData => rfl
-    | .other, .invokeOnTheData | .invokeOnTheData, .other =>
-      simp at h1
-      have lm1 (data: Data.T St) := h1 [.some (.invokeOnTheData data)]
-      simp at lm1
-
-instance : LabelMorph (IsOnline.Label) (Label St) where
-  coe la :=
-    match la with
-    | .partOfRunningYourProgram => { x | (x matches [.some _]) }
-    | .other => { x | (x matches [.none]) }
-  coe_injective' := by
-    intro la1 la2 h1
-    simp at h1
-    match la1, la2 with
-    | .other, .other | .partOfRunningYourProgram, .partOfRunningYourProgram => rfl
-    | .other, .partOfRunningYourProgram | .partOfRunningYourProgram, .other =>
-      specialize h1 [.none]
-      simp at h1
-
-
-
-
-
-
-attribute [scoped simp] Cslib.LTS.mapTo_iff Cslib.LTS.withIdle Cslib.LTS.MTr.single_iff
---attribute [scoped simp ←]
-
-protected theorem ProduceOutput.Directly.proof
-  : (instLTS St).mapTo (ProduceOutput.Directly.Label) |> ProduceOutput.Directly St := by
-  simp [ProduceOutput.Directly]
-  intro st1 st2 h1
-  replace h1 := h1 [.some .produceOutput]
-  simp [SetLike.coe, setOf] at h1
-  exact h1
-
-
-namespace DoesNotDoAnyProcessing
-
-open Cslib.LTS
-attribute [scoped simp] Membership.mem Set.Mem SetLike.coe
-
-protected abbrev M.lts := (instLTS St).mapTo (DoesNotDoAnyProcessing.Label St)
-
-private theorem proof_aux1
-  prog st1 st3
-  (h1: (M.lts St).Tr st1 (.takeAsInput prog) st3)
-  data
-  : ∃(st2: St), WriteTheProgram St prog st1 st2 ∧ InvokeOnTheData St data st2 st3 := by
-  simp at h1
-  replace h1 := h1 data
-  match meq1: h1 with
-  | MTr.stepL hd tl =>
-    rename St => st1_2
-    simp at hd
-    simp at tl
-    obtain ⟨hd1, hd2⟩ := hd
-    obtain ⟨⟨tl1, tl2⟩, _⟩ := tl
-    exists st1_2
-    constructor <;> constructor <;> simp_all
-/-
-    case w => exact st1_2
-    case h =>
-      constructor <;> constructor <;> simp_all
-      · subst_eqs
-        simp_all
-        obtain ⟨h2, h3⟩ := hd1
-        obtain ⟨h4, h5⟩ := tl2
-        unfold Property
--/
-
-
-protected theorem proof
-  : (M.lts St) |> DoesNotDoAnyProcessing St := by
-  constructor
-  case takeAsInput_spec =>
-    intro prog data st1 st3 h1
-    obtain ⟨st2, st2_p⟩ := proof_aux1 St prog st1 st3 h1 data
-    obtain ⟨⟨st2_p1, st2_p2⟩,⟨st2_p3,st2_p4⟩⟩ := st2_p
-    constructor <;> simp_all
-  case produceOutput_spec =>
-    intro st1 st2 h1
-    simp at h1
-    exact h1
-  case main_spec =>
-    intro prog st1 st2 st3 h1 h2
-    obtain ⟨st2, st2_p⟩ := proof_aux1 St prog st1 st2 h1 (0: Data.T St)
-    obtain ⟨⟨st2_p1, st2_p2⟩,⟨st2_p3,st2_p4⟩⟩ := st2_p
-    constructor <;> simp_all
-
-
-end DoesNotDoAnyProcessing
-
-namespace ImmediatelyBeginsRunning
-
-attribute [scoped simp] Membership.mem Set.Mem SetLike.coe
-
-protected theorem proof
-  : (instLTS St).mapTo (ImmediatelyBeginsRunning.Label) |> ImmediatelyBeginsRunning St := by
-  constructor
-  · intro st1 st2 data h1
-    simp at h1
-    specialize h1 data
-    simp [instLTS] at h1
-    exact h1.left
-  · intro st1 st2 h1
-    simp [instLTS] at h1
-    specialize h1 0
-    exact h1.right
-
-end ImmediatelyBeginsRunning
-
-
-
-namespace IsOnline
-
-attribute [scoped simp] Membership.mem Set.Mem SetLike.coe
-
-protected theorem proof
-  : (instLTS St).mapTo (IsOnline.Label) |> IsOnline St := by
-  simp [IsOnline]
-  intro st1 st2 h1
-  exists [.none]
-  simp
-  exact h1
-
-
-
-end IsOnline
-
-
+def TakeAsInput.simulate : TakeAsInput St where
+  run prog data stF req :=
+    have ⟨_,_⟩ := req
+    let ⟨st1,_,_⟩ := Ability.writeTheProgram.run prog stF (by
+      simp [WriteTheProgram.Req] ; trivial
+    )
+    let ⟨st2,_,_,_⟩ := Ability.invokeOnTheData.run data st1 (by
+      simp only [IsProgramRunning, Bool.not_eq_true] at *
+      simp [InvokeOnTheData.Req]
+      constructorm* _ ∧ _ <;> subst_eqs <;> trivial
+    )
+    Subtype.mk st2 (by
+      simp [TakeAsInput.Ens]
+      constructorm* _ ∧ _ <;> subst_eqs <;> trivial
+    )
 
 end def_s
 
