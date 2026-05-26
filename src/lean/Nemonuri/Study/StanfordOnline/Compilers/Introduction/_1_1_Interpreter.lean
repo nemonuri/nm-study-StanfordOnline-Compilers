@@ -96,7 +96,7 @@ abbrev Req (st1: St) : Prop := (Program.v st1 ≠ 0) ∧ (Data.v st1 ≠ 0)
 
 instance {st1} : Decidable (Req St st1) := inferInstanceAs (Decidable (_ ∧ _))
 
-def Ens (st2: St) : Prop := (Output.v st2 ≠ 0)
+def Ens (st1 st2: St) : Prop := (Output.v st2 ≠ 0) ∧ (AppEq Program.v st1 st2)
 
 --instance {st2} : Decidable (Ens St st2) := inferInstance
 
@@ -104,7 +104,7 @@ end ProduceOutput
 
 open ProduceOutput in
 structure ProduceOutput where
-  run (st1: St) (req: Req _ st1) : { st2: St // Ens _ st2 }
+  run (st1: St) (req: Req _ st1) : { st2: St // Ens _ st1 st2 }
 
 /-
 namespace ProduceOutput
@@ -129,7 +129,7 @@ namespace ProduceOutputDirectly
 
 abbrev ReqFirst (stF: St) : Prop := ProduceOutput.Req _ stF
 
-abbrev EnsLast (stL: St) : Prop := ProduceOutput.Ens _ stL
+abbrev EnsLast (stF stL: St) : Prop := ProduceOutput.Ens _ stF stL
 
 abbrev EnsAll (stX1 stX2: St) : Prop := AppEq Program.v stX1 stX2
 
@@ -140,7 +140,7 @@ open ProduceOutputDirectly Cslib LTS in
 def ProduceOutputDirectly {La} (lts: LTS St La) : Prop :=
   ∀(stF: St), (ReqFirst _ stF) →
   ∃ls stL sts, (lts.Execution stF ls stL sts) ∧
-    (EnsLast _ stL) ∧
+    (EnsLast _ stF stL) ∧
     (sts.Pairwise (EnsAll _))
 
 
@@ -267,7 +267,6 @@ variable [Ability St]
 
 --instance [State St] : IsRunning St (Program.v) := State.isYourProgramRunning
 
-
 inductive Label where
   | writeTheProgram (prog: Program.T St)
   | invokeOnTheData (data: Data.T St)
@@ -292,12 +291,27 @@ theorem writeTheProgram_exists (prog: Program.T St) (st1: St) (req: WriteTheProg
   : ∃st2, ((instLTS _).Tr st1 (.writeTheProgram prog) st2) ∧ (WriteTheProgram.Ens _ prog st2) := by
   simp [instLTS] ; exists req ; apply Subtype.property
 
+theorem invokeOnTheData_imp (data: Data.T St) (st1: St) (st2: St) (h: (instLTS _).Tr st1 (.invokeOnTheData data) st2)
+  : ((InvokeOnTheData.Req _ data st1) ∧ (InvokeOnTheData.Ens _ data st1 st2)) := by
+  simp [instLTS] at h
+  obtain ⟨_,h2⟩ := h
+  subst h2
+  constructor
+  · assumption
+  · apply Subtype.property
+
+--set_option pp.explicit true in
+#check invokeOnTheData_imp
+
+
 theorem invokeOnTheData_exists (data: Data.T St) (st1: St) (req: InvokeOnTheData.Req _ data st1)
   : ∃st2, ((instLTS _).Tr st1 (.invokeOnTheData data) st2) ∧ (InvokeOnTheData.Ens _ data st1 st2) := by
   simp [instLTS] ; exists req ; apply Subtype.property
 
+#check invokeOnTheData_exists
+
 theorem produceOutput_exists (st1: St) (req: ProduceOutput.Req _ st1)
-  : ∃st2, ((instLTS _).Tr st1 (.produceOutput) st2) ∧ (ProduceOutput.Ens _ st2) := by
+  : ∃st2, ((instLTS _).Tr st1 (.produceOutput) st2) ∧ (ProduceOutput.Ens _ st1 st2) := by
   simp [instLTS] ; exists req ; apply Subtype.property
 
 theorem TakeAsInput.simulatable prog data (stF: St) (req: TakeAsInput.Req St prog data)
@@ -332,6 +346,56 @@ def TakeAsInput.simulate : TakeAsInput St where
       simp [TakeAsInput.Ens]
       constructorm* _ ∧ _ <;> subst_eqs <;> trivial
     )
+
+open Cslib in
+theorem ProduceOutputDirectly.proof : ProduceOutputDirectly St (instLTS _) := by
+  simp [ProduceOutputDirectly]
+  intro stF h1 h2
+  simp [ProduceOutputDirectly.EnsLast]
+  unfold ProduceOutputDirectly.EnsAll
+  obtain ⟨st1, st1_tr, st1_ens⟩ := produceOutput_exists St stF (by
+    simp [ProduceOutput.Req] ; constructor <;> assumption
+  )
+  exists [Label.produceOutput]
+  exists st1
+  exists [stF, st1]
+  constructorm* _ ∧ _
+  · exact (LTS.Execution.refl (instLTS _) st1 |>.stepL st1_tr)
+  · assumption
+  · simp --[appEq_iff]
+    obtain ⟨_,_⟩ := st1_ens
+    assumption
+
+open Cslib LTS in
+theorem ImmediatelyBeginsRunning.proof : ImmediatelyBeginsRunning St (instLTS _) := by
+  simp [ImmediatelyBeginsRunning]
+  intro data stF h1 h2 h3
+  obtain ⟨st1, st1_tr, st1_ens⟩ := invokeOnTheData_exists _ data stF (by simp [InvokeOnTheData.Req] ; constructorm* _ ∧ _ <;> assumption)
+  have exe := Execution.refl (instLTS _) st1 |>.stepL st1_tr
+  exists [Label.invokeOnTheData data]
+  exists [stF, st1]
+  exists st1
+  constructorm* _ ∧ _
+  · assumption
+  · simp [ImmediatelyBeginsRunning.EnsLast] ; assumption
+  · simp [ImmediatelyBeginsRunning.EnsList]
+
+
+
+
+theorem IsOnline.proof (stF: St) ls stL sts
+  (req1: (instLTS _).Execution stF ls stL sts)
+  (req2: ∀l ∈ ls, ¬(l matches .writeTheProgram _))
+  : IsOnline _ sts := by
+  sorry
+  --have lm1 := req1.nonEmpty_states
+  --simp [Cslib.LTS.Execution, instLTS] at req1
+  --have lm2 : ∀l ∈ ls, l.ctorIdx = Label.invokeOnTheData.ctorIdx
+  --simp [IsOnline]
+  --constructor
+  --· intro stX stX_mem ; grind
+  --· simp_all
+
 
 end def_s
 
