@@ -181,9 +181,9 @@ abbrev IsProgramRunning (st: St) : Prop := IsRunning.v (IsRunning.State.v st) (P
 
 namespace WriteTheProgram
 
-abbrev Req (prog: Program.T St) (_: St) : Prop := (prog ≠ 0)
+abbrev Req (prog: Program.T St) : Prop := (prog ≠ 0)
 
-instance (prog: Program.T St) (st1: St) : Decidable (Req _ prog st1) := inferInstance
+instance (prog: Program.T St) : Decidable (Req _ prog) := inferInstance
 
 abbrev Ens (prog: Program.T St) (st2: St) : Prop := (Program.v st2 = prog) ∧ (¬IsProgramRunning _ st2)
 
@@ -191,7 +191,7 @@ end WriteTheProgram
 
 open WriteTheProgram in
 structure WriteTheProgram where
-  run (prog: Program.T St) (st1: St) (req: Req _ prog st1) : { st2: St // Ens _ prog st2 }
+  run (prog: Program.T St) (st1: St) (req: Req _ prog) : { st2: St // Ens _ prog st2 }
 
 
 namespace InvokeOnTheData
@@ -280,19 +280,19 @@ instance instLTS : Cslib.LTS St (Label St) where
     match μ with
     --| .takeAsInput prog data => TakeAsInput St prog data st1 st2
     | .writeTheProgram prog => --WriteTheProgram St prog st1 st2
-      if req: WriteTheProgram.Req _ prog st1 then Ability.writeTheProgram.run prog st1 req = st2 else False
+      if req: WriteTheProgram.Req _ prog then Ability.writeTheProgram.run prog st1 req = st2 else False
     | .invokeOnTheData data =>
       if req: InvokeOnTheData.Req _ data st1 then Ability.invokeOnTheData.run data st1 req = st2 else False
     | .produceOutput => --ProduceOutput St st1 st2
       if req: ProduceOutput.Req _ st1 then Ability.produceOutput.run st1 req = st2 else False
 
       --(InvokeOnTheData St data st1 st2) ∧ (ImmediatelyBeginsRunning.MainEns St st1 st2)
-theorem writeTheProgram_exists (prog: Program.T St) (st1: St) (req: WriteTheProgram.Req _ prog st1)
+theorem writeTheProgram_exists (prog: Program.T St) (st1: St) (req: WriteTheProgram.Req _ prog)
   : ∃st2, ((instLTS _).Tr st1 (.writeTheProgram prog) st2) ∧ (WriteTheProgram.Ens _ prog st2) := by
   simp [instLTS] ; exists req ; apply Subtype.property
 
 theorem invokeOnTheData_imp (data: Data.T St) (st1: St) (st2: St) (h: (instLTS _).Tr st1 (.invokeOnTheData data) st2)
-  : ((InvokeOnTheData.Req _ data st1) ∧ (InvokeOnTheData.Ens _ data st1 st2)) := by
+  : (InvokeOnTheData.Req _ data st1) ∧ (InvokeOnTheData.Ens _ data st1 st2) := by
   simp [instLTS] at h
   obtain ⟨_,h2⟩ := h
   subst h2
@@ -300,15 +300,19 @@ theorem invokeOnTheData_imp (data: Data.T St) (st1: St) (st2: St) (h: (instLTS _
   · assumption
   · apply Subtype.property
 
---set_option pp.explicit true in
-#check invokeOnTheData_imp
-
-
 theorem invokeOnTheData_exists (data: Data.T St) (st1: St) (req: InvokeOnTheData.Req _ data st1)
   : ∃st2, ((instLTS _).Tr st1 (.invokeOnTheData data) st2) ∧ (InvokeOnTheData.Ens _ data st1 st2) := by
   simp [instLTS] ; exists req ; apply Subtype.property
 
-#check invokeOnTheData_exists
+
+theorem produceOutput_imp (st1: St) (st2: St) (h: (instLTS _).Tr st1 (.produceOutput) st2)
+  : (ProduceOutput.Req _ st1) ∧ (ProduceOutput.Ens _ st1 st2) := by
+  simp [instLTS] at h
+  obtain ⟨_,h2⟩ := h
+  subst h2
+  constructor
+  · assumption
+  · apply Subtype.property
 
 theorem produceOutput_exists (st1: St) (req: ProduceOutput.Req _ st1)
   : ∃st2, ((instLTS _).Tr st1 (.produceOutput) st2) ∧ (ProduceOutput.Ens _ st1 st2) := by
@@ -381,13 +385,149 @@ theorem ImmediatelyBeginsRunning.proof : ImmediatelyBeginsRunning St (instLTS _)
   · simp [ImmediatelyBeginsRunning.EnsList]
 
 
+theorem IsOnline.aux1
+  (l: Label St)
+  (h1: ¬(l matches .writeTheProgram _))
+  : ∀st1 st2, (instLTS _).Tr st1 l st2 → AppEq Program.v st1 st2 := by
+  intro st1 st2 h2
+  simp [appEq_iff]
+  cases l
+  · simp at *
+  · rename (Data.T St) => data
+    obtain ⟨req, ens⟩ := invokeOnTheData_imp _ data st1 st2 h2
+    obtain ⟨_,_,_⟩ := ens
+    simp [*]
+  · obtain ⟨req, ens⟩ := produceOutput_imp _ st1 st2 h2
+    obtain ⟨_,_⟩ := ens
+    simp [appEq_iff] at *
+    assumption
 
+#check List.forall_mem_map
 
+set_option pp.proofs true in
 theorem IsOnline.proof (stF: St) ls stL sts
-  (req1: (instLTS _).Execution stF ls stL sts)
+  (h1: (instLTS _).Execution stF ls stL sts)
+  (prog: Program.T St)
+  (h2: WriteTheProgram.Req _ prog)
+  (h3: WriteTheProgram.Ens _ prog stF)
   (req2: ∀l ∈ ls, ¬(l matches .writeTheProgram _))
   : IsOnline _ sts := by
-  sorry
+  have lm1 : ∀l ∈ ls, ∀st1 st2, (instLTS _).Tr st1 l st2 → AppEq Program.v st1 st2 := by--List.forall_mem_map
+    intro l l_mem
+    have lm1 := req2 l l_mem
+    exact (IsOnline.aux1 St l lm1)
+  simp [IsOnline]
+  --have lm2 := h1.to_mTr
+  simp [WriteTheProgram.Req, WriteTheProgram.Ens] at h2 h3
+  obtain ⟨h3, h4⟩ := h3
+  unfold Cslib.LTS.Execution at h1
+  obtain ⟨sts_len,sts_f,sts_l,sts_all⟩ := h1
+  simp only [List.forall_mem_iff_forall_getElem] at req2 lm1
+  simp only [List.forall_mem_iff_forall_getElem] --, List.pairwise_iff_getElem
+  have lm2 (k: Nat) (hk: k < sts.length - 1) : AppEq Program.v sts[k] sts[k+1] := by
+    simp [sts_len] at hk
+    have lm2_1 := @sts_all k hk
+    exact (lm1 k hk sts[k] sts[k+1] lm2_1)
+  --let rec lm3 (k: Nat) (hk: k < sts.length) : AppEq Program.v sts[0] sts[k] := by
+  constructor
+  · intro i hi
+    induction i with
+    | zero => subst sts_f h3; assumption
+    | succ n hn =>
+      have lm3 := lm2 n (by omega)
+      specialize hn (by omega)
+      simp [appEq_iff] at lm3
+      simp [← lm3]; exact hn
+  · have lm3: IsTrans St (AppEq Program.v) := ⟨by
+      simp [appEq_iff]
+      intro _ _ _ _ _
+      simp [*]
+    ⟩
+    sorry
+-- ∀ (k : ℕ) (hk : k < sts.length - 1), AppEq (⇑Program.v) sts[k] sts[k + 1]
+
+    --simp [lm3]--intro i h hi hj h_ih
+/-
+    induction lm3: h - i with
+    | zero =>
+      have lm4: h = i := by omega
+      subst lm4
+      simp [appEq_iff]
+    | succ n hn =>
+-/
+/-
+      have lm4: h = n + 1 + i := by omega
+      subst lm4
+      simp_all
+      have lm5 := @sts_all (n+i) (by omega)
+-/
+/-
+    match lm3: h-i with
+    | 0 =>
+      have lm4: h = i := by omega
+      subst lm4
+      simp [appEq_iff]
+    | n + 1 =>
+      simp at lm3
+-/
+/-
+  constructor
+  · intro i hi
+    match i with
+    | 0 => subst sts_f h3; assumption
+    | ip + 1 =>
+      simp [sts_len] at hi
+      specialize req2 ip hi
+      have lm3 := @sts_all ip hi
+-/
+      --skip
+  --have lm2 := List.forall_mem_iff_forall_getElem.mp req2
+  --have lm2 : sts.length - 1 = ls.length := by omega
+/-
+  constructor
+  · have lm2 : Program.v sts[0] ≠ 0 := by subst_eqs ; assumption
+    let rec lm3 (k: Nat) (x: k < sts.length) : Program.v sts[k] ≠ 0 :=
+      match k with
+      | 0 => lm2
+      | kp + 1 =>
+        have lm4 : Program.v sts[kp] ≠ 0 := lm3 kp (by omega)
+        have lm5 := List.forall_mem_iff_forall_getElem.mp req2
+        d
+-/
+        --have lm5 : Program.v sts[kp+1] ≠ 0 := by
+    --have lm2 (k: Nat) (x: k < sts.length)
+    --intro stX stX_mem
+    --obtain ⟨stX_i, stX_h, stX_mem_eq⟩ := List.mem_iff_getElem.mp stX_mem
+    --rewrite [sts_len] at stX_h
+
+/-
+    by_cases h5: stX_i = 0
+    · subst_eqs ; assumption
+    · --simp only [Nat.ne_zero_iff_zero_lt] at h5
+      subst_eqs
+      have lm2 := @sts_all (stX_i-1) (show stX_i-1 < ls.length by
+        have lm1 := Nat.pred_lt_pred h5 stX_h ; simp at lm1 ; exact lm1)
+-/
+
+    --simp [← lm2] at sts_all
+    --have := @sts_all stX_i stX_h
+
+/-
+  have lm2 := Cslib.LTS.Execution.refl (instLTS _) stF
+  match lm3: h1.to_mTr with
+  | .refl =>
+    have lm4 : [stF] = sts := by
+      unfold Cslib.LTS.Execution at h1
+      simp at h1
+      obtain ⟨h1,h2,h3⟩ := h1
+      simp only [getElem] at h2
+      --simp_all?
+-/
+  --cases lm2
+  --· simp
+
+  --have := List.forall_
+  --simp [Membership.mem] at req2
   --have lm1 := req1.nonEmpty_states
   --simp [Cslib.LTS.Execution, instLTS] at req1
   --have lm2 : ∀l ∈ ls, l.ctorIdx = Label.invokeOnTheData.ctorIdx
@@ -401,7 +541,7 @@ end def_s
 
 end Interpreter
 
-
+#print Cslib.LTS.Execution.refl
 
 end Nemonuri.Study.StanfordOnline.Compilers.Introduction
 
