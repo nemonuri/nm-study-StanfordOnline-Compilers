@@ -402,7 +402,6 @@ theorem IsOnline.aux1
     simp [appEq_iff] at *
     assumption
 
-#check List.forall_mem_map
 
 set_option pp.proofs true in
 theorem IsOnline.proof (stF: St) ls stL sts
@@ -443,7 +442,11 @@ theorem IsOnline.proof (stF: St) ls stL sts
       intro _ _ _ _ _
       simp [*]
     ⟩
-    sorry
+    have lm4 := @List.rel_isTrans_getElem_imp_pairwise St (AppEq Program.v) lm3 sts (by
+      intro _
+      exact lm2
+    )
+    exact lm4
 -- ∀ (k : ℕ) (hk : k < sts.length - 1), AppEq (⇑Program.v) sts[k] sts[k + 1]
 
     --simp [lm3]--intro i h hi hj h_ih
