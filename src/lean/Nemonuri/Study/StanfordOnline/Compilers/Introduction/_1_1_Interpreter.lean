@@ -275,7 +275,7 @@ inductive Label where
 
 --instance Label.instNonempty : Nonempty (Label St) := .intro (.produceOutput)
 
-instance instLTS : Cslib.LTS St (Label St) where
+def toLTS : Cslib.LTS St (Label St) where
   Tr st1 μ st2 :=
     match μ with
     --| .takeAsInput prog data => TakeAsInput St prog data st1 st2
@@ -288,12 +288,12 @@ instance instLTS : Cslib.LTS St (Label St) where
 
       --(InvokeOnTheData St data st1 st2) ∧ (ImmediatelyBeginsRunning.MainEns St st1 st2)
 theorem writeTheProgram_exists (prog: Program.T St) (st1: St) (req: WriteTheProgram.Req _ prog)
-  : ∃st2, ((instLTS _).Tr st1 (.writeTheProgram prog) st2) ∧ (WriteTheProgram.Ens _ prog st2) := by
-  simp [instLTS] ; exists req ; apply Subtype.property
+  : ∃st2, ((toLTS _).Tr st1 (.writeTheProgram prog) st2) ∧ (WriteTheProgram.Ens _ prog st2) := by
+  simp [toLTS] ; exists req ; apply Subtype.property
 
-theorem invokeOnTheData_imp (data: Data.T St) (st1: St) (st2: St) (h: (instLTS _).Tr st1 (.invokeOnTheData data) st2)
+theorem invokeOnTheData_imp (data: Data.T St) (st1: St) (st2: St) (h: (toLTS _).Tr st1 (.invokeOnTheData data) st2)
   : (InvokeOnTheData.Req _ data st1) ∧ (InvokeOnTheData.Ens _ data st1 st2) := by
-  simp [instLTS] at h
+  simp [toLTS] at h
   obtain ⟨_,h2⟩ := h
   subst h2
   constructor
@@ -301,13 +301,13 @@ theorem invokeOnTheData_imp (data: Data.T St) (st1: St) (st2: St) (h: (instLTS _
   · apply Subtype.property
 
 theorem invokeOnTheData_exists (data: Data.T St) (st1: St) (req: InvokeOnTheData.Req _ data st1)
-  : ∃st2, ((instLTS _).Tr st1 (.invokeOnTheData data) st2) ∧ (InvokeOnTheData.Ens _ data st1 st2) := by
-  simp [instLTS] ; exists req ; apply Subtype.property
+  : ∃st2, ((toLTS _).Tr st1 (.invokeOnTheData data) st2) ∧ (InvokeOnTheData.Ens _ data st1 st2) := by
+  simp [toLTS] ; exists req ; apply Subtype.property
 
 
-theorem produceOutput_imp (st1: St) (st2: St) (h: (instLTS _).Tr st1 (.produceOutput) st2)
+theorem produceOutput_imp (st1: St) (st2: St) (h: (toLTS _).Tr st1 (.produceOutput) st2)
   : (ProduceOutput.Req _ st1) ∧ (ProduceOutput.Ens _ st1 st2) := by
-  simp [instLTS] at h
+  simp [toLTS] at h
   obtain ⟨_,h2⟩ := h
   subst h2
   constructor
@@ -315,8 +315,8 @@ theorem produceOutput_imp (st1: St) (st2: St) (h: (instLTS _).Tr st1 (.produceOu
   · apply Subtype.property
 
 theorem produceOutput_exists (st1: St) (req: ProduceOutput.Req _ st1)
-  : ∃st2, ((instLTS _).Tr st1 (.produceOutput) st2) ∧ (ProduceOutput.Ens _ st1 st2) := by
-  simp [instLTS] ; exists req ; apply Subtype.property
+  : ∃st2, ((toLTS _).Tr st1 (.produceOutput) st2) ∧ (ProduceOutput.Ens _ st1 st2) := by
+  simp [toLTS] ; exists req ; apply Subtype.property
 
 theorem TakeAsInput.simulatable prog data (stF: St) (req: TakeAsInput.Req St prog data)
   : ∃stL, TakeAsInput.Ens _ prog data stL := by
@@ -352,7 +352,7 @@ def TakeAsInput.simulate : TakeAsInput St where
     )
 
 open Cslib in
-theorem ProduceOutputDirectly.proof : ProduceOutputDirectly St (instLTS _) := by
+theorem ProduceOutputDirectly.proof : ProduceOutputDirectly St (toLTS _) := by
   simp [ProduceOutputDirectly]
   intro stF h1 h2
   simp [ProduceOutputDirectly.EnsLast]
@@ -364,18 +364,18 @@ theorem ProduceOutputDirectly.proof : ProduceOutputDirectly St (instLTS _) := by
   exists st1
   exists [stF, st1]
   constructorm* _ ∧ _
-  · exact (LTS.Execution.refl (instLTS _) st1 |>.stepL st1_tr)
+  · exact (LTS.Execution.refl (toLTS _) st1 |>.stepL st1_tr)
   · assumption
   · simp --[appEq_iff]
     obtain ⟨_,_⟩ := st1_ens
     assumption
 
 open Cslib LTS in
-theorem ImmediatelyBeginsRunning.proof : ImmediatelyBeginsRunning St (instLTS _) := by
+theorem ImmediatelyBeginsRunning.proof : ImmediatelyBeginsRunning St (toLTS _) := by
   simp [ImmediatelyBeginsRunning]
   intro data stF h1 h2 h3
   obtain ⟨st1, st1_tr, st1_ens⟩ := invokeOnTheData_exists _ data stF (by simp [InvokeOnTheData.Req] ; constructorm* _ ∧ _ <;> assumption)
-  have exe := Execution.refl (instLTS _) st1 |>.stepL st1_tr
+  have exe := Execution.refl (toLTS _) st1 |>.stepL st1_tr
   exists [Label.invokeOnTheData data]
   exists [stF, st1]
   exists st1
@@ -388,7 +388,7 @@ theorem ImmediatelyBeginsRunning.proof : ImmediatelyBeginsRunning St (instLTS _)
 theorem IsOnline.aux1
   (l: Label St)
   (h1: ¬(l matches .writeTheProgram _))
-  : ∀st1 st2, (instLTS _).Tr st1 l st2 → AppEq Program.v st1 st2 := by
+  : ∀st1 st2, (toLTS _).Tr st1 l st2 → AppEq Program.v st1 st2 := by
   intro st1 st2 h2
   simp [appEq_iff]
   cases l
@@ -405,13 +405,13 @@ theorem IsOnline.aux1
 
 set_option pp.proofs true in
 theorem IsOnline.proof (stF: St) ls stL sts
-  (h1: (instLTS _).Execution stF ls stL sts)
+  (h1: (toLTS _).Execution stF ls stL sts)
   (prog: Program.T St)
   (h2: WriteTheProgram.Req _ prog)
   (h3: WriteTheProgram.Ens _ prog stF)
   (req2: ∀l ∈ ls, ¬(l matches .writeTheProgram _))
   : IsOnline _ sts := by
-  have lm1 : ∀l ∈ ls, ∀st1 st2, (instLTS _).Tr st1 l st2 → AppEq Program.v st1 st2 := by--List.forall_mem_map
+  have lm1 : ∀l ∈ ls, ∀st1 st2, (toLTS _).Tr st1 l st2 → AppEq Program.v st1 st2 := by--List.forall_mem_map
     intro l l_mem
     have lm1 := req2 l l_mem
     exact (IsOnline.aux1 St l lm1)

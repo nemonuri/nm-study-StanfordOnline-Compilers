@@ -39,14 +39,12 @@ variable (St: Type us) [Zero St]
 
 class YourProgram where
   protected T: Type us
-  protected z: Zero T
-  protected v: PropertyBuilder St T
+  protected ctx: PropertyContext T
+  protected v: Property St T
 
-attribute [reducible, instance] YourProgram.z
+attribute [reducible, instance] YourProgram.ctx
 
 variable [YourProgram St]
-
-instance : DecidableEq (YourProgram.T St) := YourProgram.v.deq
 
 
 namespace TakeAsInput
@@ -73,14 +71,12 @@ structure TakeAsInput where
 -/
 class Executable where
   protected T: Type us
-  protected z: Zero T
-  protected v: PropertyBuilder St T
+  protected ctx: PropertyContext T
+  protected v: Property St T
 
-attribute [reducible, instance] Executable.z
+attribute [reducible, instance] Executable.ctx
 
 variable [Executable St]
-
-instance : DecidableEq (Executable.T St) := Executable.v.deq
 
 
 namespace ProduceExecutable
@@ -103,29 +99,31 @@ structure ProduceExecutable where
 -/
 class Program where
   protected T: Type us
-  protected z: Zero T
-  ofYourProgram: PropertyBuilder (YourProgram.T St) T
-  ofExecutable: PropertyBuilder (Executable.T St) T
+  protected ctx: PropertyContext T
+  ofYourProgram: Property (YourProgram.T St) T
+  ofExecutable: Property (Executable.T St) T
   another_program (prog: YourProgram.T St) (exe: Executable.T St) : (ofYourProgram prog ≠ 0) → (ofYourProgram prog) ≠ (ofExecutable exe)
 
-attribute [reducible, instance] Program.z
+attribute [reducible, instance] Program.ctx
 
 variable [Program St]
 
-instance : DecidableEq (Program.T St) := Program.ofYourProgram.deq
 
-
-inductive Language.MightBe (α: Type _) where
+inductive Language.MightBe (α: Type _) [Zero α] where
   | assembly
   | bytecode
   | diffrent (a: α)
+  deriving DecidableEq
+
+instance {α} [Zero α] : Zero (Language.MightBe α) where
+  zero := Language.MightBe.diffrent 0
 
 class Language.{u} (P: Type u) [Zero P] where
-  protected TLanguage: Type u
-  protected toZero: Zero TLanguage
-  protected language: PropertyBuilder P TLanguage --(p: P) → (Language.MightBe TLanguage)
+  protected T: Type u
+  protected ctx : PropertyContext T
+  protected language: Property P (Language.MightBe T) --(p: P) → (Language.MightBe TLanguage)
 
-attribute [reducible, instance] Language.toZero
+attribute [reducible, instance] Language.ctx
 
 variable [Language (Program.T St)]
 
@@ -135,15 +133,13 @@ variable [Language (Program.T St)]
 -/
 protected class IsRunning.State where
   protected T: Type us
-  protected z: Zero T
-  protected v: PropertyBuilder St T
+  protected ctx : PropertyContext T
+  protected v: Property St T
 
-attribute [reducible, instance] IsRunning.State.z
+attribute [reducible, instance] IsRunning.State.ctx
 
 variable [IsRunning.State St]
 
-instance : DecidableEq (IsRunning.State.T St) := IsRunning.State.v.deq
-instance : Zero Bool where zero := false
 
 class IsRunning where
   protected v : ZeroHom (IsRunning.State.T St) (ZeroHom (Program.T St) Bool) --PropertyBuilder St (RunningTester St)
@@ -163,14 +159,13 @@ def IsAnyProgramRunning (st: St) : Prop := IsYourProgramRunning _ st ∨ IsExecu
 
 class Data where
   protected T: Type us
-  protected z: Zero T
-  protected v: PropertyBuilder St T
+  protected ctx : PropertyContext T
+  protected v: Property St T
 
-attribute [reducible, instance] Data.z
+attribute [reducible, instance] Data.ctx
 
 variable [Data St]
 
-instance : DecidableEq (Data.T St) := Data.v.deq
 
 
 namespace CanRunSeparately
@@ -193,14 +188,13 @@ def CanRunSeparately {La} (lts: Cslib.LTS St La) : Prop :=
 
 class Output where
   protected T: Type us
-  protected z: Zero T
-  protected v: PropertyBuilder St T
+  protected ctx : PropertyContext T
+  protected v: Property St T
 
-attribute [reducible, instance] Output.z
+attribute [reducible, instance] Output.ctx
 
 variable [Output St]
 
-instance : DecidableEq (Output.T St) := Output.v.deq
 
 
 namespace WillProduceTheOutput
