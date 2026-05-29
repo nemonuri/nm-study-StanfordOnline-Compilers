@@ -443,7 +443,7 @@ instance : DecidableEq (Label St) := fun l1 l2 =>
 
 variable [Ability St]
 
-instance instLTS : Cslib.LTS St (Label St) where
+def toLTS : Cslib.LTS St (Label St) where
   Tr st1 l st2 :=
     match l with
     | .takeAsInput prog =>
@@ -466,33 +466,33 @@ instance instLTS : Cslib.LTS St (Label St) where
 open Cslib LTS
 
 theorem produceExecutable_exists (st1: St) (req: ProduceExecutable.Req _ st1)
-  : ∃st2, (instLTS _).Tr st1 (.produceExecutable) st2 ∧ ProduceExecutable.Ens _ st1 st2 ∧ RunningStateEq _ st1 st2 := by
+  : ∃st2, (toLTS _).Tr st1 (.produceExecutable) st2 ∧ ProduceExecutable.Ens _ st1 st2 ∧ RunningStateEq _ st1 st2 := by
   have lm1 := Ability.produceExecutable_spec st1
-  simp [instLTS]
+  simp [toLTS]
   exists req
   simp [lm1]
   apply Subtype.property
 
 theorem takeData_exists (data) (st1: St) (req: TakeData.Req _ data)
-  : ∃st2, (instLTS _).Tr st1 (.takeData data) st2 ∧ TakeData.Ens _ data st1 st2 := by
-  simp [instLTS]
+  : ∃st2, (toLTS _).Tr st1 (.takeData data) st2 ∧ TakeData.Ens _ data st1 st2 := by
+  simp [toLTS]
   exists req
   apply Subtype.property
 
 theorem beginRun_exists (st1: St) (req: BeginRun.Req _ st1)
-  : ∃st2, (instLTS _).Tr st1 (.beginRun) st2 ∧ BeginRun.Ens _ st1 st2 := by
-  simp [instLTS]
+  : ∃st2, (toLTS _).Tr st1 (.beginRun) st2 ∧ BeginRun.Ens _ st1 st2 := by
+  simp [toLTS]
   exists req
   apply Subtype.property
 
 theorem willProduceTheOutput_exists (st1: St) (req: WillProduceTheOutput.Req _ st1)
-  : ∃st2, (instLTS _).Tr st1 (.willProduceTheOutput) st2 ∧ WillProduceTheOutput.Ens _ st1 st2 := by
-  simp [instLTS]
+  : ∃st2, (toLTS _).Tr st1 (.willProduceTheOutput) st2 ∧ WillProduceTheOutput.Ens _ st1 st2 := by
+  simp [toLTS]
   exists req
   apply Subtype.property
 
 set_option pp.proofs true in
-theorem CanRunSeparately.proof : CanRunSeparately St (instLTS _) := by
+theorem CanRunSeparately.proof : CanRunSeparately St (toLTS _) := by
   simp [CanRunSeparately]
   intro data st1 req
   simp [CanReach]
@@ -523,12 +523,12 @@ theorem CanRunSeparately.proof : CanRunSeparately St (instLTS _) := by
   obtain ⟨_,_,_,_,_⟩ := st4_ens
   simp_all [IsExecutableRunning]
   open Cslib LTS in
-  have lm2 := MTr.single (instLTS _) st2_tr |>.stepR _ st3_tr |>.stepR _ st4_tr
+  have lm2 := MTr.single (toLTS _) st2_tr |>.stepR _ st3_tr |>.stepR _ st4_tr
   simp at lm2
   exact Exists.intro _ lm2
 
 
-theorem IsOffline.proof : IsOffline St (instLTS _) := by
+theorem IsOffline.proof : IsOffline St (toLTS _) := by
   simp [IsOffline]
   intro stF stF_p stL stL_p sts ls exe exe_p sts_elem sts_mem
   simp [EnsAll]
@@ -537,7 +537,7 @@ theorem IsOffline.proof : IsOffline St (instLTS _) := by
   rfl
 
 attribute [simp] CanRunSameMany.EnsAll appEq_iff in
-theorem CanRunSameMany.proof : CanRunSameMany St (instLTS _) := by
+theorem CanRunSameMany.proof : CanRunSameMany St (toLTS _) := by
   simp [CanRunSameMany]
   rintro dataF dataL ⟨r1,r2,r3⟩ stF ⟨r4,r5⟩
   --simp [IsExecutableRunning] at r5
@@ -555,7 +555,7 @@ theorem CanRunSameMany.proof : CanRunSameMany St (instLTS _) := by
     constructorm* _ ∧ _ <;> trivial)
   simp only [appEq_iff] at *
   --have ea_st3 : CanRunSameMany.EnsAll _ st2 st3 := by simp [*]
-  have := Execution.refl (instLTS _) st3 |>.stepL st3_tr |>.stepL st2_tr |>.stepL st1_tr
+  have := Execution.refl (toLTS _) st3 |>.stepL st3_tr |>.stepL st2_tr |>.stepL st1_tr
   exists [Label.willProduceTheOutput, Label.takeData dataL, Label.beginRun]
 
 
