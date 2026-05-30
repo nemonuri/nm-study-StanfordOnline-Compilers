@@ -34,14 +34,14 @@ instance [po: Std.IsPartialOrder α] : PartialOrder α where
   lt_iff_le_not_ge := (inferInstance : Std.LawfulOrderLT α).lt_iff
 
 @[ext]
-class LeastOn {α: Type*} [PartialOrder α] (pred: α → Prop) where
+class LeastOn {α: Type*} [PartialOrder α] (set: Set α) where
   least: α
-  is_least: IsLeast { x: α | pred x } least
+  is_least: IsLeast set least
 
-instance {α} [PartialOrder α] {pred: α → Prop} [LeastOn pred] : Unique (LeastOn pred) where
+instance LeastOn.toUnique {α} [PartialOrder α] {set: Set α} [LeastOn set] : Unique (LeastOn set) where
   default := inferInstance
   uniq := by
-    rename (LeastOn pred) => b
+    rename (LeastOn set) => b
     intro a
     have lm1 := IsLeast.unique a.is_least b.is_least
     simpa only [LeastOn.ext_iff] using lm1

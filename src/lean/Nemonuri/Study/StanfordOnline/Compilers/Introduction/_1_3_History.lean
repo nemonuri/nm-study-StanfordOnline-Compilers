@@ -2,6 +2,7 @@ module
 
 public import Nemonuri.Study.StanfordOnline.Compilers.Introduction._1_2_Compiler
 public import Mathlib.Order.Bounds.Basic
+public import Cslib.Foundations.Semantics.LTS.Bisimulation
 
 @[expose] public section public_s
 
@@ -26,6 +27,8 @@ section spec_s
 
 instance : Div Std.Time.Year.Offset := inferInstanceAs (Div Int)
 
+section Machine
+
 structure Machine where
   beginIn: Std.Time.Year.Offset
   called: String
@@ -35,13 +38,13 @@ structure Machine where
 variable (TM: Type u) [LE TM] [Std.IsPartialOrder TM]
 
 class HasMachine where
-  getMachine: TM → Machine
-
-instance [HasMachine TM] (m: TM) : CoeDep TM m Machine where
-  coe := HasMachine.getMachine m
-
+  protected v: TM → Machine
 
 variable [HasMachine TM]
+
+instance (m: TM) : CoeDep TM m Machine where
+  coe := HasMachine.v m
+
 
 @[mk_iff]
 structure IsTheMachine (m: TM) : Prop where
@@ -51,9 +54,14 @@ structure IsTheMachine (m: TM) : Prop where
   firstCommerciallySuccessful: IsLeast { x: TM | Machine.commerciallySuccessful x } m
   someEarierMachines: { x: TM | x < m }.Nontrivial
 
-@[reducible]
-def theMachine (tm: TM) (req: IsTheMachine _ tm) := LeastOn.mk tm req.firstCommerciallySuccessful
+def TheMachine := { x: TM // IsTheMachine _ x }
 
+def theMachine [ctx: Inhabited (TheMachine TM)] := ctx.default
+
+--@[reducible]
+--def theMachine (tm: TM) (req: IsTheMachine _ tm) := LeastOn.mk tm req.firstCommerciallySuccessful |>.toUnique
+
+end Machine
 
 /-!
 3. they found that the software costs exceeded the hardware costs.
@@ -66,17 +74,24 @@ structure CostContext where
   softwareCosts: Set Nat
   hardwareCosts: Set Nat
 
-structure CostContext.ThoseDays where
+namespace CostContext
+
+structure ThoseDays.Context where
   littleBit: Nat
   aLot: Nat
   extremelyExpensiveCost: Nat
 
+
 @[mk_iff]
-structure CostContext.ThoseDays.IsLawful (c: CostContext) (td: CostContext.ThoseDays) : Prop where
+structure ThoseDays [ctx: Inhabited (ThoseDays.Context)] (c: CostContext) : Prop where
   exceeded: ∀sc ∈ c.softwareCosts, ∀hc ∈ c.hardwareCosts, hc < sc
-  aLot_spec: td.aLot > td.littleBit
-  by_a_lot: ∀sc ∈ c.softwareCosts, ∀hc ∈ c.hardwareCosts, td.aLot < sc - hc
-  extremelyExpensive: ∀hc ∈ c.hardwareCosts, td.extremelyExpensiveCost < hc
+  aLot_spec: ctx.default.aLot > ctx.default.littleBit
+  by_a_lot: ∀sc ∈ c.softwareCosts, ∀hc ∈ c.hardwareCosts, ctx.default.aLot < sc - hc
+  extremelyExpensive: ∀hc ∈ c.hardwareCosts, ctx.default.extremelyExpensiveCost < hc
+
+
+
+end CostContext
 
 
 /-!
@@ -93,7 +108,76 @@ def MoreProductiveProgramming (pre: CostContext) (post: CostContext) : Prop :=
 1. the earliest efforts to improve the productivity of programming was called speed coding, developed in 1953 by John Backus
 -/
 
+variable [Inhabited (CostContext.ThoseDays.Context)]
 
+structure Effort where
+  run (pre: CostContext) (req: CostContext.ThoseDays pre) : { post: CostContext // MoreProductiveProgramming pre post }
+  name: String
+  year: Std.Time.Year.Offset
+  developer: String
+
+variable (T: Type u) [LE T] [Std.IsPartialOrder T]
+
+class HasEffort where
+  protected v: T → Effort
+
+variable [HasEffort T]
+
+instance (x: T) : CoeDep T x Effort where
+  coe := HasEffort.v x
+
+
+
+@[mk_iff]
+structure IsSpeedCoding (x: T) : Prop where
+  the_earliest: IsLeast Set.univ x
+  name: Effort.name x = "speed coding"
+  year: Effort.year x = 1953
+  developer: Effort.developer x = "John Backus"
+
+/-
+@[reducible]
+def speedCoding (x: T) (req: IsSpeedCoding _ x) := LeastOn.mk x req.the_earliest |>.toUnique
+-/
+
+@[reducible]
+def SpeedCoding := { x: T // IsSpeedCoding _ x }
+
+def speedCoding [ctx: Inhabited (SpeedCoding T)] := ctx.default
+
+
+/-!
+2. Now, speed coding is what we call today, an early example of an interpreter.
+-/
+class HasLts (α St La: Type*) where
+  protected v: α → Cslib.LTS St La
+
+instance {α St La: Type*} [HasLts α St La] (x: α) : CoeDep α x (Cslib.LTS St La) where
+  coe := HasLts.v x
+
+
+namespace SpeedCoding
+
+open Interpreter
+variable (St: Type*) [Zero St] [State St] [Ability St] [HasLts (SpeedCoding T) St (Label St)]
+
+@[mk_iff]
+protected class IsInterpreter (s: SpeedCoding T) : Prop where
+  intro: (toLTS St).IsBisimulation s Eq
+
+variable [Inhabited (SpeedCoding T)] [SpeedCoding.IsInterpreter T St (speedCoding T)]
+
+/-!
+3. The primary advantage was that it was much faster, to develop the programs.
+4. So the, in that sense, the programmer was much more productive.
+5. But among its disadvantages, code written, speed code programs were ten to twenty times slower.
+6. Then handwritten programs and that's also true of interpreted programs today.
+-/
+
+
+
+
+end SpeedCoding
 
 
 
