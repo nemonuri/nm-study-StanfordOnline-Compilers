@@ -12,7 +12,7 @@ set_option autoImplicit false
 /-
 #### 2.2. lexical analysis
 
-The goal of lexical analysis, then, is to divide the program text into its words, or what we call in compiler speak, the tokens.
+1. The goal of lexical analysis, then, is to divide the program text into its words, or what we call in compiler speak, the tokens.
 -/
 
 namespace LexicalAnalysis
@@ -128,6 +128,59 @@ instance {α} : DFunLike (LexicalAnalysis α) (ProgramText α) (fun s => List <|
 
 end LexicalAnalysis
 
+/-!
+#### 2.3. Parsing
+
+1. So for humans, once the words are understood, the next step is to understand the structure of the sentence, and this is called parsing.
+2. this means diagramming sentences, and these diagrams are trees, and it's a very simple procedure.
+-/
+
+namespace Parsing
+
+open LexicalAnalysis ProgramText
+
+inductive Tree.Raw where
+  | leaf (range: Range.Raw)
+  | branch (left: Tree.Raw) (right: Tree.Raw)
+  deriving DecidableEq
+
+namespace Tree.Raw
+
+inductive IsWeakValid {α} (s: ProgramText α) : Tree.Raw → Prop where
+  | leaf (range: Range s) : IsWeakValid s (.leaf range.raw)
+  | branch
+      (left: Tree.Raw) (left_req: IsWeakValid s left)
+      (right: Tree.Raw) (right_req: IsWeakValid s right)
+      : IsWeakValid s (.branch left right)
+
+end Tree.Raw
+
+open Tree.Raw in
+@[ext]
+structure Tree.WeakValid {α} (s: ProgramText α) where
+  raw: Tree.Raw
+  is_weak_valid: IsWeakValid s raw
+
+namespace Tree.WeakValid
+
+open LexicalAnalysis ProgramText Tree.Raw
+
+variable {α} {s: ProgramText α}
+
+@[match_pattern]
+protected def leaf (range: Range s) : Tree.WeakValid s where
+  raw := .leaf range.raw
+  is_weak_valid := IsWeakValid.leaf range
+
+@[match_pattern]
+protected def branch (left: Tree.WeakValid s) (right: Tree.WeakValid s) : Tree.WeakValid s where
+  raw := .branch left.raw right.raw
+  is_weak_valid := IsWeakValid.branch left.raw left.is_weak_valid right.raw right.is_weak_valid
+
+end Tree.WeakValid
+
+
+end Parsing
 
 
 end Nemonuri.Study.StanfordOnline.Compilers
