@@ -179,8 +179,20 @@ protected def branch (left: Tree.WeakValid s) (right: Tree.WeakValid s) : Tree.W
 
 end Tree.WeakValid
 
-
 end Parsing
+
+open Parsing LexicalAnalysis in
+@[ext]
+structure Parsing {α} (s: ProgramText α) where
+  run : List (Token s) → Tree.WeakValid s
+
+open Parsing LexicalAnalysis in
+instance {α} {s: ProgramText α} : FunLike (Parsing s) (List (Token s)) (Tree.WeakValid s) where
+  coe pa := pa.run
+  coe_injective' := by
+    intro _ _
+    simp [Parsing.ext_iff]
+
 
 
 end Nemonuri.Study.StanfordOnline.Compilers
