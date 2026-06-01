@@ -4,7 +4,7 @@ public import Nemonuri.Study.StanfordOnline.Compilers.Lemma
 
 @[expose] public section public_s
 
-namespace Nemonuri.Study.StanfordOnline.Compilers
+namespace Nemonuri.Study.StanfordOnline.Compilers.StructureOfCompiler
 
 /-!
 #### 2.1. Major phase
@@ -37,6 +37,6 @@ def IsValidLts {St} (lts: Cslib.LTS St MajorPhase) : Prop :=
 end MajorPhase
 
 
-end Nemonuri.Study.StanfordOnline.Compilers
+end Nemonuri.Study.StanfordOnline.Compilers.StructureOfCompiler
 
 end public_s

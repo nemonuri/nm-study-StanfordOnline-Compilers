@@ -5,7 +5,7 @@ public import Mathlib.Logic.Equiv.Defs
 
 @[expose] public section public_s
 
-namespace Nemonuri.Study.StanfordOnline.Compilers
+namespace Nemonuri.Study.StanfordOnline.Compilers.StructureOfCompiler
 
 set_option autoImplicit false
 
@@ -195,6 +195,6 @@ instance {α} {s: ProgramText α} : FunLike (Parsing s) (List (Token s)) (Tree.W
 
 
 
-end Nemonuri.Study.StanfordOnline.Compilers
+end Nemonuri.Study.StanfordOnline.Compilers.StructureOfCompiler
 
 end public_s
