@@ -118,15 +118,39 @@ structure IsValid {α} (cf: CodeFragment α) (r: Raw) : Prop where
 end Divider.Raw
 
 open Divider Raw in
+@[ext]
 structure Divider {α} (cf: CodeFragment α) where
   raw: Raw
   is_valid: IsValid cf raw
+  --deriving DecidableEq
 
+namespace Divider
+
+set_option trace.Meta.synthInstance true
+
+def equiv {α} (cf: CodeFragment α) : Divider cf ≃ { raw: Divider.Raw // Raw.IsValid cf raw } where
+  toFun d := ⟨d.raw, d.is_valid⟩
+  invFun st := ⟨st.val, st.property⟩
+
+variable {α} {cf: CodeFragment α}
+
+instance : DecidableEq (Divider cf) := Equiv.decidableEq (equiv cf)
+
+instance : LinearOrder (Divider cf) := Equiv.linearOrder (equiv cf)
+
+theorem le_iff_raw_le (da db: Divider cf) : (da ≤ db) ↔ (da.raw ≤ db.raw) := by rfl
+
+end Divider
+
+@[ext]
 structure DividerList.Raw where
   ofList :: toList: List Divider.Raw
   deriving Repr, DecidableEq
 
 namespace DividerList.Raw
+
+instance : Coe (List Divider.Raw) (DividerList.Raw) where
+  coe l := Raw.ofList l
 
 def equiv : Raw ≃ List Divider.Raw where
   toFun := Raw.toList
@@ -134,6 +158,9 @@ def equiv : Raw ≃ List Divider.Raw where
 
 instance : Membership Divider.Raw Raw where
   mem cont elem := elem ∈ cont.toList
+
+@[simp]
+theorem mem_def {cont: Raw} {elem: Divider.Raw} : elem ∈ cont ↔ elem ∈ cont.toList := by rfl
 
 @[mk_iff]
 structure IsValid {α} (cf: CodeFragment α) (r: Raw) : Prop where
@@ -147,40 +174,88 @@ open DividerList Raw in
 structure DividerList {α} (cf: CodeFragment α) where
   raw: DividerList.Raw
   is_valid: IsValid cf raw
+  deriving DecidableEq
 
 namespace DividerList
 
 variable {α} (cf: CodeFragment α)
 
+def equiv : DividerList cf ≃ { raw: DividerList.Raw // Raw.IsValid cf raw } where
+  toFun d := ⟨d.raw, d.is_valid⟩
+  invFun st := ⟨st.val, st.property⟩
+
+@[match_pattern]
 protected def nil : DividerList cf where
   raw := Raw.ofList []
-  is_valid := by
-    simp [Raw.isValid_iff, Membership.mem]
-    intro _ h
-    cases h
+  is_valid := by simp [Raw.isValid_iff]
+
+protected def head? (l: DividerList cf) : Option (Divider cf) :=
+  match h: l.raw.toList with
+  | [] => .none
+  | hdR::_ => .some ⟨hdR, by
+    have lm1 := l.is_valid.for_all
+    specialize lm1 hdR
+    simpa [h] using lm1
+  ⟩
 
 
+protected theorem head?_eq_none_iff (l: DividerList cf)
+  : (l.head? = .none) ↔ (l = .nil cf) := by
+  cases l
+  rename_i raw is_valid
+  cases raw
+  rename_i toList
+  simp [DividerList.head?, DividerList.nil]
+  induction toList with
+  | nil => simp
+  | cons _ _ _ => simp
+
+--set_option pp.explicit true in
+attribute [-simp] List.pairwise_cons in
+theorem head?_cons_is_valid (l: DividerList cf) (head: Divider cf)
+  : (∀head1 ∈ l.head?, head ≤ head1) → DividerList.Raw.IsValid cf (head.raw :: l.raw.toList) := by
+  simp only [Option.mem_def]
+  intro head1
+  simp [Raw.isValid_iff]
+  simp [head.is_valid]
+  match lm1: l.raw.toList with
+  | .nil => simp [List.pairwise_cons]
+  | .cons hd1R tl1R =>
+    constructor
+    · have lm2 := l.is_valid.for_all;
+      simp [lm1] at lm2
+      simpa using lm2
+    · simp only [List.pairwise_cons_cons_iff_of_trans]
+      have (eq := lm2) hd1: Divider cf := ⟨hd1R, by
+          have lm2 := l.is_valid.for_all; simp [lm1] at lm2; exact lm2.1
+      ⟩
+      specialize head1 hd1 (by
+        simp [DividerList.head?]
+        rcases l with ⟨raw, _⟩
+        rcases raw with ⟨toList⟩
+        match lm3: toList with
+        | .nil => simp at lm1
+        | .cons _ _ =>
+          simp
+          subst lm2
+          simp
+          simp at lm1
+          exact lm1.1
+      )
+      have lm3 := l.is_valid.pairwise
+      simp [lm1] at lm3
+      simp [lm3]
+      subst lm2
+      simpa [Divider.le_iff_raw_le] using head1
+
+@[match_pattern]
 protected def cons
   (head: Divider cf) (tail: DividerList cf)
-  (req: ∀x ∈ tail.raw, head.raw ≤ x) : DividerList cf where
+  (req: (∀head1 ∈ tail.head?, head ≤ head1)) : DividerList cf where
   raw := Raw.ofList (head.raw :: tail.raw.toList)
-  is_valid := by
-    simp [Raw.isValid_iff, Membership.mem]
-    have lm1 := head.is_valid
-    have lm2 := tail.is_valid.for_all
-    have lm3 := tail.is_valid.pairwise
-    constructor <;>
+  is_valid := tail.head?_cons_is_valid cf head req
 
-    --constructor <;> try assumption
-/-
-  is_valid := by
-    simp [Raw.isValid_iff]
-    have lm1 := head.is_valid
-    have lm2 := tail.is_valid.for_all
-    have lm3 := tail.is_valid.pairwise
-    constructor <;> constructor <;> try assumption
-    ·
--/
+
 
 
 end DividerList
