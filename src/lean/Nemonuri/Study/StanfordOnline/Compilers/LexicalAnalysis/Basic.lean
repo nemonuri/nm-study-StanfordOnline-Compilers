@@ -45,25 +45,155 @@ set_option autoImplicit false
 
 -/
 
+class Eof (α: Type*) where
+  eof: α
+
 namespace LexicalAnalysis
 
-structure CodeFragment (α: Type*) where --StructureOfCompiler.LexicalAnalysis.ProgramText α
+structure CodeFragment (α: Type*) where
   ofList :: toList : List α
   deriving Repr, DecidableEq
 
 namespace CodeFragment
 
-def equiv (α: Type*) : CodeFragment α ≃ List α where
-  toFun := CodeFragment.toList
-  invFun := CodeFragment.ofList
+variable {α}
 
---instance {α} : CoeHead (CodeFragment α) (List α) where
---  coe := equiv α
+protected def length (cf: CodeFragment α) : Nat := cf.toList.length --List.length (equiv _ cf)
 
-protected def length {α} (cf: CodeFragment α) : Nat := List.length (equiv _ cf)
+section Index
+
+variable (cf: CodeFragment α) (i: Nat)
+
+def IsTextIndex : Prop := i < cf.length
+
+instance : Decidable (cf.IsTextIndex i) := inferInstanceAs (Decidable (_ < _))
+
+def IsEofIndex : Prop := i = cf.length
+
+instance : Decidable (cf.IsEofIndex i) := inferInstanceAs (Decidable (_ = _))
+
+def IsValidIndex : Prop := cf.IsTextIndex i ∨ cf.IsEofIndex i
+
+instance : Decidable (cf.IsValidIndex i) := inferInstanceAs (Decidable (_ ∨ _))
+
+theorem isValidIndex_iff
+  : cf.IsValidIndex i ↔ (cf.IsTextIndex i ∨ cf.IsEofIndex i) := by
+  rfl
+
+theorem isValidIndex_iff_le_length
+  : cf.IsValidIndex i ↔ i ≤ cf.length := by
+  simp [IsValidIndex, IsTextIndex, IsEofIndex]
+  omega
+
+end Index
+
+
+section Index.Subtype
+
+variable (cf: CodeFragment α)
+
+def TextIndex := { i: Nat // cf.IsTextIndex i }
+
+def EofIndex := { i: Nat // cf.IsEofIndex i }
+
+instance : Unique cf.EofIndex where
+  default := ⟨cf.length, by rfl⟩
+  uniq := by simp [EofIndex, IsEofIndex]
+
+
+def ValidIndex := { i: Nat // cf.IsValidIndex i }
+
+end Index.Subtype
+
+
+namespace ValidIndex
+
+
+protected def mk (cf: CodeFragment α) (i: Nat) (h: cf.IsValidIndex i) : ValidIndex cf := Subtype.mk i h
+
+protected inductive Sum (cf: CodeFragment α) where
+  | text (i: cf.TextIndex)
+  | eof (i: cf.EofIndex)
+
+namespace Sum
+
+protected def val {cf: CodeFragment α} (v: ValidIndex.Sum cf) : Nat :=
+  match v with
+  | .text s => s.val
+  | .eof s => s.val
+
+protected def ext_iff {cf: CodeFragment α} (v1 v2: ValidIndex.Sum cf)
+  : (v1 = v2) ↔ (v1.val = v2.val) := by
+  constructor
+  · cases v1 <;> cases v2 <;> simp_all
+  · match v1, v2 with
+    | .text ⟨i1, h1⟩, .text ⟨i2, h2⟩ =>
+      simp [Sum.val]
+      intro h3; simp [h3]
+    | .eof ⟨i1, h1⟩, .eof ⟨i2, h2⟩ =>
+      simp [Sum.val]
+      intro h3; simp [h3]
+    | .text ⟨i1, h1⟩, .eof ⟨i2, h2⟩
+    | .eof ⟨i1, h1⟩, .text ⟨i2, h2⟩ =>
+      revert h1 h2
+      simp [IsTextIndex, IsEofIndex, Sum.val]
+      omega
+
+end Sum
+
+def toSum {cf: CodeFragment α} (v: ValidIndex cf) : ValidIndex.Sum cf :=
+  let ⟨i, h1⟩ := v
+  if h2: cf.IsTextIndex i then
+    .text ⟨i, h2⟩
+  else
+    .eof ⟨i, by have lm1 := (cf.isValidIndex_iff i).mp h1; simp_all only [false_or]⟩
+
+@[simp]
+theorem toSum_val_eq {cf: CodeFragment α} (v: ValidIndex cf) : v.toSum.val = v.val := by
+  obtain ⟨val, val_p⟩ := v
+  simp [toSum]
+  by_cases h2: cf.IsTextIndex val <;> (simp [h2]; rfl)
+
+
+def ofSum {cf: CodeFragment α} (v: ValidIndex.Sum cf) : ValidIndex cf where
+  val := v.val
+  property := by
+    cases v <;> simp [Sum.val, isValidIndex_iff] <;> rename_i i
+    · exact (Or.inl i.property)
+    · exact (Or.inr i.property)
+
+@[simp]
+theorem ofSum_val_eq {cf: CodeFragment α} (v: ValidIndex.Sum cf)
+  : (ofSum v).val = v.val := by
+  rfl
+
+
+def equiv (cf: CodeFragment α) : ValidIndex cf ≃ ValidIndex.Sum cf where
+  toFun v := toSum v
+  invFun v := ofSum v
+  left_inv := by
+    intro v
+    simp [ValidIndex, Subtype.ext_iff]
+  right_inv := by
+    intro v
+    simp [Sum.ext_iff]
+
+
+end ValidIndex
+
+
+
+protected def get [Eof α] (cf: CodeFragment α) (i: Nat) (req: IsValidIndex cf i) : α :=
+  match (ValidIndex.mk cf i req).toSum with
+  | .text ⟨i1, h1⟩ => cf.toList[i1]
+  | .eof ⟨i1, h1⟩ => Eof.eof
+
+
+instance [Eof α] : GetElem (CodeFragment α) Nat α IsValidIndex where
+  getElem := CodeFragment.get
+
 
 end CodeFragment
-
 
 
 structure Divider.Raw where
@@ -255,10 +385,29 @@ protected def cons
   raw := Raw.ofList (head.raw :: tail.raw.toList)
   is_valid := tail.head?_cons_is_valid cf head req
 
-
-
-
 end DividerList
+
+/-!
+3. It doesn't just recognize the substrings.
+4. It also needs to classify the different elements of the string according to their role.
+5. We call these token classes.
+-/
+
+structure TokenRange.Raw where
+  lower: Nat
+  upper: Nat
+
+namespace TokenRange.Raw
+
+variable {α} (cf: CodeFragment α)
+
+
+
+
+
+end TokenRange.Raw
+
+
 
 end LexicalAnalysis
 
