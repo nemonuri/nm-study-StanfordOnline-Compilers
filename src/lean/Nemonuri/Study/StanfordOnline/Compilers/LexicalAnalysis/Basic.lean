@@ -5,6 +5,8 @@ public import Nemonuri.Study.StanfordOnline.Compilers.Lemma
 public import Mathlib.Logic.Equiv.Defs
 --public import Mathlib.Logic.Encodable.Basic
 public import Mathlib.Order.Lattice
+--public import Mathlib.Logic.Basic
+public import Mathlib.Data.Fintype.Defs
 
 @[expose] public section public_s
 
@@ -58,6 +60,10 @@ namespace CodeFragment
 
 variable {α}
 
+instance : Coe (List α) (CodeFragment α) where coe a := ⟨a⟩
+
+instance : EmptyCollection (CodeFragment α) := ⟨([]: List α)⟩
+
 protected def length (cf: CodeFragment α) : Nat := cf.toList.length --List.length (equiv _ cf)
 
 section Index
@@ -68,125 +74,140 @@ def IsTextIndex : Prop := i < cf.length
 
 instance : Decidable (cf.IsTextIndex i) := inferInstanceAs (Decidable (_ < _))
 
+@[simp]
+theorem isTextIndex_def : cf.IsTextIndex i ↔ i < cf.length := by rfl
+
 def IsEofIndex : Prop := i = cf.length
 
 instance : Decidable (cf.IsEofIndex i) := inferInstanceAs (Decidable (_ = _))
+
+@[simp]
+theorem isEofIndex_def : cf.IsEofIndex i ↔ i = cf.length := by rfl
+
+
+/-
+theorem isTextIndex_xor_isEofIndex
+  : Xor' (cf.IsTextIndex i) (cf.IsEofIndex i) := by
+  simp [xor_def] --; omega
+  constructor
+-/
 
 def IsValidIndex : Prop := cf.IsTextIndex i ∨ cf.IsEofIndex i
 
 instance : Decidable (cf.IsValidIndex i) := inferInstanceAs (Decidable (_ ∨ _))
 
-theorem isValidIndex_iff
+theorem isValidIndex_def
   : cf.IsValidIndex i ↔ (cf.IsTextIndex i ∨ cf.IsEofIndex i) := by
   rfl
 
 theorem isValidIndex_iff_le_length
   : cf.IsValidIndex i ↔ i ≤ cf.length := by
-  simp [IsValidIndex, IsTextIndex, IsEofIndex]
+  simp [IsValidIndex]
   omega
+
+/-
+theorem isValidIndex_iff_xor
+  : cf.IsValidIndex i ↔ Xor' (cf.IsTextIndex i) (cf.IsEofIndex i) := by
+  simp [isValidIndex_def, xor_iff_or_and_not_and]
+  intro h1 h2
+  omega
+-/
+
+inductive IsValidIndex.TextOrEof (h: IsValidIndex cf i) where
+  | isText (h: cf.IsTextIndex i)
+  | isEof (h: cf.IsEofIndex i)
+
+def IsBorderIndex : Prop := cf.IsEofIndex i ∨ i = 0
+
+def BorderIndex := { i:Nat // cf.IsBorderIndex i }
+
+instance : DecidableEq cf.BorderIndex := inferInstanceAs (DecidableEq (Subtype _))
+
+instance : Decidable (cf.IsBorderIndex i) := inferInstanceAs (Decidable (_ ∨ _))
+
+theorem isBorderIndex_def : cf.IsBorderIndex i ↔ cf.IsEofIndex i ∨ i = 0 := by rfl
+
+def IsInteriorIndex : Prop := cf.IsValidIndex i ∧ (¬cf.IsBorderIndex i)
+
+theorem IsInteriorIndex_def : cf.IsInteriorIndex i ↔ (cf.IsValidIndex i ∧ (¬cf.IsBorderIndex i)) := by rfl
+
+theorem IsInteriorIndex_iff_ioo : cf.IsInteriorIndex i ↔ (0 < i ∧ i < cf.length) := by
+  simp [IsInteriorIndex_def, isValidIndex_iff_le_length, isBorderIndex_def]
+  omega
+
+
+instance : Decidable (cf.IsInteriorIndex i) := decidable_of_iff' (0 < i ∧ i < cf.length) (cf.IsInteriorIndex_iff_ioo i)
+
+inductive IsValidIndex.BorderOrInterior (h: IsValidIndex cf i) where
+  | isBorder (h: cf.IsBorderIndex i)
+  | isInterior (h: cf.IsInteriorIndex i)
 
 end Index
 
 
-section Index.Subtype
-
-variable (cf: CodeFragment α)
-
-def TextIndex := { i: Nat // cf.IsTextIndex i }
-
-def EofIndex := { i: Nat // cf.IsEofIndex i }
-
-instance : Unique cf.EofIndex where
-  default := ⟨cf.length, by rfl⟩
-  uniq := by simp [EofIndex, IsEofIndex]
-
-
-def ValidIndex := { i: Nat // cf.IsValidIndex i }
-
-end Index.Subtype
-
-
-namespace ValidIndex
-
-
-protected def mk (cf: CodeFragment α) (i: Nat) (h: cf.IsValidIndex i) : ValidIndex cf := Subtype.mk i h
-
-protected inductive Sum (cf: CodeFragment α) where
-  | text (i: cf.TextIndex)
-  | eof (i: cf.EofIndex)
-
-namespace Sum
-
-protected def val {cf: CodeFragment α} (v: ValidIndex.Sum cf) : Nat :=
-  match v with
-  | .text s => s.val
-  | .eof s => s.val
-
-protected def ext_iff {cf: CodeFragment α} (v1 v2: ValidIndex.Sum cf)
-  : (v1 = v2) ↔ (v1.val = v2.val) := by
-  constructor
-  · cases v1 <;> cases v2 <;> simp_all
-  · match v1, v2 with
-    | .text ⟨i1, h1⟩, .text ⟨i2, h2⟩ =>
-      simp [Sum.val]
-      intro h3; simp [h3]
-    | .eof ⟨i1, h1⟩, .eof ⟨i2, h2⟩ =>
-      simp [Sum.val]
-      intro h3; simp [h3]
-    | .text ⟨i1, h1⟩, .eof ⟨i2, h2⟩
-    | .eof ⟨i1, h1⟩, .text ⟨i2, h2⟩ =>
-      revert h1 h2
-      simp [IsTextIndex, IsEofIndex, Sum.val]
-      omega
-
-end Sum
-
-def toSum {cf: CodeFragment α} (v: ValidIndex cf) : ValidIndex.Sum cf :=
-  let ⟨i, h1⟩ := v
-  if h2: cf.IsTextIndex i then
-    .text ⟨i, h2⟩
+def toBorderIndexFinset (cf: CodeFragment α) : Finset cf.BorderIndex :=
+  let val0: Multiset cf.BorderIndex := {⟨0, Or.inr (Eq.refl _)⟩}
+  if h: cf.length = 0 then
+    val0.toFinset
   else
-    .eof ⟨i, by have lm1 := (cf.isValidIndex_iff i).mp h1; simp_all only [false_or]⟩
+    { val := (⟨cf.length, Or.inl ((cf.isEofIndex_def cf.length).mp (Eq.refl _))⟩ ::ₘ val0),
+      nodup := by
+        subst val0
+        simp
+        intro cont
+        have lm1 := Subtype.ext_iff.mp cont
+        simp at lm1
+        exact h lm1 }
 
-@[simp]
-theorem toSum_val_eq {cf: CodeFragment α} (v: ValidIndex cf) : v.toSum.val = v.val := by
-  obtain ⟨val, val_p⟩ := v
-  simp [toSum]
-  by_cases h2: cf.IsTextIndex val <;> (simp [h2]; rfl)
-
-
-def ofSum {cf: CodeFragment α} (v: ValidIndex.Sum cf) : ValidIndex cf where
-  val := v.val
-  property := by
-    cases v <;> simp [Sum.val, isValidIndex_iff] <;> rename_i i
-    · exact (Or.inl i.property)
-    · exact (Or.inr i.property)
-
-@[simp]
-theorem ofSum_val_eq {cf: CodeFragment α} (v: ValidIndex.Sum cf)
-  : (ofSum v).val = v.val := by
-  rfl
-
-
-def equiv (cf: CodeFragment α) : ValidIndex cf ≃ ValidIndex.Sum cf where
-  toFun v := toSum v
-  invFun v := ofSum v
-  left_inv := by
-    intro v
-    simp [ValidIndex, Subtype.ext_iff]
-  right_inv := by
-    intro v
-    simp [Sum.ext_iff]
+instance (cf: CodeFragment α) : Fintype cf.BorderIndex where
+  elems := cf.toBorderIndexFinset
+  complete x := by
+    obtain ⟨xv, xv_p⟩ := x
+    revert xv_p
+    simp [isBorderIndex_def]
+    intro xv_p
+    unfold toBorderIndexFinset
+    simp
+    by_cases h1: cf.length = 0
+    · revert xv_p
+      simp [h1]
+      intro xv_p
+      simp [xv_p]
+    · simp [h1]
+      cases xv_p <;> rename_i h2 <;> simp [h2]
 
 
-end ValidIndex
 
+
+namespace IsValidIndex
+
+def toTextOrEof {cf: CodeFragment α} {i: Nat} (req: IsValidIndex cf i) : IsValidIndex.TextOrEof _ _ req :=
+  if h: cf.IsTextIndex i then
+    .isText h
+  else
+    .isEof (by simp only [isValidIndex_def, h, false_or] at req; exact req)
+
+def toBorderOrInterior {cf: CodeFragment α} {i: Nat} (req: IsValidIndex cf i) : IsValidIndex.BorderOrInterior _ _ req :=
+  if h: cf.IsBorderIndex i then
+    .isBorder h
+  else
+    .isInterior (And.intro req h)
+
+end IsValidIndex
+
+namespace IsInteriorIndex
+
+variable {cf: CodeFragment α} {i: Nat} (req: IsInteriorIndex cf i)
+
+
+
+end IsInteriorIndex
 
 
 protected def get [Eof α] (cf: CodeFragment α) (i: Nat) (req: IsValidIndex cf i) : α :=
-  match (ValidIndex.mk cf i req).toSum with
-  | .text ⟨i1, h1⟩ => cf.toList[i1]
-  | .eof ⟨i1, h1⟩ => Eof.eof
+  match req.toTextOrEof with
+  | .isText _ => cf.toList[i]
+  | .isEof _ => Eof.eof
 
 
 instance [Eof α] : GetElem (CodeFragment α) Nat α IsValidIndex where
@@ -197,7 +218,7 @@ end CodeFragment
 
 
 structure Divider.Raw where
-  idx: Nat
+  ofNat:: toNat: Nat
   deriving Repr, DecidableEq
 
 /-
@@ -235,40 +256,79 @@ namespace Divider.Raw
 set_option trace.Meta.synthInstance true
 
 def equiv : Divider.Raw ≃ Nat where
-  toFun := Divider.Raw.idx
-  invFun := Divider.Raw.mk
+  toFun := Divider.Raw.toNat
+  invFun := Divider.Raw.ofNat
 
---instance : Encodable Divider.Raw := Encodable.ofEquiv Nat equiv
 instance : LinearOrder Divider.Raw := Equiv.linearOrder equiv
 
-@[mk_iff]
-structure IsValid {α} (cf: CodeFragment α) (r: Raw) : Prop where
-  le_length : r.idx ≤ cf.length
+def IsValid {α} (cf: CodeFragment α) (i: Raw) : Prop := cf.IsValidIndex i.toNat
+
+theorem isValid_def {α} (cf: CodeFragment α) (i: Raw)
+  : i.IsValid cf ↔ cf.IsValidIndex i.toNat := by
+  rfl
+
+def IsInterior {α} (cf: CodeFragment α) (i: Raw) : Prop := cf.IsInteriorIndex i.toNat
+
+theorem isInterior_def {α} (cf: CodeFragment α) (i: Raw)
+  : i.IsInterior cf ↔ cf.IsInteriorIndex i.toNat := by
+  rfl
+
+open CodeFragment in
+theorem IsInterior.imp_isValid {α} {cf: CodeFragment α} {i: Raw} (req: i.IsInterior cf)
+  : i.IsValid cf := by
+  simp only [isInterior_def, IsInteriorIndex_def] at req
+  simp only [isValid_def]
+  exact req.left
+
+def IsBorder {α} (cf: CodeFragment α) (i: Raw) : Prop := cf.IsBorderIndex i.toNat
+
+theorem isBorder_def {α} (cf: CodeFragment α) (i: Raw)
+  : i.IsBorder cf ↔ cf.IsBorderIndex i.toNat := by
+  rfl
+
+open CodeFragment in
+theorem IsBorder.imp_isValid {α} {cf: CodeFragment α} {i: Raw} (req: i.IsBorder cf)
+  : i.IsValid cf := by
+  simp [isBorder_def, isBorderIndex_def] at req
+  simp [isValid_def, isValidIndex_def]
+  cases req
+  next h => simp [h]
+  next h => simp [h]; omega
 
 end Divider.Raw
 
+def Divider.Interior {α} (cf: CodeFragment α) := { raw: Divider.Raw // Raw.IsInterior cf raw }
+
+
+def Divider.Border {α} (cf: CodeFragment α) := { raw: Divider.Raw // Raw.IsBorder cf raw }
+
+namespace Divider.Border
+
+variable {α} {cf: CodeFragment α}
+
+/-
+def finset : Finset (Border cf) where
+  val :=
+-/
+
+end Divider.Border
+
 open Divider Raw in
-@[ext]
-structure Divider {α} (cf: CodeFragment α) where
-  raw: Raw
-  is_valid: IsValid cf raw
-  --deriving DecidableEq
+def Divider {α} (cf: CodeFragment α) := { raw: Divider.Raw // Raw.IsValid cf raw }
 
 namespace Divider
 
 set_option trace.Meta.synthInstance true
 
-def equiv {α} (cf: CodeFragment α) : Divider cf ≃ { raw: Divider.Raw // Raw.IsValid cf raw } where
-  toFun d := ⟨d.raw, d.is_valid⟩
-  invFun st := ⟨st.val, st.property⟩
-
 variable {α} {cf: CodeFragment α}
 
-instance : DecidableEq (Divider cf) := Equiv.decidableEq (equiv cf)
+instance : LinearOrder (Divider.Interior cf) := inferInstanceAs (LinearOrder (Subtype _))
 
-instance : LinearOrder (Divider cf) := Equiv.linearOrder (equiv cf)
+--instance : DecidableEq (Divider cf) := Equiv.decidableEq (equiv cf)
 
-theorem le_iff_raw_le (da db: Divider cf) : (da ≤ db) ↔ (da.raw ≤ db.raw) := by rfl
+instance : LinearOrder (Divider cf) := inferInstanceAs (LinearOrder (Subtype _))
+
+--theorem le_iff_raw_le (da db: Divider cf) : (da ≤ db) ↔ (da.raw ≤ db.raw) := by rfl
 
 end Divider
 
@@ -295,7 +355,7 @@ theorem mem_def {cont: Raw} {elem: Divider.Raw} : elem ∈ cont ↔ elem ∈ con
 @[mk_iff]
 structure IsValid {α} (cf: CodeFragment α) (r: Raw) : Prop where
   for_all: ∀x ∈ r, Divider.Raw.IsValid cf x
-  pairwise: r.toList.Pairwise (· ≤ ·)
+  pairwise: r.toList.Pairwise (· < ·)
 
 end DividerList.Raw
 
