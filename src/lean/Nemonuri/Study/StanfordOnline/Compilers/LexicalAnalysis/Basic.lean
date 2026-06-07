@@ -305,12 +305,9 @@ theorem min_congr (i1 i2: BorderIndex cf) : (min i1 i2).val = min i1.val i2.val 
 
 theorem val_monotone : Monotone (fun i: BorderIndex cf => i.val) := Subtype.mono_coe (IsBorderIndex cf)
 
-def valEmbedding : Function.Embedding (BorderIndex cf) Nat where --↪
+def valEmbedding : Function.Embedding (BorderIndex cf) Nat where
   toFun i := i.val
-  inj' := by
-    intro a b
-    simp
-    exact Subtype.ext
+  inj' _ _ := Subtype.ext
 
 
 theorem first_val_eq : (BorderIndex.first cf).val = 0 := by
@@ -384,33 +381,22 @@ theorem first_last_eq_univ : Finset.univ = [BorderIndex.first cf, BorderIndex.la
     simp [Finset.pair_comm]
 
 
+def firstImpl : BorderIndex cf := ⟨0, Or.inr (Eq.refl _)⟩
 
+@[csimp]
+theorem first_eq_firstImpl : @BorderIndex.first = @firstImpl := by
+  funext α cf
+  apply Subtype.ext_iff.mpr
+  simp [first_val_eq, firstImpl]
 
+def lastImpl : BorderIndex cf := ⟨cf.length, Or.inl ((cf.isEofIndex_def cf.length).mp (Eq.refl _))⟩
 
-/-
-theorem first_last_eq_univ : [BorderIndex.first cf, BorderIndex.last cf].toFinset = Finset.univ := by
-  --have lm1: Finset.univ = cf.borderIndexUniv := by rfl
-  --simp [lm1]
-  simp [BorderIndex.first, BorderIndex.last, BorderIndex.sortedUniv]
-  unfold List.head
-  unfold List.getLast
--/
-/-
-theorem first_last_eq (h: cf.length = 0) : BorderIndex.first cf = BorderIndex.last cf := by
-  simp [BorderIndex.first, BorderIndex.last, BorderIndex.sortedUniv]
-  have lm1 : Finset.univ = cf.borderIndexUniv := by rfl
-  simp [lm1]
-  unfold borderIndexUniv
-  simp [h]
+@[csimp]
+theorem last_eq_lastImpl : @BorderIndex.last = @lastImpl := by
+  funext α cf
+  apply Subtype.ext_iff.mpr
+  simp [last_val_eq, lastImpl]
 
-theorem first_last_gt (h: cf.length ≠ 0) : BorderIndex.first cf < BorderIndex.last cf := by
-  simp [BorderIndex.first, BorderIndex.last, BorderIndex.sortedUniv]
-  have lm1 : Finset.univ = cf.borderIndexUniv := by rfl
-  simp [lm1]
-  unfold borderIndexUniv
-  simp [h]
--/
-  --simp [Finset.insert_def]
 
 end BorderIndex
 
