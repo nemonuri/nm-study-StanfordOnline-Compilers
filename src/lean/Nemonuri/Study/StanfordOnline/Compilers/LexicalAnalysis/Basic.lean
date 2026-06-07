@@ -7,6 +7,7 @@ public import Mathlib.Logic.Equiv.Defs
 public import Mathlib.Order.Lattice
 --public import Mathlib.Logic.Basic
 public import Mathlib.Data.Fintype.Defs
+public import Mathlib.Data.Finset.Sort
 
 @[expose] public section public_s
 
@@ -105,6 +106,8 @@ theorem isValidIndex_iff_le_length
   simp [IsValidIndex]
   omega
 
+def ValidIndex := { i:Nat // cf.IsValidIndex i }
+
 /-
 theorem isValidIndex_iff_xor
   : cf.IsValidIndex i ↔ Xor' (cf.IsTextIndex i) (cf.IsEofIndex i) := by
@@ -119,15 +122,19 @@ inductive IsValidIndex.TextOrEof (h: IsValidIndex cf i) where
 
 def IsBorderIndex : Prop := cf.IsEofIndex i ∨ i = 0
 
-def BorderIndex := { i:Nat // cf.IsBorderIndex i }
-
-instance : DecidableEq cf.BorderIndex := inferInstanceAs (DecidableEq (Subtype _))
-
 instance : Decidable (cf.IsBorderIndex i) := inferInstanceAs (Decidable (_ ∨ _))
 
 theorem isBorderIndex_def : cf.IsBorderIndex i ↔ cf.IsEofIndex i ∨ i = 0 := by rfl
 
+def BorderIndex := { i:Nat // cf.IsBorderIndex i }
+
+instance : DecidableEq cf.BorderIndex := inferInstanceAs (DecidableEq (Subtype _))
+
+instance : LinearOrder cf.BorderIndex := inferInstanceAs (LinearOrder (Subtype _))
+
+
 def IsInteriorIndex : Prop := cf.IsValidIndex i ∧ (¬cf.IsBorderIndex i)
+
 
 theorem IsInteriorIndex_def : cf.IsInteriorIndex i ↔ (cf.IsValidIndex i ∧ (¬cf.IsBorderIndex i)) := by rfl
 
@@ -142,10 +149,16 @@ inductive IsValidIndex.BorderOrInterior (h: IsValidIndex cf i) where
   | isBorder (h: cf.IsBorderIndex i)
   | isInterior (h: cf.IsInteriorIndex i)
 
+def InteriorIndex := { i:Nat // cf.IsInteriorIndex i }
+
+instance : DecidableEq cf.InteriorIndex := inferInstanceAs (DecidableEq (Subtype _))
+
+instance : LinearOrder cf.InteriorIndex := inferInstanceAs (LinearOrder (Subtype _))
+
 end Index
 
 
-def toBorderIndexFinset (cf: CodeFragment α) : Finset cf.BorderIndex :=
+def borderIndexUniv (cf: CodeFragment α) : Finset cf.BorderIndex :=
   let val0: Multiset cf.BorderIndex := {⟨0, Or.inr (Eq.refl _)⟩}
   if h: cf.length = 0 then
     val0.toFinset
@@ -160,13 +173,13 @@ def toBorderIndexFinset (cf: CodeFragment α) : Finset cf.BorderIndex :=
         exact h lm1 }
 
 instance (cf: CodeFragment α) : Fintype cf.BorderIndex where
-  elems := cf.toBorderIndexFinset
+  elems := cf.borderIndexUniv
   complete x := by
     obtain ⟨xv, xv_p⟩ := x
     revert xv_p
     simp [isBorderIndex_def]
     intro xv_p
-    unfold toBorderIndexFinset
+    unfold borderIndexUniv
     simp
     by_cases h1: cf.length = 0
     · revert xv_p
@@ -176,8 +189,201 @@ instance (cf: CodeFragment α) : Fintype cf.BorderIndex where
     · simp [h1]
       cases xv_p <;> rename_i h2 <;> simp [h2]
 
+def interiorIndexUniv (cf: CodeFragment α) : Finset cf.InteriorIndex where
+  val := (List.range' 1 (cf.length - 1) 1).attachWith cf.IsInteriorIndex (by
+    simp [IsInteriorIndex_iff_ioo]
+    intro x h1 h2
+    omega)
+    |> Multiset.ofList
+  nodup := by
+    simp [List.attachWith]
+    apply List.Nodup.pmap (by
+      intro _ _ _ _
+      exact Subtype.ext_iff.mp
+    )
+    exact List.nodup_range'
+
+instance (cf: CodeFragment α) : Fintype cf.InteriorIndex where
+  elems := cf.interiorIndexUniv
+  complete := by
+    rintro ⟨xv, xv_p⟩
+    unfold interiorIndexUniv
+    simp
+    apply (List.mem_attachWith _ _).mpr
+    simp
+    simp [IsInteriorIndex_iff_ioo] at xv_p
+    omega
+
+def validIndexUniv (cf: CodeFragment α) : Finset cf.ValidIndex where
+    val := List.range (cf.length+1) |>.attachWith cf.IsValidIndex (by
+        simp [isValidIndex_iff_le_length]; omega
+      ) |> Multiset.ofList
+    nodup := by
+      simp [List.attachWith]
+      apply List.Nodup.pmap (by
+        intro _ _ _ _
+        exact Subtype.ext_iff.mp
+      )
+      exact List.nodup_range
+
+instance (cf: CodeFragment α) : Fintype cf.ValidIndex where
+  elems := cf.validIndexUniv
+  complete := by
+    rintro ⟨xv, xv_p⟩
+    unfold validIndexUniv
+    simp
+    apply (List.mem_attachWith _ _).mpr
+    simp
+    simp [isValidIndex_iff_le_length] at xv_p
+    omega
+
+namespace BorderIndex
+
+variable (cf: CodeFragment α)
+
+protected def card : Nat := Fintype.card cf.BorderIndex
+
+theorem card_def : BorderIndex.card cf = Fintype.card cf.BorderIndex := by rfl
+
+theorem card_spec : BorderIndex.card cf = if cf.length = 0 then 1 else 2 := by
+  simp only [BorderIndex.card, Fintype.card]
+  have lm1: Finset.univ = cf.borderIndexUniv := by rfl
+  simp [lm1]
+  unfold borderIndexUniv
+  simp
+  by_cases h1: cf.length = 0
+  · simp [h1]
+  · simp [h1, Finset.card_insert_eq_ite]
+    intro cont
+    exact h1 (Subtype.ext_iff.mp cont)
+
+theorem card_gt_zero : BorderIndex.card cf > 0 := by
+  simp
+  have lm1 := card_spec cf
+  by_cases h1: cf.length = 0 <;> simp [h1] at lm1 <;> omega
+
+def sortedUniv : List cf.BorderIndex := Finset.univ.sort LE.le
+
+theorem sortedUniv_ne_nil : BorderIndex.sortedUniv cf ≠ [] := by
+  simp [BorderIndex.sortedUniv]
+  intro cont
+  rewrite [← List.length_eq_zero_iff] at cont
+  simp at cont
+  have lm1 := BorderIndex.card_spec cf
+  simp [BorderIndex.card, cont] at lm1
+  by_cases h1: cf.length = 0 <;> simp [h1] at lm1
+
+protected def first : cf.BorderIndex := BorderIndex.sortedUniv cf |>.head (sortedUniv_ne_nil cf)
+
+protected def last : cf.BorderIndex := BorderIndex.sortedUniv cf |>.getLast (sortedUniv_ne_nil cf)
+
+instance : Nonempty cf.BorderIndex := .intro (BorderIndex.first cf)
+
+theorem first_eq_min' : (BorderIndex.first cf) = Finset.univ.min' (by simp only [Finset.univ_nonempty]) := by
+  simp [Finset.min'_eq_sorted_zero]
+  unfold BorderIndex.first
+  conv =>
+    rhs
+    rw [List.getElem_zero_eq_head (by
+      simp [← card_def]
+      exact card_gt_zero cf
+    )]
+  congr
+
+theorem min_congr (i1 i2: BorderIndex cf) : (min i1 i2).val = min i1.val i2.val := by
+  simp [LinearOrder.min_def]
+  by_cases h1: i1 ≤ i2
+  · simp [h1]
+    intro h2
+    rewrite [lt_iff_not_ge] at h2
+    contradiction
+    --apply Subtype.ext_iff.mp _
+
+/-
+    have lm2 : i1 = i2 := by
+      rewrite [lt_iff_not_ge] at h2
+      contradiction
+-/
+      --replace h2 := le_of_not_ge h2
+      --exact LinearOrder.toPartialOrder.le_antisymm _ _ h1 h2
+    --exact lm2
+  · simp [h1]
+    intro h2
+    contradiction
+
+protected theorem monotone : Monotone (fun i: BorderIndex cf => i.val) := Subtype.mono_coe (IsBorderIndex cf)
 
 
+theorem first_eq : (BorderIndex.first cf).val = 0 := by
+  simp [first_eq_min']
+  have lm1 : Finset.univ = cf.borderIndexUniv := by rfl
+  simp [lm1]
+  unfold borderIndexUniv
+  simp
+  by_cases h1: cf.length = 0
+  · simp [h1]
+  · simp [h1]
+    have lm2 (i1 i2: BorderIndex cf) : (min i1 i2).val = min _ _ := (BorderIndex.monotone cf).map_min
+    simp [lm2, h1]
+    clear lm1 lm2
+    rfl
+
+  --unfold borderIndexUniv at lm1
+  --extract_lets val0 at lm1
+/-
+  unfold BorderIndex.first
+  unfold sortedUniv
+  have lm1 : Finset.univ = cf.borderIndexUniv := by rfl
+-/
+  --have lm3: (sortedUniv )
+/-
+  unfold sortedUniv
+  have lm1 : Finset.univ = cf.borderIndexUniv := by rfl
+  unfold borderIndexUniv at lm1
+  extract_lets val0 at lm1
+  simp at lm1
+  by_cases h1: cf.length = 0 <;> simp [h1] at lm1
+  · subst val0
+    simp [lm1]
+  · subst val0
+    simp at lm1
+-/
+    --have lm2 := card_spec cf
+    --simp [h1] at lm2
+    --simp only [BorderIndex.card] at lm2
+    --have lm3 := congrArg Finset.card lm1
+    --simp [lm2, Finset.card_insert_eq_ite, val0] at lm3
+
+/-
+theorem first_last_eq_univ : [BorderIndex.first cf, BorderIndex.last cf].toFinset = Finset.univ := by
+  --have lm1: Finset.univ = cf.borderIndexUniv := by rfl
+  --simp [lm1]
+  simp [BorderIndex.first, BorderIndex.last, BorderIndex.sortedUniv]
+  unfold List.head
+  unfold List.getLast
+-/
+/-
+theorem first_last_eq (h: cf.length = 0) : BorderIndex.first cf = BorderIndex.last cf := by
+  simp [BorderIndex.first, BorderIndex.last, BorderIndex.sortedUniv]
+  have lm1 : Finset.univ = cf.borderIndexUniv := by rfl
+  simp [lm1]
+  unfold borderIndexUniv
+  simp [h]
+
+theorem first_last_gt (h: cf.length ≠ 0) : BorderIndex.first cf < BorderIndex.last cf := by
+  simp [BorderIndex.first, BorderIndex.last, BorderIndex.sortedUniv]
+  have lm1 : Finset.univ = cf.borderIndexUniv := by rfl
+  simp [lm1]
+  unfold borderIndexUniv
+  simp [h]
+-/
+  --simp [Finset.insert_def]
+
+end BorderIndex
+
+namespace InteriorIndex
+
+end InteriorIndex
 
 namespace IsValidIndex
 
@@ -301,6 +507,21 @@ def Divider.Interior {α} (cf: CodeFragment α) := { raw: Divider.Raw // Raw.IsI
 
 
 def Divider.Border {α} (cf: CodeFragment α) := { raw: Divider.Raw // Raw.IsBorder cf raw }
+
+
+namespace Divider.Interior
+
+variable {α} (cf: CodeFragment α)
+
+def equiv : Divider.Interior cf ≃ cf.InteriorIndex where
+  toFun l := ⟨l.val.toNat, l.property⟩
+  invFun r := ⟨⟨r.val⟩, r.property⟩
+
+instance : Fintype (Interior cf) := Fintype.ofEquiv _ (equiv cf).symm
+
+end Divider.Interior
+
+
 
 namespace Divider.Border
 
