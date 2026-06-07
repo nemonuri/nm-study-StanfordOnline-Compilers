@@ -290,6 +290,7 @@ theorem first_eq_min' : (BorderIndex.first cf) = Finset.univ.min' (by simp only 
     )]
   congr
 
+/-
 theorem min_congr (i1 i2: BorderIndex cf) : (min i1 i2).val = min i1.val i2.val := by
   simp [LinearOrder.min_def]
   by_cases h1: i1 ≤ i2
@@ -297,24 +298,22 @@ theorem min_congr (i1 i2: BorderIndex cf) : (min i1 i2).val = min i1.val i2.val 
     intro h2
     rewrite [lt_iff_not_ge] at h2
     contradiction
-    --apply Subtype.ext_iff.mp _
-
-/-
-    have lm2 : i1 = i2 := by
-      rewrite [lt_iff_not_ge] at h2
-      contradiction
--/
-      --replace h2 := le_of_not_ge h2
-      --exact LinearOrder.toPartialOrder.le_antisymm _ _ h1 h2
-    --exact lm2
   · simp [h1]
     intro h2
     contradiction
+-/
 
-protected theorem monotone : Monotone (fun i: BorderIndex cf => i.val) := Subtype.mono_coe (IsBorderIndex cf)
+theorem val_monotone : Monotone (fun i: BorderIndex cf => i.val) := Subtype.mono_coe (IsBorderIndex cf)
+
+def valEmbedding : Function.Embedding (BorderIndex cf) Nat where --↪
+  toFun i := i.val
+  inj' := by
+    intro a b
+    simp
+    exact Subtype.ext
 
 
-theorem first_eq : (BorderIndex.first cf).val = 0 := by
+theorem first_val_eq : (BorderIndex.first cf).val = 0 := by
   simp [first_eq_min']
   have lm1 : Finset.univ = cf.borderIndexUniv := by rfl
   simp [lm1]
@@ -323,36 +322,70 @@ theorem first_eq : (BorderIndex.first cf).val = 0 := by
   by_cases h1: cf.length = 0
   · simp [h1]
   · simp [h1]
-    have lm2 (i1 i2: BorderIndex cf) : (min i1 i2).val = min _ _ := (BorderIndex.monotone cf).map_min
+    have lm2 (i1 i2: BorderIndex cf) : (min i1 i2).val = min _ _ := (val_monotone cf).map_min
     simp [lm2, h1]
     clear lm1 lm2
     rfl
 
-  --unfold borderIndexUniv at lm1
-  --extract_lets val0 at lm1
-/-
-  unfold BorderIndex.first
-  unfold sortedUniv
+
+theorem last_eq_max' : (BorderIndex.last cf) = Finset.univ.max' (by simp only [Finset.univ_nonempty]) := by
+  simp [Finset.max'_eq_sorted_last]
+  unfold BorderIndex.last
+  let univ0 := @Finset.univ (BorderIndex cf) _
+  have lm1 : univ0.card = univ0.sort.length := by
+    subst univ0
+    simp
+  subst univ0
+  conv =>
+    rhs
+    simp only [← Finset.card_univ]
+    simp only [lm1]
+    rw [List.getElem_length_sub_one_eq_getLast (by
+      simp
+      have lm2 := card_gt_zero cf
+      simp [card_def] at lm2
+      omega
+    )]
+  congr
+
+theorem last_val_eq : (BorderIndex.last cf).val = cf.length := by
+  simp [last_eq_max']
   have lm1 : Finset.univ = cf.borderIndexUniv := by rfl
--/
-  --have lm3: (sortedUniv )
-/-
-  unfold sortedUniv
+  simp [lm1]
+  unfold borderIndexUniv
+  simp
+  by_cases h1: cf.length = 0
+  · simp [h1]
+  · simp [h1]
+    have lm2 (i1 i2: BorderIndex cf) : (max i1 i2).val = max _ _ := (val_monotone cf).map_max
+    simp [lm2]
+    conv => lhs; change 0
+    omega
+
+theorem first_last_eq_univ : Finset.univ = [BorderIndex.first cf, BorderIndex.last cf].toFinset := by
+  symm
+  simp
+  have lm1 := @Finset.map_inj _ _ (valEmbedding cf)
+  apply lm1.mp
+  clear lm1
+  unfold valEmbedding
+  simp [first_val_eq, last_val_eq]
   have lm1 : Finset.univ = cf.borderIndexUniv := by rfl
-  unfold borderIndexUniv at lm1
-  extract_lets val0 at lm1
-  simp at lm1
-  by_cases h1: cf.length = 0 <;> simp [h1] at lm1
-  · subst val0
-    simp [lm1]
-  · subst val0
-    simp at lm1
--/
-    --have lm2 := card_spec cf
-    --simp [h1] at lm2
-    --simp only [BorderIndex.card] at lm2
-    --have lm3 := congrArg Finset.card lm1
-    --simp [lm2, Finset.card_insert_eq_ite, val0] at lm3
+  simp [lm1]
+  unfold borderIndexUniv
+  simp
+  by_cases h1: cf.length = 0
+  · simp [h1]
+  · simp [h1]
+    conv =>
+      rhs
+      arg 2
+      change {0}
+    simp [Finset.pair_comm]
+
+
+
+
 
 /-
 theorem first_last_eq_univ : [BorderIndex.first cf, BorderIndex.last cf].toFinset = Finset.univ := by
