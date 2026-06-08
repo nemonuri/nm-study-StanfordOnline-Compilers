@@ -573,30 +573,6 @@ theorem toValidIndexFinsetUnion_eq_univ
     exists x; exists lm1
 
 
-
-
-
-/-
-  constructor
-  · simp only [forall_exists_index]
-    intro boi
-    unfold toValidIndexFinset
-    cases boi
-    · simp
-      intro _ _
--/
-
-  --have lm2: Finset.univ = BorderOrInterior.univ := by rfl
-  --conv => lhs; rw [lm2]
-  --have := Set.iunion_
-
-  --simp [lm2]
-  --simp only [lm1, toValidIndexFinsetUnion]; clear lm1
-  --simp
-  --have lm1: Finset.univ = BorderOrInterior.univ := by rfl
-  --simp only [lm1]
-
-
 end BorderOrInterior
 
 
@@ -616,13 +592,6 @@ def toBorderOrInterior {cf: CodeFragment α} {i: Nat} (req: IsValidIndex cf i) :
 
 end IsValidIndex
 
-namespace IsInteriorIndex
-
-variable {cf: CodeFragment α} {i: Nat} (req: IsInteriorIndex cf i)
-
-
-
-end IsInteriorIndex
 
 
 protected def get [Eof α] (cf: CodeFragment α) (i: Nat) (req: IsValidIndex cf i) : α :=
@@ -710,11 +679,10 @@ theorem isBorder_def {α} (cf: CodeFragment α) (i: Raw)
 open CodeFragment in
 theorem IsBorder.imp_isValid {α} {cf: CodeFragment α} {i: Raw} (req: i.IsBorder cf)
   : i.IsValid cf := by
-  simp [isBorder_def, isBorderIndex_def] at req
-  simp [isValid_def, isValidIndex_def]
-  cases req
-  next h => simp [h]
-  next h => simp [h]; omega
+  simp [isValid_def, isValidIndex_iff_border_or_interior]
+  simp [isBorder_def] at req
+  simp [req]
+
 
 end Divider.Raw
 
@@ -793,7 +761,42 @@ structure IsValid {α} (cf: CodeFragment α) (r: Raw) : Prop where
   for_all: ∀x ∈ r, Divider.Raw.IsValid cf x
   pairwise: r.toList.Pairwise (· < ·)
 
+@[mk_iff]
+structure IsInterior {α} (cf: CodeFragment α) (r: Raw) : Prop where
+  all_interior: ∀x ∈ r, Divider.Raw.IsInterior cf x
+  strict_lt: r.toList.SortedLT
+
 end DividerList.Raw
+
+open DividerList in
+def DividerList.Interior {α} (cf: CodeFragment α) := { r: Raw // Raw.IsInterior cf r }
+
+namespace DividerList.Interior
+
+variable {α} {cf: CodeFragment α}
+
+def empty : Interior cf where
+  val := ([] : List Divider.Raw)
+  property := by
+    simp [Raw.isInterior_iff]
+    simp [List.sortedLT_iff_pairwise]
+
+instance : EmptyCollection (Interior cf) := ⟨empty⟩
+
+def uncheckedInsert (elem: Divider.Raw) (coll: DividerList.Interior cf) : DividerList.Raw := coll.val.toList.orderedInsert (· ≤ ·) elem
+
+def IsStrictInsert (elem: Divider.Raw) (coll: DividerList.Interior cf) : Prop := (uncheckedInsert elem coll).IsInterior cf
+
+theorem isStrictInsert_def {elem} {coll: DividerList.Interior cf}
+  : IsStrictInsert elem coll ↔ (uncheckedInsert elem coll).IsInterior cf := by rfl
+
+
+
+
+
+
+
+end DividerList.Interior
 
 open DividerList Raw in
 @[ext]
