@@ -397,12 +397,168 @@ theorem last_eq_lastImpl : @BorderIndex.last = @lastImpl := by
   apply Subtype.ext_iff.mpr
   simp [last_val_eq, lastImpl]
 
+def embedToValidIndex : BorderIndex cf ↪ ValidIndex cf :=
+  Subtype.impEmbedding _ _ (by simp [isBorderIndex_def, isValidIndex_def]; omega)
 
 end BorderIndex
 
 namespace InteriorIndex
 
+variable (cf: CodeFragment α)
+
+protected def card : Nat := Fintype.card cf.InteriorIndex
+
+theorem card_def : InteriorIndex.card cf = Fintype.card cf.InteriorIndex := by rfl
+
+theorem card_eq_interiorIndexUniv_card : InteriorIndex.card cf = cf.interiorIndexUniv.card := by
+  simp [card_def]; rfl
+
+
+theorem card_spec : InteriorIndex.card cf = if cf.length ≤ 1 then 0 else cf.length - 1 := by
+  simp [card_eq_interiorIndexUniv_card]
+  unfold interiorIndexUniv
+  simp
+  conv => lhs; simp [InteriorIndex]
+  simp
+  intro _
+  omega
+
+def embedToValidIndex : InteriorIndex cf ↪ ValidIndex cf :=
+  Subtype.impEmbedding _ _ (by
+    simp [IsInteriorIndex_def, isValidIndex_iff_le_length]
+    intro _ h _; exact h)
+
 end InteriorIndex
+
+namespace ValidIndex
+
+variable (cf: CodeFragment α)
+
+instance : DecidableEq cf.ValidIndex := inferInstanceAs (DecidableEq (Subtype _))
+
+instance : LinearOrder cf.ValidIndex := inferInstanceAs (LinearOrder (Subtype _))
+
+protected def card : Nat := Fintype.card cf.ValidIndex
+
+theorem card_def : ValidIndex.card cf = Fintype.card cf.ValidIndex := by rfl
+
+theorem card_eq_validIndexUniv_card : ValidIndex.card cf = cf.validIndexUniv.card := by
+  simp [card_def]; rfl
+
+theorem card_spec : ValidIndex.card cf = cf.length + 1 := by
+  simp [card_eq_validIndexUniv_card]
+  unfold validIndexUniv
+  simp [ValidIndex]
+
+theorem card_eq_borderIndex_card_add_interiorIndex_card
+  : ValidIndex.card cf = BorderIndex.card cf + InteriorIndex.card cf := by
+  simp [ValidIndex.card_spec, BorderIndex.card_spec, InteriorIndex.card_spec]
+  by_cases h1: cf.length = 0 <;> simp [h1]
+  · by_cases h2: cf.length ≤ 1 <;> simp [h2] <;> omega
+
+
+theorem univ_eq_borderIndex_univ_union_interiorIndex_univ
+  : SetLike.coe (@Finset.univ (ValidIndex cf) _) =
+    (SetLike.coe (Finset.univ.map (BorderIndex.embedToValidIndex _))) ∪
+    (SetLike.coe (Finset.univ.map (InteriorIndex.embedToValidIndex _)))
+  := by
+  simp only [Finset.coe_univ]
+  simp only [Finset.coe_map]
+  simp only [Finset.coe_univ, Set.image_univ]
+  ext x
+  simp only [Set.mem_union]
+  simp only [Set.mem_univ, true_iff]
+  simp only [Set.mem_range]
+  by_cases h1: cf.IsBorderIndex x.val
+  · left
+    exists ⟨x.val, h1⟩
+  · right
+    have lm1: cf.IsInteriorIndex x.val := by
+      simp [IsInteriorIndex_def]; simp [h1]; exact x.property
+    exists ⟨x.val, lm1⟩
+
+end ValidIndex
+
+inductive BorderOrInterior where
+  | border
+  | interior
+  deriving DecidableEq, Repr, Ord
+
+namespace BorderOrInterior
+
+variable (cf: CodeFragment α)
+
+protected def all : List BorderOrInterior := [.border, .interior]
+
+protected def univ : Finset BorderOrInterior := BorderOrInterior.all.toFinset
+
+theorem univ_val_eq_all : BorderOrInterior.univ.val = ↑BorderOrInterior.all := by
+  unfold BorderOrInterior.univ
+  simp only [List.toFinset_val]
+  simp only [Multiset.coe_eq_coe]
+  unfold BorderOrInterior.all
+  simp
+
+instance : Fintype BorderOrInterior where
+  elems := BorderOrInterior.univ
+  complete x := by
+    rw [← Finset.mem_val, univ_val_eq_all]
+    simp [BorderOrInterior.all]
+    cases x <;> trivial
+
+def toValidIndexFinset (i: BorderOrInterior) : Finset (ValidIndex cf) :=
+  match i with
+  | .border => Finset.univ.map (BorderIndex.embedToValidIndex _)
+  | .interior => Finset.univ.map (InteriorIndex.embedToValidIndex _)
+
+theorem toValidIndexFinset_pairwiseDisjoint
+  : (@Finset.univ BorderOrInterior _ : Set _).PairwiseDisjoint (toValidIndexFinset cf) := by
+  simp
+  have lm1: Set.univ = (BorderOrInterior.univ: Set BorderOrInterior) := by
+    symm
+    simp [Set.eq_univ_iff_forall]
+    exact Fintype.complete
+  simp [lm1]
+  simp only [BorderOrInterior.univ, List.coe_toFinset]
+  simp [BorderOrInterior.all]
+  simp only [Set.PairwiseDisjoint]
+  simp only [Set.Pairwise]
+  simp
+  simp [disjoint_comm]
+  simp only [Function.onFun]
+  rw [Finset.disjoint_iff_ne]
+  unfold toValidIndexFinset
+  simp
+  intro bi ii
+  suffices goal: bi.val ≠ ii.val from by
+    simp
+    revert goal
+    contrapose
+    intro lm2
+    replace lm2 := congrArg Subtype.val lm2
+    simp [BorderIndex.embedToValidIndex, InteriorIndex.embedToValidIndex, Subtype.impEmbedding] at lm2
+    change bi.val = ii.val at lm2
+    exact lm2
+  revert bi ii
+  simp [BorderIndex, InteriorIndex]
+  simp [isBorderIndex_def]
+  simp [IsInteriorIndex_iff_ioo]
+  constructor <;> omega
+
+
+
+    --change bi.val = ii.val at lm2
+    --simp [BorderIndex.embedToValidIndex, InteriorIndex.embedToValidIndex]
+    --simp [Subtype.impEmbedding.eq_1]
+
+
+
+
+
+  --  have :=
+
+end BorderOrInterior
+
 
 namespace IsValidIndex
 
