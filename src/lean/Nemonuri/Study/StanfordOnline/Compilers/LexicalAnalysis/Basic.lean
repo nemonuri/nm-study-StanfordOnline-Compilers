@@ -8,6 +8,7 @@ public import Mathlib.Order.Lattice
 --public import Mathlib.Logic.Basic
 public import Mathlib.Data.Fintype.Defs
 public import Mathlib.Data.Finset.Sort
+public import Mathlib.Data.Finset.Union
 
 @[expose] public section public_s
 
@@ -144,6 +145,10 @@ theorem IsInteriorIndex_iff_ioo : cf.IsInteriorIndex i ↔ (0 < i ∧ i < cf.len
 
 
 instance : Decidable (cf.IsInteriorIndex i) := decidable_of_iff' (0 < i ∧ i < cf.length) (cf.IsInteriorIndex_iff_ioo i)
+
+theorem isValidIndex_iff_border_or_interior : cf.IsValidIndex i ↔ (cf.IsBorderIndex i ∨ cf.IsInteriorIndex i) := by
+  simp [isValidIndex_iff_le_length, isBorderIndex_def, IsInteriorIndex_iff_ioo]
+  omega
 
 inductive IsValidIndex.BorderOrInterior (h: IsValidIndex cf i) where
   | isBorder (h: cf.IsBorderIndex i)
@@ -545,17 +550,52 @@ theorem toValidIndexFinset_pairwiseDisjoint
   simp [IsInteriorIndex_iff_ioo]
   constructor <;> omega
 
+def toValidIndexFinsetUnion : Finset (ValidIndex cf) :=
+  Finset.univ.disjiUnion (toValidIndexFinset _) (toValidIndexFinset_pairwiseDisjoint _)
+
+theorem toValidIndexFinsetUnion_eq_univ
+  : (toValidIndexFinsetUnion cf) = Finset.univ := by
+  apply SetLike.coe_injective
+  ext x
+  simp
+  unfold toValidIndexFinsetUnion
+  simp
+  revert x
+  unfold ValidIndex
+  simp [isValidIndex_iff_border_or_interior]
+  intro x xp
+  cases xp <;> rename_i lm1 <;> unfold toValidIndexFinset
+  · exists .border
+    simp [BorderIndex, ValidIndex]
+    exists x; exists lm1
+  · exists .interior
+    simp [InteriorIndex, ValidIndex]
+    exists x; exists lm1
 
 
-    --change bi.val = ii.val at lm2
-    --simp [BorderIndex.embedToValidIndex, InteriorIndex.embedToValidIndex]
-    --simp [Subtype.impEmbedding.eq_1]
 
 
 
+/-
+  constructor
+  · simp only [forall_exists_index]
+    intro boi
+    unfold toValidIndexFinset
+    cases boi
+    · simp
+      intro _ _
+-/
 
+  --have lm2: Finset.univ = BorderOrInterior.univ := by rfl
+  --conv => lhs; rw [lm2]
+  --have := Set.iunion_
 
-  --  have :=
+  --simp [lm2]
+  --simp only [lm1, toValidIndexFinsetUnion]; clear lm1
+  --simp
+  --have lm1: Finset.univ = BorderOrInterior.univ := by rfl
+  --simp only [lm1]
+
 
 end BorderOrInterior
 
