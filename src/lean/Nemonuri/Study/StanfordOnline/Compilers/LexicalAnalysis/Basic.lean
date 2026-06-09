@@ -755,6 +755,10 @@ def equiv : Raw ≃ List Divider.Raw where
   toFun := Raw.toList
   invFun := Raw.ofList
 
+theorem equiv_coe_eq : ⇑equiv = Raw.toList := by rfl
+
+theorem equiv_symm_coe_eq : ⇑equiv.symm = Raw.ofList := by rfl
+
 instance : Membership Divider.Raw Raw where
   mem cont elem := elem ∈ cont.toList
 
@@ -788,12 +792,31 @@ def empty : Interior cf where
 
 instance : EmptyCollection (Interior cf) := ⟨empty⟩
 
-def uncheckedInsert (elem: Divider.Raw) (coll: DividerList.Interior cf) : DividerList.Raw := coll.val.toList.orderedInsert (· ≤ ·) elem
+def uncheckedCons (elem: Divider.Raw) (coll: DividerList.Interior cf) : DividerList.Raw := coll.val.toList.orderedInsert (· ≤ ·) elem
 
-def IsStrictInsert (elem: Divider.Raw) (coll: DividerList.Interior cf) : Prop := (uncheckedInsert elem coll).IsInterior cf
+def IsCons (elem: Divider.Raw) (coll: DividerList.Interior cf) : Prop := (uncheckedCons elem coll).IsInterior cf
 
-theorem isStrictInsert_def {elem} {coll: DividerList.Interior cf}
-  : IsStrictInsert elem coll ↔ (uncheckedInsert elem coll).IsInterior cf := by rfl
+theorem isCons_def {elem} {coll: DividerList.Interior cf}
+  : IsCons elem coll ↔ (uncheckedCons elem coll).IsInterior cf := by rfl
+
+theorem empty_iff_ne_nil (ds: Interior cf) : (ds ≠ ∅) ↔ (ds.val.toList ≠ []) := by
+  conv => lhs; arg 2; change empty
+  contrapose
+  simp [empty]
+  revert ds
+  simp [Interior]
+  intro _ _
+  simp [← Raw.equiv_coe_eq, ← Raw.equiv_symm_coe_eq]
+  simp [Raw.equiv.apply_eq_iff_eq_symm_apply]
+/-
+  constructor
+  · intro h; simp [h]
+  · intro h; simp [←h]
+-/
+  --have lm1 := DividerList.Raw.equiv.bijective
+  --simp [DividerList.Raw.equiv] at lm1
+  --conv => lhs; simp [Subtype.ext_iff]
+
 
 
 
