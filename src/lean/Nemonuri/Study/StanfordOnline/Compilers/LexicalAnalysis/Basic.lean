@@ -143,12 +143,19 @@ theorem IsInteriorIndex_iff_ioo : cf.IsInteriorIndex i ↔ (0 < i ∧ i < cf.len
   simp [IsInteriorIndex_def, isValidIndex_iff_le_length, isBorderIndex_def]
   omega
 
-
 instance : Decidable (cf.IsInteriorIndex i) := decidable_of_iff' (0 < i ∧ i < cf.length) (cf.IsInteriorIndex_iff_ioo i)
 
 theorem isValidIndex_iff_border_or_interior : cf.IsValidIndex i ↔ (cf.IsBorderIndex i ∨ cf.IsInteriorIndex i) := by
-  simp [isValidIndex_iff_le_length, isBorderIndex_def, IsInteriorIndex_iff_ioo]
-  omega
+  simp [IsInteriorIndex_def]
+  by_cases h1: cf.IsBorderIndex i <;> simp [h1]
+  · simp [isBorderIndex_def] at h1
+    simp [isValidIndex_iff_le_length]
+    omega
+
+theorem isBorder_isInterior_disjoint : ¬(cf.IsBorderIndex i ∧ cf.IsInteriorIndex i) := by
+  simp [IsInteriorIndex_def]
+  exact (fun x _ => x)
+
 
 inductive IsValidIndex.BorderOrInterior (h: IsValidIndex cf i) where
   | isBorder (h: cf.IsBorderIndex i)
@@ -482,6 +489,17 @@ theorem univ_eq_borderIndex_univ_union_interiorIndex_univ
       simp [IsInteriorIndex_def]; simp [h1]; exact x.property
     exists ⟨x.val, lm1⟩
 
+theorem border_interior_univ_map_disjoint
+  : Disjoint (Finset.univ.map (BorderIndex.embedToValidIndex cf)) (Finset.univ.map (InteriorIndex.embedToValidIndex cf)) := by
+  simp [Finset.disjoint_iff_ne]
+  simp [BorderIndex, InteriorIndex, ValidIndex]
+  intro x1 x1p x2 _ cont
+  simp [Subtype.ext_iff] at cont
+  change x1 = x2 at cont
+  have lm1 := cf.isBorder_isInterior_disjoint x1 |> not_and.mp <| x1p
+  simp [cont] at lm1
+  contradiction
+
 end ValidIndex
 
 inductive BorderOrInterior where
@@ -516,6 +534,7 @@ def toValidIndexFinset (i: BorderOrInterior) : Finset (ValidIndex cf) :=
   | .border => Finset.univ.map (BorderIndex.embedToValidIndex _)
   | .interior => Finset.univ.map (InteriorIndex.embedToValidIndex _)
 
+
 theorem toValidIndexFinset_pairwiseDisjoint
   : (@Finset.univ BorderOrInterior _ : Set _).PairwiseDisjoint (toValidIndexFinset cf) := by
   simp
@@ -531,24 +550,10 @@ theorem toValidIndexFinset_pairwiseDisjoint
   simp
   simp [disjoint_comm]
   simp only [Function.onFun]
-  rw [Finset.disjoint_iff_ne]
   unfold toValidIndexFinset
   simp
-  intro bi ii
-  suffices goal: bi.val ≠ ii.val from by
-    simp
-    revert goal
-    contrapose
-    intro lm2
-    replace lm2 := congrArg Subtype.val lm2
-    simp [BorderIndex.embedToValidIndex, InteriorIndex.embedToValidIndex, Subtype.impEmbedding] at lm2
-    change bi.val = ii.val at lm2
-    exact lm2
-  revert bi ii
-  simp [BorderIndex, InteriorIndex]
-  simp [isBorderIndex_def]
-  simp [IsInteriorIndex_iff_ioo]
-  constructor <;> omega
+  exact ValidIndex.border_interior_univ_map_disjoint cf
+
 
 def toValidIndexFinsetUnion : Finset (ValidIndex cf) :=
   Finset.univ.disjiUnion (toValidIndexFinset _) (toValidIndexFinset_pairwiseDisjoint _)
