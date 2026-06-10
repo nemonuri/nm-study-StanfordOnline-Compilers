@@ -654,7 +654,20 @@ def equiv : Divider.Raw ≃ Nat where
   toFun := Divider.Raw.toNat
   invFun := Divider.Raw.ofNat
 
+theorem equiv_coe_eq : ⇑equiv = Raw.toNat := by rfl
+
+theorem equiv_symm_coe_eq : ⇑equiv.symm = Raw.ofNat := by rfl
+
 instance : LinearOrder Divider.Raw := Equiv.linearOrder equiv
+
+instance : LT Divider.Raw := LinearOrder.toPartialOrder.toLT
+
+def orderIso : Divider.Raw ≃o Nat where
+  toEquiv := equiv
+  map_rel_iff' := by
+    intro _ _
+    simp [equiv_coe_eq]
+    rfl
 
 def IsValid {α} (cf: CodeFragment α) (i: Raw) : Prop := cf.IsValidIndex i.toNat
 
@@ -667,6 +680,8 @@ def IsInterior {α} (cf: CodeFragment α) (i: Raw) : Prop := cf.IsInteriorIndex 
 theorem isInterior_def {α} (cf: CodeFragment α) (i: Raw)
   : i.IsInterior cf ↔ cf.IsInteriorIndex i.toNat := by
   rfl
+
+instance {α} (cf: CodeFragment α) (i: Raw) : Decidable (IsInterior cf i) := decidable_of_iff' _ (isInterior_def _ _)
 
 open CodeFragment in
 theorem IsInterior.imp_isValid {α} {cf: CodeFragment α} {i: Raw} (req: i.IsInterior cf)
@@ -762,6 +777,11 @@ theorem equiv_symm_coe_eq : ⇑equiv.symm = Raw.ofList := by rfl
 instance : Membership Divider.Raw Raw where
   mem cont elem := elem ∈ cont.toList
 
+def length (rs: Raw) : Nat := rs.toList.length
+
+@[simp]
+theorem length_def (rs: Raw) : rs.length = rs.toList.length := by rfl
+
 @[simp]
 theorem mem_def {cont: Raw} {elem: Divider.Raw} : elem ∈ cont ↔ elem ∈ cont.toList := by rfl
 
@@ -775,6 +795,10 @@ structure IsInterior {α} (cf: CodeFragment α) (r: Raw) : Prop where
   all_interior: ∀x ∈ r, Divider.Raw.IsInterior cf x
   strict_lt: r.toList.SortedLT
 
+theorem IsInterior.nil {α} (cf: CodeFragment α) : IsInterior cf ⟨[]⟩ := by
+    simp [Raw.isInterior_iff]
+    simp [List.sortedLT_iff_pairwise]
+
 end DividerList.Raw
 
 open DividerList in
@@ -784,13 +808,22 @@ namespace DividerList.Interior
 
 variable {α} {cf: CodeFragment α}
 
+protected abbrev mk (cf: CodeFragment α) r (p: Raw.IsInterior cf r) : Interior cf := ⟨r, p⟩
+
+instance : DecidableEq (Interior cf) := inferInstanceAs (DecidableEq (Subtype _))
+
 def empty : Interior cf where
   val := ([] : List Divider.Raw)
-  property := by
-    simp [Raw.isInterior_iff]
-    simp [List.sortedLT_iff_pairwise]
+  property := Raw.IsInterior.nil cf
 
 instance : EmptyCollection (Interior cf) := ⟨empty⟩
+
+--@[simp]
+theorem emptyCollection_def : (∅: Interior cf) = empty := by rfl
+
+theorem empty_val_def : (∅: Interior cf).val = ([] : List Divider.Raw) := by rfl
+
+theorem empty_def : (∅: Interior cf) = ⟨⟨[]⟩, Raw.IsInterior.nil cf⟩ := by rfl
 
 def uncheckedCons (elem: Divider.Raw) (coll: DividerList.Interior cf) : DividerList.Raw := coll.val.toList.orderedInsert (· ≤ ·) elem
 
@@ -808,17 +841,312 @@ theorem empty_iff_ne_nil (ds: Interior cf) : (ds ≠ ∅) ↔ (ds.val.toList ≠
   intro _ _
   simp [← Raw.equiv_coe_eq, ← Raw.equiv_symm_coe_eq]
   simp [Raw.equiv.apply_eq_iff_eq_symm_apply]
+
+theorem cons_imp_ne_empty (r: Divider.Raw) (rs: Raw) (req: Raw.IsInterior cf (r :: rs.toList))
+  : (Interior.mk cf (r :: rs.toList) req) ≠ ∅ := by
+  unfold Interior.mk
+  simp [empty_def]
+  intro cont
+  have lm1 := Subtype.ext_iff.mp cont
+  simp at lm1
+
+
+protected def head (ds: Interior cf) (req: ds ≠ ∅) : Divider.Interior cf :=
+  let rs := ds.val.toList
+  let headR := rs.head (ds.empty_iff_ne_nil.mp req)
+  have headR_spec: headR.IsInterior cf := by
+    have lm1 := ds.property.all_interior headR
+    subst rs
+    subst headR
+    simpa using lm1
+  ⟨headR, headR_spec⟩
+
+theorem head_cons (r: Divider.Raw) (rs: Raw) (req: Raw.IsInterior cf (r :: rs.toList))
+  : ∃(th: r.IsInterior cf), (Interior.mk cf (r :: rs.toList) req).head (cons_imp_ne_empty r rs req) = ⟨r, th⟩ := by
+  obtain ⟨lm1, lm2⟩ := by have lm1 := req.all_interior; simp at lm1; exact lm1
+  exists lm1
+
+protected def tail (ds: Interior cf) : Interior cf :=
+  let tailR := ds.val.toList.tail
+  have tailR_spec: Raw.IsInterior cf tailR := by
+    have ⟨lm1, lm2⟩ := ds.property
+    subst tailR
+    constructor
+    · simp
+      simp at lm1
+      intro e ep
+      exact lm1 e (List.mem_of_mem_tail ep)
+    · revert lm2
+      cases ds.val.toList
+      · simp only [List.tail_nil]; exact id
+      · simp only [List.sortedLT_iff_pairwise]
+        simp only [List.pairwise_cons]
+        simp only [List.tail_cons]
+        exact (fun ⟨x, y⟩ => y)
+  ⟨tailR, tailR_spec⟩
+
+protected theorem tail_empty : Interior.tail (∅: Interior cf) = ∅ := by
+  simp [emptyCollection_def]
+  unfold Interior.tail
+  rfl
+
+theorem tail_cons (r: Divider.Raw) (rs: DividerList.Raw) (req: Raw.IsInterior cf (r :: rs.toList))
+  : ∃(th: Raw.IsInterior cf rs), (Interior.tail ⟨r :: rs.toList, req⟩) = ⟨rs, th⟩ := by
+  unfold Interior.tail
+  extract_lets tailR tailR_spec
+  subst tailR
+  simp at tailR_spec
+  exists tailR_spec
+
+theorem tail_length_succ_eq (ds: Interior cf) (req: ds ≠ ∅) : ds.tail.val.length + 1 = ds.val.length := by
+  simp
+  unfold Interior.tail
+  extract_lets tailR tailR_spec
+  subst tailR
+  simp
+  have lm1 := (empty_iff_ne_nil _).mp req |> List.length_pos_of_ne_nil
+  exact Nat.sub_one_add_one_eq_of_pos lm1
+
+
+theorem tail_length_lt (ds: Interior cf) (req: ds ≠ ∅) : ds.tail.val.length < ds.val.length := by
+  have lm1 := ds.tail_length_succ_eq req
+  calc
+    _ = _ := lm1.symm
+    _ > _ := by simp only [Nat.lt_add_one]
+
+
+set_option trace.Meta.synthInstance true in
+def dropWhileLt (r: Divider.Raw) (rs: Interior cf) : Interior cf :=
+  if h1: rs = ∅ then ∅ else
+  let head0 := rs.head h1
+  if head0.val < r then dropWhileLt r rs.tail else rs
+  termination_by rs.val.length
+  decreasing_by
+    apply tail_length_lt
+    exact h1
+
+
+inductive IsConsInterior (r: Divider.Interior cf) : Interior cf → Prop where
+  | nil: IsConsInterior r ∅
+  | cons
+      (r1: Divider.Raw)
+      (rs1: DividerList.Raw)
+      (req1: Raw.IsInterior cf (r1 :: rs1.toList))
+      (req2: r.val < r1)
+      : IsConsInterior r ⟨r1 :: rs1.toList, req1⟩
+
+
+instance {r: Divider.Interior cf} {rs: Interior cf} : Decidable (IsConsInterior r rs) :=
+  if h1: rs = ∅ then
+    .isTrue (h1.symm ▸ IsConsInterior.nil)
+  else if h2: r.val < (rs.head h1).val then
+    match h3: rs.val.toList with
+    | [] => h1 |> absurd (by
+      apply Subtype.val_injective;
+      apply Raw.equiv.injective;
+      simpa only [Raw.equiv_coe_eq, empty_val_def] using h3)
+    | r1::rs1 =>
+      .isTrue (by
+        have lm1 := @IsConsInterior.cons _ cf r r1 rs1 (by simp [← h3]; exact rs.property) (by
+          simp only [Subtype.coe_lt_coe] at h2
+          unfold Interior.head at h2
+          extract_lets rs_1 headR headR_spec at h2
+          subst rs_1
+          subst headR
+          revert headR_spec h2
+          simp only [h3, List.head_cons]
+          intro h2
+          simpa only [← Subtype.coe_lt_coe] using h2
+        )
+        simp at lm1
+        have lm4 := congrArg Raw.ofList h3
+        simp only [← lm4] at lm1
+        exact lm1
+      )
+  else
+    .isFalse (by
+      intro cont
+      cases cont
+      · simp only [not_true_eq_false] at h1
+      · rename_i _ _ _ h3
+        unfold Interior.head at h2
+        simp at h2
+        have lm1 : _ < _ := calc
+          _ ≤ _ := h2
+          _ < _ := h3
+        simp only [lt_self_iff_false] at lm1
+    )
+
+instance {r: Divider.Raw} {rs: Interior cf} : Decidable (∃(req: r.IsInterior cf), IsConsInterior ⟨r, req⟩ rs) :=
+  if h1: r.IsInterior cf then
+    if h2: IsConsInterior ⟨r, h1⟩ rs then
+      .isTrue (by exists h1)
+    else
+      .isFalse (by simp [h2])
+  else
+    .isFalse (by simp [h1])
+
+
+
+theorem isCons_iff_isConsInterior_dropWhileLt
+  (r: Divider.Raw) (rs: Interior cf) (req: r.IsInterior cf)
+  : IsCons r rs ↔ IsConsInterior ⟨r, req⟩ (rs.dropWhileLt r) := by
+  simp [isCons_def]
+  unfold uncheckedCons
+  cases lm1: rs.val.toList
+  · simp
+    rw [dropWhileLt.eq_def]
+    have lm2 : rs = ∅ := by
+      apply Subtype.val_injective
+      apply Raw.equiv.injective
+      rw [Raw.equiv_coe_eq]
+      simpa [empty_val_def] using lm1
+    simp [lm2]
+    simp [Raw.isInterior_iff]
+    have lm3 : IsConsInterior ⟨r, req⟩ ∅ := IsConsInterior.nil
+    simp at lm3
+    simp [lm3, req]
+    simp [List.sortedLT_iff_pairwise]
+  · rename_i head tail
+    simp
+    rw [dropWhileLt.eq_def]
+    simp
+    have lm3 := Raw.equiv.symm.congr_arg lm1
+    conv at lm3 =>
+      simp only [← Raw.equiv_coe_eq]
+      simp [Raw.equiv_symm_coe_eq]
+    have lm4 : Raw.IsInterior cf (head :: tail) := by simpa [lm3] using rs.property
+    have lm5 : rs ≠ ∅ := by
+      have lm5_1 := cons_imp_ne_empty head ⟨tail⟩ lm4
+      simpa [Interior.mk, ← lm3] using lm5_1
+    simp [lm5]
+    obtain ⟨lm6, lm7⟩ := head_cons head ⟨tail⟩ lm4
+    simp [Interior.mk] at lm7
+    have lm8 : rs.head lm5 = ⟨head, lm6⟩ := by
+      symm
+      calc
+        _ = _ := lm7.symm
+        _ = rs.head lm5 := by simp [← lm3]
+    simp [lm8]
+    obtain ⟨lm9, lm10⟩ := Interior.tail_cons head ⟨tail⟩ lm4
+    simp only at lm10
+    have lm11 : rs.tail = ⟨⟨tail⟩, lm9⟩ := by
+      unfold Interior.tail
+      simp [lm1]
+    simp [lm11]
+    rcases rs with ⟨rs, rs_p⟩
+    subst_eqs; clear lm4
+    have lm12: (r ≤ head) ↔ ¬(r > head) := by simp
+    by_cases h1: r ≤ head
+    · simp [h1]
+      simp [lm12.mp h1]
+      constructor
+      · intro h2
+        exact IsConsInterior.cons head ⟨tail⟩ rs_p (by
+          simp
+          have lm13 := h2.strict_lt.pairwise
+          simp at lm13
+          exact lm13.1.1)
+      · intro h2
+        cases h2
+        rename_i rs1 req1 req2; clear req1; simp at req2
+        simp [Raw.isInterior_iff]
+        simp [req, lm6]
+        constructor
+        · simpa using lm9.all_interior
+        · have lm13 := rs_p.strict_lt
+          revert lm13
+          simp [List.sortedLT_iff_isChain]
+          simp [req2]
+    · simp [h1, not_le.mp h1]
+      conv => lhs; arg 2; arg 1; rw [← List.orderedInsert_of_not_le _ _ h1]
+      simp
+      --simp at h1
+      --simp [h1]
+      --unfold dropWhileLt
+      --simp [empty_def]
 /-
-  constructor
-  · intro h; simp [h]
-  · intro h; simp [←h]
+      match h3: tail with
+      | .nil =>
+        subst h3
+        simp [Raw.isInterior_iff, List.sortedLT_iff_pairwise, req, lm6, h1]
+        exact IsConsInterior.nil
+      | .cons _ _ =>
+        subst h3
+        simp
 -/
-  --have lm1 := DividerList.Raw.equiv.bijective
-  --simp [DividerList.Raw.equiv] at lm1
-  --conv => lhs; simp [Subtype.ext_iff]
+/-
+      by_cases h3: tail = []
+      · subst h3
+        simp [empty_def]
+        simp [Raw.isInterior_iff, List.sortedLT_iff_pairwise, req, lm6, h1]
+        exact IsConsInterior.nil
+      · simp [empty_def]
+        conv => rhs; arg 2; arg @3
+-/
+      --have lm13 := isCons_iff_isConsInterior_dropWhileLt head ⟨⟨tail⟩, lm9⟩ lm6
+      --revert req
+      --simp [Divider.Raw.isInterior_def, CodeFragment.IsInteriorIndex_iff_ioo]
+      --intro req_1 req_2
+      --simp [isCons_def, uncheckedCons] at lm13
+      --let ordIso := Divider.Raw.orderIso
+      --have := ordIso.lt
+      --simp [Divider.Raw.isInterior_def, CodeFragment.IsInteriorIndex_iff_ioo] at req
 
 
 
+
+      --subst_eqs
+      --have lm12 : ¬(r > head) := by simp [h1]
+      --simp [lm12]
+
+    --have lm9 := rs.tail = Interior.mk cf ⟨tail⟩
+    --have lm2 : rs = _ := by
+
+    --have lm2 : rs = _ :=
+    --  lm1 |> Raw.equiv.symm.congr_arg
+
+      --Raw.equiv.apply_eq_iff_eq_symm_apply.mp lm1
+
+    --have lm2 : rs = _ := by
+      --simp [Raw.equiv.]
+
+
+/-
+theorem isCons_iff {r: Divider.Raw} {rs: Interior cf}
+  : IsCons r rs ↔ ∃(req: r.IsInterior cf), IsConsInterior ⟨r, req⟩ (rs.dropWhileLt r) := by
+  constructor
+  · revert rs
+    simp [Interior]
+    rintro rs ⟨all_interior, strict_lt⟩ h1
+    conv at h1 =>
+      simp [isCons_def]
+      unfold uncheckedCons
+      tactic =>
+        simp
+        cases lm1: rs.toList
+        · simp; rw [← lm1]
+        · rename_i head tail
+          revert strict_lt
+          simp [lm1]
+          intro strict_lt h1
+          have ⟨lm2, lm3⟩ := strict_lt.pairwise |> List.pairwise_cons.mp
+          --have lm2: r < head := strict_lt.
+          --simp [lm1] at strict_lt
+-/
+
+
+
+
+
+
+
+/-
+protected def drop (n: Nat) (ds: Interior cf) : Interior cf :=
+  match n with
+  | 0 => ds
+  | np+1 => if ds = ∅ then ∅ else ds.tail.drop np
+-/
 
 
 
