@@ -925,6 +925,16 @@ def dropWhileLt (r: Divider.Raw) (rs: Interior cf) : Interior cf :=
     apply tail_length_lt
     exact h1
 
+theorem dropWhileLt_head_ge_ne_empty
+  (r: Divider.Raw) (rs: Interior cf) (req1: rs ≠ ∅) (req2: (rs.head req1).val ≥ r)
+  : dropWhileLt r rs ≠ ∅ := by
+  unfold dropWhileLt
+  simp [req1]
+  revert req2
+  simp only [Interior.head.eq_def]
+  intro req2
+  simpa [req2, not_lt_of_ge] using req1
+
 
 inductive IsConsInterior (r: Divider.Interior cf) : Interior cf → Prop where
   | nil: IsConsInterior r ∅
@@ -934,7 +944,6 @@ inductive IsConsInterior (r: Divider.Interior cf) : Interior cf → Prop where
       (req1: Raw.IsInterior cf (r1 :: rs1.toList))
       (req2: r.val < r1)
       : IsConsInterior r ⟨r1 :: rs1.toList, req1⟩
-
 
 instance {r: Divider.Interior cf} {rs: Interior cf} : Decidable (IsConsInterior r rs) :=
   if h1: rs = ∅ then
@@ -987,13 +996,129 @@ instance {r: Divider.Raw} {rs: Interior cf} : Decidable (∃(req: r.IsInterior c
     .isFalse (by simp [h1])
 
 
-
+--set_option pp.explicit true in
 theorem isCons_iff_isConsInterior_dropWhileLt
   (r: Divider.Raw) (rs: Interior cf) (req: r.IsInterior cf)
   : IsCons r rs ↔ IsConsInterior ⟨r, req⟩ (rs.dropWhileLt r) := by
   simp [isCons_def]
-  unfold uncheckedCons
-  cases lm1: rs.val.toList
+  --unfold uncheckedCons
+  let (eq := lm1) ⟨⟨rs_v⟩, rs_all, rs_st⟩ := rs
+  let (eq := lm2) ⟨⟨rsd_v⟩, rsd_all, rsd_st⟩ := rs.dropWhileLt r
+  cases rs_v --<;> cases rsd_v
+  · unfold uncheckedCons; unfold dropWhileLt; simp [empty_def]
+    simp [Raw.isInterior_iff, req, List.sortedLT_iff_pairwise]
+    exact IsConsInterior.nil
+  next rs_hd rs_tl =>
+    cases rsd_v
+    · by_cases lm3: r ≤ rs_hd
+      · have lm4 := dropWhileLt_head_ge_ne_empty r rs (by rw [empty_def]; simp [lm1, Interior.eq_1])
+                    (by simp [Interior.head.eq_def]; subst lm1; simp [lm3])
+        rewrite [lm2, empty_def] at lm4
+        simp at lm4 --contradiction
+      · rw [uncheckedCons.eq_def, ← lm1, lm2, ← empty_def]
+        simp [IsConsInterior.nil]; clear lm2
+        subst lm1
+        simp [Raw.isInterior_iff, lm3, rs_all, req]
+        constructor; · simp at rs_all; exact rs_all.2
+        simp at lm3
+        --simp [List.sortedLT_iff_isChain]
+        --simp only [List.isChain_cons]
+        --simp only [← List.sortedLT_iff_isChain]
+        --revert rs_st
+        simp [List.sortedLT_iff_pairwise]
+        simp [lm3]
+        simp [List.sortedLT_iff_pairwise] at rs_st
+        constructor; · exact rs_st.1
+        simp
+/-
+        intro lm4 lm5
+        constructor
+        · intro rX lm6
+          specialize lm4 rX
+          simp at lm3
+-/
+/-
+          cases rs_tl
+          · simp at lm6; simpa [lm6] using lm3
+          next hd2 tl2 =>
+            simp at lm4 lm6
+            by_cases lm7: hd2 = rX
+            · exact lm4 lm7
+            ·
+-/
+          --apply lm4
+          --rw [← lm6]
+
+        --intro rs_st
+        --have := List.isChain_cons
+
+      --rewrite [lm1] at lm2; rw [lm2]; rewrite [← lm1] at lm2
+      --simp only [← empty_def, IsConsInterior.nil, iff_true]
+      --unfold uncheckedCons; simp only [List.orderedInsert_cons]
+/-
+      cases lm3: compare r rs_hd
+      case eq =>
+        simp only [compare_eq_iff_eq] at lm3
+        have lm4 := dropWhileLt_eq_head_ne_empty r rs (by rw [empty_def]; simp [lm1, Interior.eq_1])
+                      (by simp [Interior.head.eq_def]; subst lm3; subst lm1; simp)
+        rewrite [lm2, empty_def] at lm4
+        simp at lm4
+      case lt =>
+        simp only [compare_lt_iff_lt] at lm3
+        simp [le_of_lt lm3]
+        simp [Raw.isInterior_iff, req, rs_all];
+        constructor; · simp at rs_all; exact rs_all.2
+        revert rs_st
+        simp [List.sortedLT_iff_isChain, lm3]
+        exact (fun x _ => x)
+      case gt =>
+        simp only [compare_gt_iff_gt] at lm3
+        simp [not_le_of_gt lm3]
+        simp [Raw.isInterior_iff, req, rs_all];
+        constructor; · simp at rs_all; exact rs_all.2
+        revert rs_st
+        simp [List.sortedLT_iff_isChain]
+        intro rs_st lm1
+        simp
+-/
+
+
+
+
+
+      --· simp [le_of_lt lm3]
+/-
+      by_cases h1: r ≤ rs_hd
+      · simp [h1]
+        revert rs_all
+        simp
+        intro rs_all1 rs_all2 lm1
+        simp [Raw.isInterior_iff, req, rs_all1]
+        apply (fun x => And.intro rs_all2 x)
+        revert rs_st
+        simp [List.sortedLT_iff_isChain]
+        intro rs_st lm1; simp [rs_st]
+        by_cases h2: r ≠ rs_hd
+        · have lm3 := lt_or_eq_of_le h1
+          simpa [h2] using lm3
+        · simp at h2
+          have lm3 := rs.property
+          subst lm1
+          unfold dropWhileLt at lm2
+          simp [empty_def] at lm2
+          obtain ⟨_, lm4⟩ := head_cons rs_hd ⟨rs_tl⟩ lm3
+          simp [Interior.mk] at lm4
+          simp [lm4] at lm2
+          simp [h2] at lm2
+          simp [Interior] at lm2 --contradiction
+      · simp [h1]; simp at h1
+        simp [Raw.isInterior_iff]
+-/
+    --cases rsd_v
+    --· simp
+  --cases lm1: rs.val.toList
+
+/-
   · simp
     rw [dropWhileLt.eq_def]
     have lm2 : rs = ∅ := by
@@ -1008,6 +1133,11 @@ theorem isCons_iff_isConsInterior_dropWhileLt
     simp [lm3, req]
     simp [List.sortedLT_iff_pairwise]
   · rename_i head tail
+    rcases lm2: rs with ⟨rs_v, all_interior, strict_lt⟩
+    simp
+-/
+    --simp only [← lm1]
+/-
     simp
     rw [dropWhileLt.eq_def]
     simp
@@ -1065,6 +1195,7 @@ theorem isCons_iff_isConsInterior_dropWhileLt
       --simp [h1]
       --unfold dropWhileLt
       --simp [empty_def]
+-/
 /-
       match h3: tail with
       | .nil =>
