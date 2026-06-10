@@ -696,6 +696,8 @@ theorem isBorder_def {α} (cf: CodeFragment α) (i: Raw)
   : i.IsBorder cf ↔ cf.IsBorderIndex i.toNat := by
   rfl
 
+instance {α} (cf: CodeFragment α) (i: Raw) : Decidable (IsBorder cf i) := decidable_of_iff' _ (isBorder_def _ _)
+
 open CodeFragment in
 theorem IsBorder.imp_isValid {α} {cf: CodeFragment α} {i: Raw} (req: i.IsBorder cf)
   : i.IsValid cf := by
@@ -710,6 +712,19 @@ def Divider.Interior {α} (cf: CodeFragment α) := { raw: Divider.Raw // Raw.IsI
 
 
 def Divider.Border {α} (cf: CodeFragment α) := { raw: Divider.Raw // Raw.IsBorder cf raw }
+
+namespace Divider.Raw
+
+variable {α} (cf: CodeFragment α)
+
+def toInterior? (raw: Raw) : Option (Interior cf) :=
+  if h: Raw.IsInterior cf raw then some ⟨raw, h⟩ else none
+
+def toBorder? (raw: Raw) : Option (Border cf) :=
+  if h: Raw.IsBorder cf raw then some ⟨raw, h⟩ else none
+
+end Divider.Raw
+
 
 
 namespace Divider.Interior
@@ -819,11 +834,65 @@ def empty : Interior cf where
 instance : EmptyCollection (Interior cf) := ⟨empty⟩
 
 --@[simp]
-theorem emptyCollection_def : (∅: Interior cf) = empty := by rfl
+--theorem emptyCollection_def : (∅: Interior cf) = empty := by rfl
 
-theorem empty_val_def : (∅: Interior cf).val = ([] : List Divider.Raw) := by rfl
+--theorem empty_val_def : (∅: Interior cf).val = ([] : List Divider.Raw) := by rfl
 
 theorem empty_def : (∅: Interior cf) = ⟨⟨[]⟩, Raw.IsInterior.nil cf⟩ := by rfl
+
+/-- expensive -/
+protected def insert (r: Divider.Raw) (rs: Interior cf) : Interior cf :=
+  match h1: r.toInterior? cf with
+  | .none => rs
+  | .some d =>
+  if h2: d.val ∈ rs.val.toList then rs else
+  { val := rs.val.toList.orderedInsert (· ≤ ·) d.val
+    property := by
+      simp [Raw.isInterior_iff]
+      --have ⟨all_interior, strict_lt⟩ := rs.property
+      constructor <;> try constructor
+      · simp [Divider.Raw.toInterior?.eq_def] at h1
+        obtain ⟨h1_w, h1_p⟩ := h1
+        rw [← h1_p]
+        simpa using h1_w
+      · exact rs.property.all_interior
+      · rcases rs with ⟨⟨rs_v⟩, all_interior, strict_lt⟩
+        simp [List.sortedLT_iff_nodup_and_sortedLE]
+        have lm1 := strict_lt.nodup
+        cases rs_v with
+        | nil => simp [List.sortedLE_iff_pairwise]
+        | cons rs_hd rs_tl =>
+          simp
+          by_cases h3: d.val ≤ rs_hd
+          · simp at h2
+            simp at lm1
+            simp [h3]; simp [h2, lm1]
+            simp [List.sortedLT_iff_nodup_and_sortedLE, lm1] at strict_lt
+            revert strict_lt
+            simp [List.sortedLE_iff_isChain, h3]
+          · simp [h3]
+            simp at h2
+            obtain ⟨lm2, lm3⟩ := h2
+            simp at h3
+            constructorm* _ ∧ _
+            · intro cont; exact lm2 cont.symm
+            · intro cont
+              simp [List.nodup_iff_pairwise_ne] at lm1
+              exact lm1.1 _ cont (Eq.refl _)
+            · sorry
+            · simp [List.sortedLT_iff_nodup_and_sortedLE, lm1] at strict_lt
+              simp [List.sortedLE_iff_pairwise]
+              simp [List.sortedLE_iff_pairwise] at strict_lt
+              obtain ⟨strict_lt_1, strict_lt_2⟩ := strict_lt
+              constructorm* _ ∧ _
+              · exact le_of_lt h3
+              · exact strict_lt_1
+              · apply List.SortedLE.pairwise
+                simp [← List.sortedLE_iff_pairwise] at strict_lt_2
+
+  }
+
+
 
 def uncheckedCons (elem: Divider.Raw) (coll: DividerList.Interior cf) : DividerList.Raw := coll.val.toList.orderedInsert (· ≤ ·) elem
 
@@ -1027,9 +1096,22 @@ theorem isCons_iff_isConsInterior_dropWhileLt
         --revert rs_st
         simp [List.sortedLT_iff_pairwise]
         simp [lm3]
+        simp only [← List.sortedLT_iff_pairwise]
+        constructor; · simp [List.sortedLT_iff_pairwise] at rs_st; exact rs_st.1
+        simp [List.sortedLT_iff_nodup_and_sortedLE]
+        constructor
+        case neg.right.right.right =>
+          simp [List.sortedLE_iff_pairwise]
+          apply List.Pairwise.orderedInsert
+          simp [List.sortedLT_iff_nodup_and_sortedLE, List.sortedLE_iff_pairwise] at rs_st
+          exact rs_st.2.2
+        · have lm5 := List.sortedLT_iff_nodup_and_sortedLE.mp rs_st; simp at lm5
+        --simp only [List.sortedLT_iff_nodup_and_sortedLE] at rs_st
+/-
         simp [List.sortedLT_iff_pairwise] at rs_st
         constructor; · exact rs_st.1
         simp
+-/
 /-
         intro lm4 lm5
         constructor
