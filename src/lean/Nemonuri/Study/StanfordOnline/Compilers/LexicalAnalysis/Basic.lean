@@ -893,6 +893,52 @@ protected def insert (r: Divider.Raw) (rs: Interior cf) : Interior cf :=
                 exact strict_lt_2.orderedInsert_sortedLE d.val rs_tl
   }
 
+inductive InsertIsConst (r: Divider.Raw) (rs: Interior cf) : Prop where
+  | not_interior (h: ¬Divider.Raw.IsInterior cf r)
+  | is_mem (h: r ∈ rs.val.toList)
+
+theorem insertIsConst_iff_or (r: Divider.Raw) (rs: Interior cf)
+  : InsertIsConst r rs ↔ (¬Divider.Raw.IsInterior cf r ∨ r ∈ rs.val.toList) := by
+  constructor <;> (intro h1; cases h1 <;> rename_i h2)
+  · simp [h2]
+  · simp [h2]
+  · exact InsertIsConst.not_interior h2
+  · exact InsertIsConst.is_mem h2
+
+
+
+theorem insertIsConst_iff_insert_eq (r: Divider.Raw) (rs: Interior cf)
+  : InsertIsConst r rs ↔ (rs = Interior.insert r rs) := by
+  simp [Interior.insert.eq_def]
+  split
+  · rename_i lm1
+    simp [Divider.Raw.toInterior?.eq_def] at lm1
+    simp
+    exact InsertIsConst.not_interior lm1
+  · rename_i d lm1
+    split
+    · rename_i lm2; simp
+      simp [Divider.Raw.toInterior?.eq_def] at lm1
+      obtain ⟨lm3, lm4⟩ := lm1
+      simp only [← lm4] at lm2
+      exact InsertIsConst.is_mem lm2
+    · rename_i lm2
+      simp [Divider.Raw.toInterior?.eq_def] at lm1
+      obtain ⟨lm3, lm4⟩ := lm1
+      replace lm4 := lm4.symm
+      subst lm4; simp at lm2
+      have lm6: ¬InsertIsConst r rs := by
+        intro cont
+        cases cont <;> rename_i lm6_1 <;> contradiction
+      simp [lm6]
+      intro cont
+      rcases rs with ⟨⟨rs_v⟩, rs_p⟩
+      simp [Interior, Subtype.ext_iff] at cont
+      have lm7 := congrArg List.length cont
+      simp [List.orderedInsert_length] at lm7
+
+
+
 
 def uncheckedCons (elem: Divider.Raw) (coll: DividerList.Interior cf) : DividerList.Raw := coll.val.toList.orderedInsert (· ≤ ·) elem
 
