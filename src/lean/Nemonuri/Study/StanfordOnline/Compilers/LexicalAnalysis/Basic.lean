@@ -9,6 +9,7 @@ public import Mathlib.Order.Lattice
 public import Mathlib.Data.Fintype.Defs
 public import Mathlib.Data.Finset.Sort
 public import Mathlib.Data.Finset.Union
+public import Nemonuri.OrderedInsert
 
 @[expose] public section public_s
 
@@ -849,7 +850,6 @@ protected def insert (r: Divider.Raw) (rs: Interior cf) : Interior cf :=
   { val := rs.val.toList.orderedInsert (· ≤ ·) d.val
     property := by
       simp [Raw.isInterior_iff]
-      --have ⟨all_interior, strict_lt⟩ := rs.property
       constructor <;> try constructor
       · simp [Divider.Raw.toInterior?.eq_def] at h1
         obtain ⟨h1_w, h1_p⟩ := h1
@@ -879,7 +879,8 @@ protected def insert (r: Divider.Raw) (rs: Interior cf) : Interior cf :=
             · intro cont
               simp [List.nodup_iff_pairwise_ne] at lm1
               exact lm1.1 _ cont (Eq.refl _)
-            · sorry
+            · simp at lm1
+              exact lm1.2.orderedInsert_nodup (· ≤ ·) d.val rs_tl lm3
             · simp [List.sortedLT_iff_nodup_and_sortedLE, lm1] at strict_lt
               simp [List.sortedLE_iff_pairwise]
               simp [List.sortedLE_iff_pairwise] at strict_lt
@@ -889,9 +890,8 @@ protected def insert (r: Divider.Raw) (rs: Interior cf) : Interior cf :=
               · exact strict_lt_1
               · apply List.SortedLE.pairwise
                 simp [← List.sortedLE_iff_pairwise] at strict_lt_2
-
+                exact strict_lt_2.orderedInsert_sortedLE d.val rs_tl
   }
-
 
 
 def uncheckedCons (elem: Divider.Raw) (coll: DividerList.Interior cf) : DividerList.Raw := coll.val.toList.orderedInsert (· ≤ ·) elem
