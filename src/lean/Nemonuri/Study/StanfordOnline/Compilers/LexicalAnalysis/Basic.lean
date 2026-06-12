@@ -144,6 +144,10 @@ theorem IsInteriorIndex_iff_ioo : cf.IsInteriorIndex i ↔ (0 < i ∧ i < cf.len
   simp [IsInteriorIndex_def, isValidIndex_iff_le_length, isBorderIndex_def]
   omega
 
+theorem length_le_one_imp_not_isInteriorIndex : (cf.length ≤ 1) → (¬cf.IsInteriorIndex i) := by
+  simp [IsInteriorIndex_iff_ioo]
+  omega
+
 instance : Decidable (cf.IsInteriorIndex i) := decidable_of_iff' (0 < i ∧ i < cf.length) (cf.IsInteriorIndex_iff_ioo i)
 
 theorem isValidIndex_iff_border_or_interior : cf.IsValidIndex i ↔ (cf.IsBorderIndex i ∨ cf.IsInteriorIndex i) := by
@@ -721,6 +725,12 @@ variable {α} (cf: CodeFragment α)
 def toInterior? (raw: Raw) : Option (Interior cf) :=
   if h: Raw.IsInterior cf raw then some ⟨raw, h⟩ else none
 
+theorem toInterior?_ne_none_iff_isInterior (raw: Raw)
+  : (toInterior? cf raw ≠ .none) ↔ Raw.IsInterior cf raw := by
+  unfold toInterior?
+  simp
+
+
 def toBorder? (raw: Raw) : Option (Border cf) :=
   if h: Raw.IsBorder cf raw then some ⟨raw, h⟩ else none
 
@@ -737,6 +747,13 @@ def equiv : Divider.Interior cf ≃ cf.InteriorIndex where
   invFun r := ⟨⟨r.val⟩, r.property⟩
 
 instance : Fintype (Interior cf) := Fintype.ofEquiv _ (equiv cf).symm
+
+instance instIsEmpty (req: cf.length ≤ 1) : IsEmpty (Interior cf) :=
+  Subtype.isEmpty_of_false (by
+    intro r
+    simp [Raw.isInterior_def]
+    exact CodeFragment.length_le_one_imp_not_isInteriorIndex cf r.toNat req
+  )
 
 end Divider.Interior
 
@@ -834,6 +851,8 @@ def empty : Interior cf where
 
 instance : EmptyCollection (Interior cf) := ⟨empty⟩
 
+instance : Nonempty (Interior cf) := ⟨∅⟩
+
 --@[simp]
 --theorem emptyCollection_def : (∅: Interior cf) = empty := by rfl
 
@@ -841,8 +860,10 @@ instance : EmptyCollection (Interior cf) := ⟨empty⟩
 
 theorem empty_def : (∅: Interior cf) = ⟨⟨[]⟩, Raw.IsInterior.nil cf⟩ := by rfl
 
+variable (r: Divider.Raw) (rs: Interior cf)
+
 /-- expensive -/
-protected def insert (r: Divider.Raw) (rs: Interior cf) : Interior cf :=
+protected def insert : Interior cf :=
   match h1: r.toInterior? cf with
   | .none => rs
   | .some d =>
@@ -893,11 +914,11 @@ protected def insert (r: Divider.Raw) (rs: Interior cf) : Interior cf :=
                 exact strict_lt_2.orderedInsert_sortedLE d.val rs_tl
   }
 
-inductive InsertIsConst (r: Divider.Raw) (rs: Interior cf) : Prop where
+inductive InsertIsConst : Prop where
   | not_interior (h: ¬Divider.Raw.IsInterior cf r)
   | is_mem (h: r ∈ rs.val.toList)
 
-theorem insertIsConst_iff_or (r: Divider.Raw) (rs: Interior cf)
+theorem insertIsConst_iff_or
   : InsertIsConst r rs ↔ (¬Divider.Raw.IsInterior cf r ∨ r ∈ rs.val.toList) := by
   constructor <;> (intro h1; cases h1 <;> rename_i h2)
   · simp [h2]
@@ -905,18 +926,38 @@ theorem insertIsConst_iff_or (r: Divider.Raw) (rs: Interior cf)
   · exact InsertIsConst.not_interior h2
   · exact InsertIsConst.is_mem h2
 
+instance : Insert (Divider.Raw) (Interior cf) where
+  insert := Interior.insert
+
+theorem insert_def : insert r rs = Interior.insert r rs := by
+  rfl
+
+theorem insert_const_or_cons : (insert r rs = rs) ∨ ((insert r rs).val.length = rs.val.length + 1) := by
+  have (eq := lm1) rs0 := insert r rs
+  rw [← lm1]
+  simp [insert_def, Interior.insert.eq_def] at lm1
+  split at lm1
+  · left; exact lm1
+  · split at lm1
+    · left; exact lm1
+    · right
+      rcases rs0 with ⟨⟨rs0_v⟩, _⟩
+      simp [Interior] at lm1
+      simp
+      replace lm1 := congrArg List.length lm1
+      simpa [List.orderedInsert_length] using lm1
+
+theorem insert_const_cons_disjoint : ¬((insert r rs = rs) ∧ ((insert r rs).val.length = rs.val.length + 1)) := by
+  simp; intro lm1; simp [lm1]
 
 
-theorem insertIsConst_iff_insert_eq (r: Divider.Raw) (rs: Interior cf)
-  : InsertIsConst r rs ↔ (rs = Interior.insert r rs) := by
-  simp [Interior.insert.eq_def]
-  split
-  · rename_i lm1
-    simp [Divider.Raw.toInterior?.eq_def] at lm1
+theorem insertIsConst_iff_insert_eq : InsertIsConst r rs ↔ (insert r rs = rs) := by
+  simp [insert_def, Interior.insert.eq_def]
+  split <;> rename_i lm1
+  · rewrite [(Divider.Raw.toInterior?_ne_none_iff_isInterior cf r).not_right] at lm1
     simp
     exact InsertIsConst.not_interior lm1
-  · rename_i d lm1
-    split
+  · split
     · rename_i lm2; simp
       simp [Divider.Raw.toInterior?.eq_def] at lm1
       obtain ⟨lm3, lm4⟩ := lm1
@@ -937,6 +978,26 @@ theorem insertIsConst_iff_insert_eq (r: Divider.Raw) (rs: Interior cf)
       have lm7 := congrArg List.length cont
       simp [List.orderedInsert_length] at lm7
 
+
+protected def cons (_: ¬InsertIsConst r rs) : Interior cf := insert r rs
+
+theorem cons_def (req: ¬InsertIsConst r rs)
+  : Interior.cons r rs req = insert r rs := by
+  rfl
+
+
+theorem cons_length (req: ¬InsertIsConst r rs)
+  : (Interior.cons r rs req).val.length = rs.val.length + 1 := by
+  simp only [insertIsConst_iff_insert_eq] at req
+  have lm1 := insert_const_or_cons r rs
+  simpa only [req, false_or] using lm1
+
+/-
+protected def singleton : Interior cf := Interior.cons r ∅ (by
+    intro cont
+    cases cont
+  )
+-/
 
 
 
