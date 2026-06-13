@@ -144,9 +144,12 @@ theorem IsInteriorIndex_iff_ioo : cf.IsInteriorIndex i ↔ (0 < i ∧ i < cf.len
   simp [IsInteriorIndex_def, isValidIndex_iff_le_length, isBorderIndex_def]
   omega
 
-theorem length_le_one_imp_not_isInteriorIndex : (cf.length ≤ 1) → (¬cf.IsInteriorIndex i) := by
+theorem length_le_one_iff_not_forall_isInteriorIndex : (cf.length ≤ 1) ↔ (∀i, ¬cf.IsInteriorIndex i) := by
   simp [IsInteriorIndex_iff_ioo]
-  omega
+  constructor
+  · intro _ _ _; omega
+  · intro lm1; specialize lm1 1; simpa using lm1
+
 
 instance : Decidable (cf.IsInteriorIndex i) := decidable_of_iff' (0 < i ∧ i < cf.length) (cf.IsInteriorIndex_iff_ioo i)
 
@@ -750,9 +753,9 @@ instance : Fintype (Interior cf) := Fintype.ofEquiv _ (equiv cf).symm
 
 instance instIsEmpty (req: cf.length ≤ 1) : IsEmpty (Interior cf) :=
   Subtype.isEmpty_of_false (by
-    intro r
+    rewrite [CodeFragment.length_le_one_iff_not_forall_isInteriorIndex] at req
     simp [Raw.isInterior_def]
-    exact CodeFragment.length_le_one_imp_not_isInteriorIndex cf r.toNat req
+    intro r; exact req r.toNat
   )
 
 end Divider.Interior
@@ -837,6 +840,54 @@ end DividerList.Raw
 open DividerList in
 def DividerList.Interior {α} (cf: CodeFragment α) := { r: Raw // Raw.IsInterior cf r }
 
+open DividerList in
+theorem DividerList.Raw.IsInterior.of_orderedInsert_le {α} (cf: CodeFragment α)
+  (r: Divider.Raw) (rs: Raw)
+  (req1: Divider.Raw.IsInterior cf r)
+  (req2: Raw.IsInterior cf rs)
+  (req3: r ∉ rs.toList)
+  : Raw.IsInterior cf (rs.toList.orderedInsert (· ≤ ·) r) := by
+  simp [Raw.isInterior_iff]
+  constructor <;> try constructor
+  · exact req1
+  · exact req2.all_interior
+  · rcases rs with ⟨rs_v⟩--⟨, all_interior, strict_lt⟩
+    rcases req2 with ⟨all_interior, strict_lt⟩
+    simp [List.sortedLT_iff_nodup_and_sortedLE]
+    have lm1 := strict_lt.nodup
+    cases rs_v with
+    | nil => simp [List.sortedLE_iff_pairwise]
+    | cons rs_hd rs_tl =>
+      simp
+      by_cases h3: r ≤ rs_hd
+      · simp at req3
+        simp at lm1
+        simp [h3]; simp [req3, lm1]
+        simp [List.sortedLT_iff_nodup_and_sortedLE, lm1] at strict_lt
+        revert strict_lt
+        simp [List.sortedLE_iff_isChain, h3]
+      · simp [h3]
+        simp at req3
+        obtain ⟨lm2, lm3⟩ := req3
+        simp at h3
+        constructorm* _ ∧ _
+        · intro cont; exact lm2 cont.symm
+        · intro cont
+          simp [List.nodup_iff_pairwise_ne] at lm1
+          exact lm1.1 _ cont (Eq.refl _)
+        · simp at lm1
+          exact lm1.2.orderedInsert_nodup (· ≤ ·) r rs_tl lm3
+        · simp [List.sortedLT_iff_nodup_and_sortedLE, lm1] at strict_lt
+          simp [List.sortedLE_iff_pairwise]
+          simp [List.sortedLE_iff_pairwise] at strict_lt
+          obtain ⟨strict_lt_1, strict_lt_2⟩ := strict_lt
+          constructorm* _ ∧ _
+          · exact le_of_lt h3
+          · exact strict_lt_1
+          · apply List.SortedLE.pairwise
+            simp [← List.sortedLE_iff_pairwise] at strict_lt_2
+            exact strict_lt_2.orderedInsert_sortedLE r rs_tl
+
 namespace DividerList.Interior
 
 variable {α} {cf: CodeFragment α}
@@ -860,64 +911,24 @@ instance : Nonempty (Interior cf) := ⟨∅⟩
 
 theorem empty_def : (∅: Interior cf) = ⟨⟨[]⟩, Raw.IsInterior.nil cf⟩ := by rfl
 
-variable (r: Divider.Raw) (rs: Interior cf)
+variable (d: Divider.Interior cf) (ds: Interior cf)
 
 /-- expensive -/
 protected def insert : Interior cf :=
-  match h1: r.toInterior? cf with
-  | .none => rs
-  | .some d =>
-  if h2: d.val ∈ rs.val.toList then rs else
-  { val := rs.val.toList.orderedInsert (· ≤ ·) d.val
-    property := by
-      simp [Raw.isInterior_iff]
-      constructor <;> try constructor
-      · simp [Divider.Raw.toInterior?.eq_def] at h1
-        obtain ⟨h1_w, h1_p⟩ := h1
-        rw [← h1_p]
-        simpa using h1_w
-      · exact rs.property.all_interior
-      · rcases rs with ⟨⟨rs_v⟩, all_interior, strict_lt⟩
-        simp [List.sortedLT_iff_nodup_and_sortedLE]
-        have lm1 := strict_lt.nodup
-        cases rs_v with
-        | nil => simp [List.sortedLE_iff_pairwise]
-        | cons rs_hd rs_tl =>
-          simp
-          by_cases h3: d.val ≤ rs_hd
-          · simp at h2
-            simp at lm1
-            simp [h3]; simp [h2, lm1]
-            simp [List.sortedLT_iff_nodup_and_sortedLE, lm1] at strict_lt
-            revert strict_lt
-            simp [List.sortedLE_iff_isChain, h3]
-          · simp [h3]
-            simp at h2
-            obtain ⟨lm2, lm3⟩ := h2
-            simp at h3
-            constructorm* _ ∧ _
-            · intro cont; exact lm2 cont.symm
-            · intro cont
-              simp [List.nodup_iff_pairwise_ne] at lm1
-              exact lm1.1 _ cont (Eq.refl _)
-            · simp at lm1
-              exact lm1.2.orderedInsert_nodup (· ≤ ·) d.val rs_tl lm3
-            · simp [List.sortedLT_iff_nodup_and_sortedLE, lm1] at strict_lt
-              simp [List.sortedLE_iff_pairwise]
-              simp [List.sortedLE_iff_pairwise] at strict_lt
-              obtain ⟨strict_lt_1, strict_lt_2⟩ := strict_lt
-              constructorm* _ ∧ _
-              · exact le_of_lt h3
-              · exact strict_lt_1
-              · apply List.SortedLE.pairwise
-                simp [← List.sortedLE_iff_pairwise] at strict_lt_2
-                exact strict_lt_2.orderedInsert_sortedLE d.val rs_tl
-  }
+  if h2: d.val ∈ ds.val.toList then ds else
+  { val := ds.val.toList.orderedInsert (· ≤ ·) d.val
+    property := Raw.IsInterior.of_orderedInsert_le cf d.val ds.val d.property ds.property h2 }
 
+
+def InsertIsConst : Prop := d.val ∈ ds.val.toList
+
+/-
 inductive InsertIsConst : Prop where
   | not_interior (h: ¬Divider.Raw.IsInterior cf r)
   | is_mem (h: r ∈ rs.val.toList)
+-/
 
+/-
 theorem insertIsConst_iff_or
   : InsertIsConst r rs ↔ (¬Divider.Raw.IsInterior cf r ∨ r ∈ rs.val.toList) := by
   constructor <;> (intro h1; cases h1 <;> rename_i h2)
@@ -925,79 +936,188 @@ theorem insertIsConst_iff_or
   · simp [h2]
   · exact InsertIsConst.not_interior h2
   · exact InsertIsConst.is_mem h2
+-/
 
-instance : Insert (Divider.Raw) (Interior cf) where
+instance : Insert (Divider.Interior cf) (Interior cf) where
   insert := Interior.insert
 
-theorem insert_def : insert r rs = Interior.insert r rs := by
+theorem insert_def : insert d ds = Interior.insert d ds := by
   rfl
 
-theorem insert_const_or_cons : (insert r rs = rs) ∨ ((insert r rs).val.length = rs.val.length + 1) := by
-  have (eq := lm1) rs0 := insert r rs
+theorem insert_const_or_cons : (insert d ds = ds) ∨ ((insert d ds).val.length = ds.val.length + 1) := by
+  have (eq := lm1) rs0 := insert d ds
   rw [← lm1]
   simp [insert_def, Interior.insert.eq_def] at lm1
   split at lm1
   · left; exact lm1
-  · split at lm1
-    · left; exact lm1
-    · right
-      rcases rs0 with ⟨⟨rs0_v⟩, _⟩
-      simp [Interior] at lm1
-      simp
-      replace lm1 := congrArg List.length lm1
-      simpa [List.orderedInsert_length] using lm1
+  · right
+    rcases rs0 with ⟨⟨rs0_v⟩, _⟩
+    simp [Interior] at lm1
+    simp
+    replace lm1 := congrArg List.length lm1
+    simpa [List.orderedInsert_length] using lm1
 
-theorem insert_const_cons_disjoint : ¬((insert r rs = rs) ∧ ((insert r rs).val.length = rs.val.length + 1)) := by
+theorem insert_const_cons_disjoint : ¬((insert d ds = ds) ∧ ((insert d ds).val.length = ds.val.length + 1)) := by
   simp; intro lm1; simp [lm1]
 
 
-theorem insertIsConst_iff_insert_eq : InsertIsConst r rs ↔ (insert r rs = rs) := by
-  simp [insert_def, Interior.insert.eq_def]
-  split <;> rename_i lm1
-  · rewrite [(Divider.Raw.toInterior?_ne_none_iff_isInterior cf r).not_right] at lm1
-    simp
-    exact InsertIsConst.not_interior lm1
-  · split
-    · rename_i lm2; simp
-      simp [Divider.Raw.toInterior?.eq_def] at lm1
-      obtain ⟨lm3, lm4⟩ := lm1
-      simp only [← lm4] at lm2
-      exact InsertIsConst.is_mem lm2
-    · rename_i lm2
-      simp [Divider.Raw.toInterior?.eq_def] at lm1
-      obtain ⟨lm3, lm4⟩ := lm1
-      replace lm4 := lm4.symm
-      subst lm4; simp at lm2
-      have lm6: ¬InsertIsConst r rs := by
-        intro cont
-        cases cont <;> rename_i lm6_1 <;> contradiction
-      simp [lm6]
-      intro cont
-      rcases rs with ⟨⟨rs_v⟩, rs_p⟩
-      simp [Interior, Subtype.ext_iff] at cont
-      have lm7 := congrArg List.length cont
-      simp [List.orderedInsert_length] at lm7
+theorem insertIsConst_iff_insert_eq : InsertIsConst d ds ↔ (insert d ds = ds) := by
+  simp [insert_def, Interior.insert.eq_def, InsertIsConst.eq_def]
+  --rcases d with ⟨⟨r⟩, r_p⟩
+  rcases ds with ⟨⟨rs⟩, _⟩
+  simp
+  constructor
+  · intro cont1 cont2; contradiction
+  · intro lm1
+    by_contra cont
+    specialize lm1 cont
+    replace lm1 := Subtype.ext_iff.mp lm1
+    simp at lm1
+    replace lm1 := congrArg List.length lm1
+    simp [List.orderedInsert_length] at lm1
 
 
-protected def cons (_: ¬InsertIsConst r rs) : Interior cf := insert r rs
 
-theorem cons_def (req: ¬InsertIsConst r rs)
-  : Interior.cons r rs req = insert r rs := by
+protected def cons (_: ¬InsertIsConst d ds) : Interior cf := insert d ds
+
+theorem cons_def (req: ¬InsertIsConst d ds)
+  : Interior.cons d ds req = insert d ds := by
   rfl
 
 
-theorem cons_length (req: ¬InsertIsConst r rs)
-  : (Interior.cons r rs req).val.length = rs.val.length + 1 := by
+theorem cons_length (req: ¬InsertIsConst  d ds)
+  : (Interior.cons d ds req).val.length = ds.val.length + 1 := by
   simp only [insertIsConst_iff_insert_eq] at req
-  have lm1 := insert_const_or_cons r rs
+  have lm1 := insert_const_or_cons d ds
   simpa only [req, false_or] using lm1
 
+def findIdxOfGe? : Option Nat := ds.val.toList.findIdx? (d.val ≤ ·)
+
+
+theorem findIdxOfGe_mem_lt_length : ∀i ∈ findIdxOfGe? d ds, i < ds.val.toList.length := by
+  simp only [Option.mem_def, findIdxOfGe?.eq_def]
+  intro i lm1
+  simp [List.findIdx?_eq_some_iff_findIdx_eq] at lm1
+  exact lm1.1
+
+def InsertIsCons : Prop := ∀i, (h: i ∈ findIdxOfGe? d ds) → d.val ≠ ds.val.toList[i]'(findIdxOfGe_mem_lt_length d ds i h)
+
+instance : Decidable (InsertIsCons d ds) :=
+  match h1: findIdxOfGe? d ds with
+  | .none => .isTrue (by
+      simp only [InsertIsCons.eq_def]
+      intro _ cont; simp at cont; rewrite [h1] at cont; simp at cont
+    )
+  | .some i =>
+    if h2: d.val = ds.val.toList[i]'(findIdxOfGe_mem_lt_length d ds i h1) then
+      .isFalse (by
+        simp [InsertIsCons.eq_def]
+        exists i, h1
+      )
+    else
+      .isTrue (by
+        simp [InsertIsCons.eq_def]
+        intro _ lm1; rewrite [h1] at lm1; simp at lm1
+        simpa [lm1] using h2
+      )
+
+--set_option trace.Meta.synthInstance true in
+theorem insertIsCons_iff_not_insertIsConst : InsertIsCons d ds ↔ ¬InsertIsConst d ds := by
+  simp [InsertIsCons.eq_def, InsertIsConst.eq_def]
+  rcases ds with ⟨⟨rs⟩, all_interior, strict_lt⟩
+  simp only [findIdxOfGe?.eq_def]
+  constructor
+  · contrapose; simp; intro lm1
+    simp only [List.mem_iff_getElem] at lm1
+    obtain ⟨i, lm1, lm2⟩ := lm1
+    exists i
+    exists (by
+      simp only [List.findIdx?_eq_some_iff_getElem]
+      exists lm1
+      simp [lm2]
+      intro j lm3
+      simp [List.sortedLT_iff_getElem_lt_getElem_of_lt] at strict_lt
+      specialize @strict_lt j i (Trans.trans lm3 lm1) lm1 lm3
+      simpa [lm2] using strict_lt
+    )
+    exact lm2.symm
+  · contrapose; simp; intro _ _ lm2
+    simp [lm2]
+
+def insertImpl : Interior cf :=
+  if h1: InsertIsCons d ds then
+    { val := ds.val.toList.orderedInsert (· ≤ ·) d.val
+      property := Raw.IsInterior.of_orderedInsert_le cf d.val ds.val d.property ds.property (by
+        rewrite [insertIsCons_iff_not_insertIsConst, InsertIsConst.eq_def] at h1
+        exact h1
+      ) }
+  else
+    ds
+
+@[csimp]
+theorem insert_eq_insertImpl : @Interior.insert = @insertImpl := by
+  ext
+  simp [Interior.insert.eq_def, insertImpl.eq_def]
+  split <;> split <;> try rfl
+  all_goals (rename_i cont; simp [insertIsCons_iff_not_insertIsConst, InsertIsConst.eq_def] at cont; contradiction)
+
+namespace InsertIsCons
+
+attribute [local simp] insertIsCons_iff_not_insertIsConst InsertIsConst.eq_def empty_def findIdxOfGe?.eq_def
+--attribute [local simp] InsertIsCons.eq_def
+
+
+theorem of_empty : InsertIsCons d ∅ := by simp
+
+theorem of_lt_head? (req: ∀hd ∈ ds.val.toList.head?, d.val < hd) : InsertIsCons d ds := by
+  rcases ds with ⟨⟨rs⟩, all_interior, strict_lt⟩
+  induction rs with
+  | nil => simp
+  | cons hd tl tl_ih =>
+    revert tl_ih all_interior strict_lt
+    simp [List.sortedLT_iff_isChain, List.isChain_cons]
+    intro lm1 lm2 lm3 lm4 lm5 lm6
+    constructor; · simp [lt_iff_le_and_ne] at lm6; exact lm6.2
+    specialize lm1 lm3 lm5
+      (by intro i lm7; specialize lm4 i lm7; exact Trans.trans lm6 lm4)
+    exact lm1
 /-
-protected def singleton : Interior cf := Interior.cons r ∅ (by
-    intro cont
-    cases cont
-  )
+    simp only [InsertIsCons.eq_def];
+    intro lm1 lm2 lm3 i
+    simp at lm3
+    intro lm4 lm5
+    simp [List.sortedLT_iff_pairwise] at lm2
+    have lm6 := lm2.1 d.val
+    simp [lm5] at lm6
 -/
+
+    --simp [List.getElem_mem] at lm5
+
+/-
+    revert tl_ih all_interior strict_lt
+    simp [List.sortedLT_iff_pairwise]
+    intro tl_ih lm1 lm2 lm3 lm4 lm5
+    constructor; · simp [lt_iff_le_and_ne] at lm5; exact lm5.2
+    simp [List.head?_eq_so]
+-/
+    --specialize tl_ih lm2 lm4
+      --(by intro hd2; specialize lm3 hd2 (List.head?_eq_som))
+    --simp [List.sortedLT_iff_nodup_and_sortedLE] at strict_lt
+
+
+/-
+  by_cases h1: ds = ∅
+  · simp only [h1, of_empty]
+  · simp only [InsertIsCons.eq_def]
+    have lm1 := ds.property.strict_lt.nodup
+-/
+    --simp [List.Nodup.elem]
+    --simp
+
+
+
+end InsertIsCons
+
 
 
 
